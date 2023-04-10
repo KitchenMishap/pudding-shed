@@ -1,6 +1,9 @@
 package chainreadinterface
 
 type Handle interface {
+	// This is merely to stop a consumer handing around pointers to arbitrary objects as Handles
+	IsHandle() bool
+	IsInvalid() bool
 }
 
 type HBlock interface {
@@ -13,9 +16,5 @@ type HTransaction interface {
 
 type IHandles interface {
 	HBlockFromHeight(BlockHeight int64) HBlock
-	HBlockFromHash(BlockHash [32]byte) HBlock
 	HeightFromHBlock(hBlock HBlock) int64
-	HashFromHBlock(hBlock HBlock) [32]byte
-	HTransactionFromHash(TransactionHash [32]byte) HTransaction
-	HashFromHTransaction(hTransaction HTransaction) [32]byte
 }

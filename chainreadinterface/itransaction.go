@@ -2,7 +2,6 @@ package chainreadinterface
 
 type ITransaction interface {
 	TransactionHandle() HTransaction
-	TransactionHash() [32]byte
 	TxiCount() int64
 	NthTxiInterface(n int64) ITxi
 	TxoCount() int64
