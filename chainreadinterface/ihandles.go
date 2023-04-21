@@ -1,7 +1,7 @@
 package chainreadinterface
 
 type Handle interface {
-	// This is merely to stop a consumer handing around pointers to arbitrary objects as Handles
+	// IsHandle is merely here to stop a consumer handing around pointers to arbitrary objects as Handles
 	IsHandle() bool
 	IsInvalid() bool
 }
