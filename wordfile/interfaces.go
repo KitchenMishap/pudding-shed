@@ -11,3 +11,9 @@ type WriterAtWord interface {
 type WordCounter interface {
 	CountWords() (int64, error)
 }
+
+type ReadWriteAtWordCounter interface {
+	ReaderAtWord
+	WriterAtWord
+	WordCounter
+}
