@@ -45,3 +45,7 @@ func (wf *WordFile) CountWords() (words int64, err error) {
 	}
 	return filesize / wf.wordSize, nil
 }
+
+func (wf *WordFile) Close() error {
+	return wf.file.Close()
+}
