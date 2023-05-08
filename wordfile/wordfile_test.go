@@ -1,6 +1,9 @@
 package wordfile
 
-import "os"
+import (
+	"log"
+	"os"
+)
 import "testing"
 
 func TestWordFile1(t *testing.T) {
@@ -42,6 +45,7 @@ func HelperWordfile(wordsize int64, mask int64, t *testing.T) {
 		t.Error("CountWords on empty file should give zero")
 	}
 	// Check a read at 0 gives an error
+	log.Println("Note: An EOF here is a PASS")
 	rr, err := wf.ReadWordAt(0)
 	if err == nil {
 		t.Error("ReadWordAt(0) on empty file should give error")
