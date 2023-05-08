@@ -132,7 +132,7 @@ func HelperHashStoreBigTest(hs HashReadWriter, t *testing.T, testSize uint64) {
 }
 
 func HelperHashOfHash(in *Sha256, out *Sha256) {
-	// Calculate the sha256 of file contents
+	// Calculate the sha256 of a sha256
 	h := sha256.New()
 
 	h.Write((*in)[0:32])
