@@ -143,11 +143,6 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 		collider := int64(binary.LittleEndian.Uint64(colliderBytes[:]))
 		for collider != 0 {
 			// Need to skip past occupied slots
-			if collider == valnum+1 {
-				err = errors.New("fatal: hash collision")
-				log.Println("AppendHash(): FATAL: hash collision") // ToDo [ ] Check if this is reasonable?
-				return -1, err
-			}
 			j++
 			if j == CPC {
 				// No more slots in chunk
