@@ -3,6 +3,7 @@ package indexedhashes
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"log"
 	"os"
 	"testing"
 )
@@ -62,6 +63,7 @@ func HelperHashStoreSmallTest(hs HashReadWriter, t *testing.T) {
 	if hashcheck != hash1 {
 		t.Error("GetHashAtIndex(0) should give the second hash")
 	}
+	log.Println("Note: An EOF here is a PASS")
 	err = hs.GetHashAtIndex(2, &hashcheck)
 	if err == nil {
 		t.Error("GetHashAtIndex(2) should give error")

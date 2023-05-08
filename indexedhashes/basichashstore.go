@@ -3,6 +3,7 @@ package indexedhashes
 import (
 	"encoding/binary"
 	"io"
+	"log"
 )
 
 type ReadWriteSeekCloser interface {
@@ -23,10 +24,14 @@ func NewBasicHashStore(file ReadWriteSeekCloser) *BasicHashStore {
 func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
 	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
 	if err != nil {
+		log.Println(err)
+		log.Println("AppendHash(): Could not call file.Seek()")
 		return -1, err
 	}
 	_, err = bhs.file.Write(hash[0:32])
 	if err != nil {
+		log.Println(err)
+		log.Println("AppendHash(): Could not call file.Write()")
 		return -1, err
 	}
 	return bytecount / 32, nil
@@ -36,6 +41,8 @@ func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
 func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	_, err := bhs.file.Seek(0, io.SeekStart)
 	if err != nil {
+		log.Println(err)
+		log.Println("IndexOfHash(): Could not call file.Seek()")
 		return -1, err
 	}
 	var hashInFile Sha256
@@ -43,6 +50,8 @@ func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	for {
 		bytecount, err := bhs.file.Read(hashInFile[0:32])
 		if bytecount == 0 || err != nil {
+			log.Println(err)
+			log.Println("IndexOfHash(): file.Read() did not read any bytes")
 			return int64(-1), err
 		}
 		if hashInFile == *hash {
@@ -55,15 +64,23 @@ func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
 	_, err := bhs.file.Seek(32*index, io.SeekStart)
 	if err != nil {
+		log.Println(err)
+		log.Println("GetHashAtIndex(): Could not call file.Seek()")
 		return err
 	}
 	_, err = bhs.file.Read(hash[0:32])
+	if err != nil {
+		log.Println(err)
+		log.Println("GetHashAtIndex(): Could not call file.Read()")
+	}
 	return err
 }
 
 func (bhs *BasicHashStore) CountHashes() (int64, error) {
 	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
 	if err != nil {
+		log.Println(err)
+		log.Println("CountHashes(): Could not call file.Seek()")
 		return -1, err
 	}
 	return bytecount / 32, nil
@@ -71,25 +88,36 @@ func (bhs *BasicHashStore) CountHashes() (int64, error) {
 
 func (bhs *BasicHashStore) Close() error {
 	err := bhs.file.Close()
+	if err != nil {
+		log.Println(err)
+		log.Println("Close(): Could not call file.Close()")
+		return err
+	}
 	bhs.file = nil
-	return err
+	return nil
 }
 
 func (bhs *BasicHashStore) WholeFileAsInt32() ([]uint32, error) {
 	entries, err := bhs.CountHashes()
 	if err != nil {
-		println("Could not count hashes")
+		log.Println("WholeFileAsInt32(): Could not call CountHashes()")
 		return nil, err
 	}
 	println("Reading")
 	raw := make([]byte, entries*32)
-	bhs.file.Seek(0, 0)
+	_, err = bhs.file.Seek(0, 0)
+	if err != nil {
+		log.Println(err)
+		log.Println("WholeFileAsInt32(): Could not call file.Seek()")
+		return nil, err
+	}
 	tot := int64(0)
 	for {
 		println("Reading chunk")
 		n, err := bhs.file.Read(raw[tot : entries*32])
 		if err != nil {
-			println("Could not read raw from hashes file")
+			log.Println(err)
+			log.Println("WholeFileAsInt32(): Could not call file.Read()")
 			return nil, err
 		}
 		tot += int64(n)
