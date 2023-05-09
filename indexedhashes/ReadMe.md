@@ -1,4 +1,5 @@
 # package indexedhashes
+indexedhashes is a key-value database mapping unique sha256 hashes to counting integers.
 - indexedhashes holds a sequence of unique sha256 hashes for you.
 - They are indexed 0,1,2...
 - You can (of course) supply an index and lookup the corresponding hash previously stored (ie, an array)
