@@ -28,6 +28,7 @@ type handles struct {
 }
 
 // Implement IHandles
+
 // HBlockFromHeight() returns the HBlock at a given height in the chain
 func (h *handles) HBlockFromHeight(hgt int64) chainreadinterface.HBlock {
 	return handle{height: hgt}

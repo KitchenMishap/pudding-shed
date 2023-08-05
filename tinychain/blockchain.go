@@ -8,6 +8,7 @@ type blockchain struct {
 }
 
 // Implement IBlockTree
+
 // GenesisBlock returns the first HBlock in the chain
 func (bc *blockchain) GenesisBlock() chainreadinterface.HBlock {
 	return theHandles.HBlockFromHeight(0)
@@ -32,6 +33,7 @@ func (bc *blockchain) PreviousTransaction(t chainreadinterface.HTransaction) cha
 }
 
 // Implement the rest of IBlockChain
+
 // LatestBlock returns the latest HBlock in the chain
 func (bc *blockchain) LatestBlock() chainreadinterface.HBlock {
 	return theHandles.HBlockFromHeight(int64(len(bc.blocks) - 1))
