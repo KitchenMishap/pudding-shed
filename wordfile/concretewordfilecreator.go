@@ -12,12 +12,12 @@ type ConcreteWordFileCreator struct {
 	wordSize int64
 }
 
-func NewConcreteWordFileCreator(name string, folder string, wordSize int64) ConcreteWordFileCreator {
+func NewConcreteWordFileCreator(name string, folder string, wordSize int64) *ConcreteWordFileCreator {
 	result := ConcreteWordFileCreator{}
 	result.name = name
 	result.folder = folder
 	result.wordSize = wordSize
-	return result
+	return &result
 }
 
 func (wfc *ConcreteWordFileCreator) WordFileExists() bool {
