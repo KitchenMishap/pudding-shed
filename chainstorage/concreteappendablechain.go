@@ -31,7 +31,7 @@ func (cac *concreteAppendableChain) AppendBlock(handleHandler chainreadinterface
 	for t := int64(0); t < nTrans; t++ {
 		hTrans := block.NthTransactionHandle(t)
 		trans := blockChain.TransactionInterface(hTrans)
-		transNum, err := cac.appendTransaction(handleHandler, blockChain, trans)
+		transNum, err := cac.appendTransaction(handleHandler, trans)
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func (cac *concreteAppendableChain) AppendBlock(handleHandler chainreadinterface
 }
 
 func (cac *concreteAppendableChain) appendTransaction(handleHandler chainreadinterface.IHandles,
-	blockChain chainreadinterface.IBlockChain, trans chainreadinterface.ITransaction) (int64, error) {
+	trans chainreadinterface.ITransaction) (int64, error) {
 	hTrans := trans.TransactionHandle()
 	transHash := handleHandler.HashFromHTransaction(hTrans)
 	transNum, err := cac.trnHashes.AppendHash(&transHash)
@@ -95,8 +95,14 @@ func (cac *concreteAppendableChain) appendTxi(iHandles chainreadinterface.IHandl
 	if err != nil {
 		return -1, err
 	}
-	cac.txiTx.WriteWordAt(transHeight, nTxi)
-	cac.txiVout.WriteWordAt(sourceIndex, nTxi)
+	err = cac.txiTx.WriteWordAt(transHeight, nTxi)
+	if err != nil {
+		return -1, err
+	}
+	err = cac.txiVout.WriteWordAt(sourceIndex, nTxi)
+	if err != nil {
+		return -1, err
+	}
 	return nTxi, nil
 }
 
@@ -106,7 +112,10 @@ func (cac *concreteAppendableChain) appendTxo(iTxo chainreadinterface.ITxo) (int
 	if err != nil {
 		return -1, err
 	}
-	cac.txoSats.WriteWordAt(sats, nTxo)
+	err = cac.txoSats.WriteWordAt(sats, nTxo)
+	if err != nil {
+		return -1, err
+	}
 	return nTxo, nil
 }
 
