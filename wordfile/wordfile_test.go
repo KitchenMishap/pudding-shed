@@ -7,34 +7,34 @@ import (
 import "testing"
 
 func TestWordFile1(t *testing.T) {
-	HelperWordfile(1, 0xFF, t)
+	HelperWordFile(1, 0xFF, t)
 }
 func TestWordFile2(t *testing.T) {
-	HelperWordfile(2, 0xFFFF, t)
+	HelperWordFile(2, 0xFFFF, t)
 }
 func TestWordFile4(t *testing.T) {
-	HelperWordfile(4, 0xFFFFFFFF, t)
+	HelperWordFile(4, 0xFFFFFFFF, t)
 }
 func TestWordFile7(t *testing.T) {
-	HelperWordfile(7, 0xFFFFFFFFFFFFFF, t)
+	HelperWordFile(7, 0xFFFFFFFFFFFFFF, t)
 }
 func TestWordFile8(t *testing.T) {
-	HelperWordfile(8, 0x7FFFFFFFFFFFFFFF, t)
+	HelperWordFile(8, 0x7FFFFFFFFFFFFFFF, t)
 }
 
 // Tests wordfile with a given word size
 // mask is a mask the size of the maximum word
-func HelperWordfile(wordsize int64, mask int64, t *testing.T) {
+func HelperWordFile(wordSize int64, mask int64, t *testing.T) {
 	// Create an empty file for testing
-	f, err := os.Create("WordfileTesting.int")
+	f, err := os.Create("WordFileTesting.int")
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
 			t.Error("Closing file should not give error")
 		}
 	}(f)
-	// Treat it as a n-byte wordfile
-	wf := NewWordFile(f, wordsize)
+	// Treat it as an n-byte wordfile
+	wf := NewWordFile(f, wordSize)
 
 	// Check it's empty
 	cf, err := wf.CountWords()

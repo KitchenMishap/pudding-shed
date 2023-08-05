@@ -19,7 +19,7 @@ func (b *block) TransactionCount() int64 {
 	return int64(len(b.transactions))
 }
 
-func (b block) NthTransactionHandle(n int64) chainreadinterface.HTransaction {
+func (b *block) NthTransactionHandle(n int64) chainreadinterface.HTransaction {
 	return theHandles.HTransactionFromHeight(b.transactions[n].height)
 }
 

@@ -19,7 +19,7 @@ func TestConcreteWordFileCreator(t *testing.T) {
 
 	err := creator1.CreateWordFile()
 	if err != nil {
-		t.Error("Coudn't create wordfile")
+		t.Error("Couldn't create wordfile")
 	}
 
 	rw, err := creator1.OpenWordFile()

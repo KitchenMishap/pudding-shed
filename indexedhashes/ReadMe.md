@@ -10,7 +10,7 @@ indexedhashes is a key-value database mapping unique sha256 hashes to counting i
 - **FileName.lkp** - A fixed size lookup file indexed by the "partial hash" (the LSBs) of each full hash
 - **FileName.cls** - A growing linked list of chunks dealing with collisions: cases where two hashes have the same partial hashes
 ### Parameters
-- partialHashBitCount - The number of LSBs of a 256 bit hash that constitute a partial hash
+- partialHashBitCount - The number of LSBs of a 256-bit hash that constitute a partial hash
 - entryByteCount - The number of bytes that constitute an entry in the lookup file, or in a chunk
 - collisionsPerChunk - The number of collisions stored in a chunk
 
@@ -104,13 +104,13 @@ println(index)
 ```
 # How it works - file formats
 ### 1. Hashes file, FileName.hsh
-This is simply the binary 256 bit full hashes stored in sequence
+This is simply the binary 256-bit full hashes stored in sequence
 ### 2. Lookup file, FileName.lkp
 * This is a large fixed size file, initially full of zeroes.
 * Each entry is entryByteCount bytes long
-* It is indexed by partial hash, which is the LSBs of a full 256 bit hash
+* It is indexed by partial hash, which is the LSBs of a full 256-bit hash
 * There are partialHashBitCount bits in a partial hash
-* Thus the filesize is 2 ^ partialHashBitCount * entryByteCount
+* Thus, the filesize is 2 ^ partialHashBitCount * entryByteCount
 * An entry of zero means there are no stored hashes having the given partial hash (LSBs)
 * If the MSB of an entry us unset, then the entry is the only matching hash's index PLUS ONE
 * If the MSB is set, then there are multiple stored hashes matching the given partial hash

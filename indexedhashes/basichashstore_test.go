@@ -48,23 +48,23 @@ func HelperHashStoreSmallTest(hs HashReadWriter, t *testing.T) {
 	if count != 2 {
 		t.Error("CountHashes() after two appends should return 2")
 	}
-	hashcheck := Sha256{}
-	err = hs.GetHashAtIndex(0, &hashcheck)
+	hashCheck := Sha256{}
+	err = hs.GetHashAtIndex(0, &hashCheck)
 	if err != nil {
 		t.Error("GetHashAtIndex(0) should not give error")
 	}
-	if hashcheck != hash0 {
+	if hashCheck != hash0 {
 		t.Error("GetHashAtIndex(0) should give the first hash")
 	}
-	err = hs.GetHashAtIndex(1, &hashcheck)
+	err = hs.GetHashAtIndex(1, &hashCheck)
 	if err != nil {
 		t.Error("GetHashAtIndex(1) should not give error")
 	}
-	if hashcheck != hash1 {
+	if hashCheck != hash1 {
 		t.Error("GetHashAtIndex(0) should give the second hash")
 	}
 	log.Println("Note: An EOF here is a PASS")
-	err = hs.GetHashAtIndex(2, &hashcheck)
+	err = hs.GetHashAtIndex(2, &hashCheck)
 	if err == nil {
 		t.Error("GetHashAtIndex(2) should give error")
 	}
@@ -108,7 +108,7 @@ func HelperHashStoreBigTest(hs HashReadWriter, t *testing.T, testSize uint64) {
 		}
 	}
 	// Read hashes that are equal to iterator
-	readhash := Sha256{}
+	readHash := Sha256{}
 	for i := uint64(0); i < testSize; i++ {
 		iter := Sha256{}
 		binary.LittleEndian.PutUint64(iter[:], i)
@@ -121,11 +121,11 @@ func HelperHashStoreBigTest(hs HashReadWriter, t *testing.T, testSize uint64) {
 		if uint64(index) != i {
 			t.Error("IndexOfHash() should return correct index")
 		}
-		err = hs.GetHashAtIndex(int64(i), &readhash)
+		err = hs.GetHashAtIndex(int64(i), &readHash)
 		if err != nil {
 			t.Error("GetHashAtIndex() should not give error")
 		}
-		if readhash != hash {
+		if readHash != hash {
 			t.Error("GetHashAtIndex() should match hash of index in this test")
 		}
 	}

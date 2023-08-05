@@ -22,7 +22,7 @@ func NewBasicHashStore(file ReadWriteSeekCloser) *BasicHashStore {
 }
 
 func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
-	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
+	byteCount, err := bhs.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		log.Println(err)
 		log.Println("AppendHash(): Could not call file.Seek()")
@@ -34,7 +34,7 @@ func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
 		log.Println("AppendHash(): Could not call file.Write()")
 		return -1, err
 	}
-	return bytecount / 32, nil
+	return byteCount / 32, nil
 }
 
 // IndexOfHash This is a very slow naive implementation, and should only be used for testing
@@ -48,8 +48,8 @@ func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	var hashInFile Sha256
 	index := int64(0)
 	for {
-		bytecount, err := bhs.file.Read(hashInFile[0:32])
-		if bytecount == 0 || err != nil {
+		byteCount, err := bhs.file.Read(hashInFile[0:32])
+		if byteCount == 0 || err != nil {
 			log.Println(err)
 			log.Println("IndexOfHash(): file.Read() did not read any bytes")
 			return int64(-1), err
@@ -77,13 +77,13 @@ func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
 }
 
 func (bhs *BasicHashStore) CountHashes() (int64, error) {
-	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
+	byteCount, err := bhs.file.Seek(0, io.SeekEnd)
 	if err != nil {
 		log.Println(err)
 		log.Println("CountHashes(): Could not call file.Seek()")
 		return -1, err
 	}
-	return bytecount / 32, nil
+	return byteCount / 32, nil
 }
 
 func (bhs *BasicHashStore) Close() error {

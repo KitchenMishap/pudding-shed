@@ -67,7 +67,7 @@ var block_b1 = block{
 }
 
 // Block 2
-// Transactons
+// Transactions
 // Transaction 0 (Coinbase)
 // TXOs
 var txo_b2_t0_txo0 = txo{

@@ -40,7 +40,7 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 	}
 
 	hashV := binary.LittleEndian.Uint64(hash[0:8])
-	valnum := index
+	valNum := index
 
 	NBYTES := hs.entryByteCount
 	MSB := int64(0x80) << (8 * (NBYTES - 1))
@@ -48,15 +48,15 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 	NMASK := (int64(1) << NBITS) - 1
 	CPC := hs.collisionsPerChunk
 
-	if valnum >= MSB {
+	if valNum >= MSB {
 		err := errors.New("fatal: size of hashes file is now too large to index into")
 		log.Println("AppendHash(): FATAL: Size of hashes file is now too large to index into")
 		return -1, err
 	}
 
-	// Encode valnum+1 as NBYTES bytes
-	var valnumBytes [8]byte
-	binary.LittleEndian.PutUint64(valnumBytes[0:8], uint64(valnum+1)) // MUST be LittleEndian
+	// Encode valNum+1 as NBYTES bytes
+	var valNumBytes [8]byte
+	binary.LittleEndian.PutUint64(valNumBytes[0:8], uint64(valNum+1)) // MUST be LittleEndian
 
 	// Is something already stored in lookup[partialKey] ?
 	partialKey := int64(hashV) & NMASK
@@ -70,7 +70,7 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 	lookup := int64(binary.LittleEndian.Uint64(lookupBytes[0:8]))
 	if lookup == 0 {
 		// No, vacant, put it in there
-		_, err := hs.lookupsFile.WriteAt(valnumBytes[0:NBYTES], partialKey*NBYTES)
+		_, err := hs.lookupsFile.WriteAt(valNumBytes[0:NBYTES], partialKey*NBYTES)
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash(): Couldn't WriteAt() into lookups file")
@@ -83,13 +83,13 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 
 		// Need a new linked list
 		// Append a chunk with the two colliding entries
-		filestat, err := hs.collisionsFile.Stat()
+		fileStat, err := hs.collisionsFile.Stat()
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash() Couldn't call Stat() on collisions file")
 			return -1, err
 		}
-		availableChunks := filestat.Size() / (NBYTES * (CPC + 1))
+		availableChunks := fileStat.Size() / (NBYTES * (CPC + 1))
 		if availableChunks+1 >= MSB {
 			err = errors.New("fatal: size of collisions file is now too large to index into")
 			log.Println("AppendHash(): FATAL: Size of collisions file is now too large to index into")
@@ -105,21 +105,21 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 		}
 
 		// Append lookup to collisions file
-		_, err = hs.collisionsFile.WriteAt(lookupBytes[0:NBYTES], filestat.Size())
+		_, err = hs.collisionsFile.WriteAt(lookupBytes[0:NBYTES], fileStat.Size())
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash: Could not WriteAt() into collisions file")
 			return -1, err
 		}
-		// Append valnum+1 to collisions file
-		_, err = hs.collisionsFile.WriteAt(valnumBytes[0:NBYTES], filestat.Size()+NBYTES)
+		// Append valNum+1 to collisions file
+		_, err = hs.collisionsFile.WriteAt(valNumBytes[0:NBYTES], fileStat.Size()+NBYTES)
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash: Could not WriteAt() into collisions file")
 			return -1, err
 		}
 		var zeroBytes [ZEROBUF]byte
-		_, err = hs.collisionsFile.WriteAt(zeroBytes[0:(CPC+1-2)*NBYTES], filestat.Size()+NBYTES*2)
+		_, err = hs.collisionsFile.WriteAt(zeroBytes[0:(CPC+1-2)*NBYTES], fileStat.Size()+NBYTES*2)
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash: Could not WriteAt() into collisions file")
@@ -162,16 +162,16 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 					//println("Benign code coverage check(3 of 4): Appending second chunk to linked list in collisions file")
 
 					// Append an empty chunk
-					filestat, err := hs.collisionsFile.Stat()
+					fileStat, err := hs.collisionsFile.Stat()
 					if err != nil {
 						log.Println(err)
 						log.Println("AppendHash(): Could not call Stat() on collisions file")
 						return -1, err
 					}
-					availableChunks := filestat.Size() / (NBYTES * (CPC + 1))
+					availableChunks := fileStat.Size() / (NBYTES * (CPC + 1))
 					// Append a chunk of zeroes to the collisions file
 					var zeroBytes [ZEROBUF]byte
-					_, err = hs.collisionsFile.WriteAt(zeroBytes[0:NBYTES*(CPC+1)], filestat.Size())
+					_, err = hs.collisionsFile.WriteAt(zeroBytes[0:NBYTES*(CPC+1)], fileStat.Size())
 					if err != nil {
 						log.Println(err)
 						log.Println("AppendHash(): Could not call WriteAt() on collisions file")
@@ -211,8 +211,8 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 			}
 		} // for collider != 0
 
-		// Write collisions[chunk][j] = valnum + 1
-		_, err = hs.collisionsFile.WriteAt(valnumBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
+		// Write collisions[chunk][j] = valNum + 1
+		_, err = hs.collisionsFile.WriteAt(valNumBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash(): Could not call WriteAt() on collisionsFile")

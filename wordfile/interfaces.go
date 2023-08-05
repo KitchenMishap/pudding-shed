@@ -27,7 +27,7 @@ type ReadAtWordCounter interface {
 	WordCounter
 }
 
-type WordFileCreator interface {
+type Creator interface {
 	WordFileExists() bool
 	CreateWordFile() error
 	OpenWordFile() (ReadWriteAtWordCounter, error)
