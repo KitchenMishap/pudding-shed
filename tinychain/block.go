@@ -20,7 +20,7 @@ func (b *block) TransactionCount() int64 {
 }
 
 func (b block) NthTransactionHandle(n int64) chainreadinterface.HTransaction {
-	return theHandles.hTransactionFromHeight(b.transactions[n].height)
+	return theHandles.HTransactionFromHeight(b.transactions[n].height)
 }
 
 // Compiler check that implements

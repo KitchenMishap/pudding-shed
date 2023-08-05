@@ -26,8 +26,8 @@ func (bc *blockchain) GenesisTransaction() chainreadinterface.HTransaction {
 
 func (bc *blockchain) PreviousTransaction(t chainreadinterface.HTransaction) chainreadinterface.HTransaction {
 	// This will return a height of -1 for previous to genesis transaction
-	transHeight := theHandles.heightFromHTransaction(t)
-	return theHandles.hTransactionFromHeight(transHeight - 1)
+	transHeight := theHandles.HeightFromHTransaction(t)
+	return theHandles.HTransactionFromHeight(transHeight - 1)
 }
 
 // Implement the rest of IBlockChain
@@ -52,20 +52,20 @@ func (bc *blockchain) BlockInterface(hBlock chainreadinterface.HBlock) chainread
 
 func (bc *blockchain) LatestTransaction() chainreadinterface.HTransaction {
 	transHeight := int64(len(bc.transactions) - 1)
-	return theHandles.hTransactionFromHeight(transHeight)
+	return theHandles.HTransactionFromHeight(transHeight)
 }
 
 func (bc *blockchain) NextTransaction(t chainreadinterface.HTransaction) chainreadinterface.HTransaction {
 	// This returns a height of -1 for next after last transaction
-	transHeight := theHandles.heightFromHTransaction(t) + 1
+	transHeight := theHandles.HeightFromHTransaction(t) + 1
 	if transHeight == int64(len(bc.transactions)) {
 		transHeight = -1
 	}
-	return theHandles.hTransactionFromHeight(transHeight)
+	return theHandles.HTransactionFromHeight(transHeight)
 }
 
 func (bc *blockchain) TransactionInterface(hTransaction chainreadinterface.HTransaction) chainreadinterface.ITransaction {
-	th := theHandles.heightFromHTransaction(hTransaction)
+	th := theHandles.HeightFromHTransaction(hTransaction)
 	return &bc.transactions[th]
 }
 

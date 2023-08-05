@@ -10,7 +10,7 @@ type txi struct {
 }
 
 func (atxi *txi) SourceTransaction() chainreadinterface.HTransaction {
-	return theHandles.hTransactionFromHeight(atxi.sourceTransactionHeight)
+	return theHandles.HTransactionFromHeight(atxi.sourceTransactionHeight)
 }
 
 func (atxi *txi) SourceIndex() int64 {

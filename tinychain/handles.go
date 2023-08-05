@@ -1,6 +1,9 @@
 package tinychain
 
-import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
+import (
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+)
 
 // A handle implements the Handle interface
 // We choose to use heights for handles, held as int64's
@@ -30,9 +33,15 @@ func (h *handles) HBlockFromHeight(hgt int64) chainreadinterface.HBlock {
 func (h *handles) HeightFromHBlock(han chainreadinterface.HBlock) int64 {
 	return han.(handle).height
 }
-func (h *handles) hTransactionFromHeight(hgt int64) chainreadinterface.HTransaction {
+func (h *handles) HashFromHBlock(han chainreadinterface.HBlock) indexedhashes.Sha256 {
+	return HashOfInt(uint64(h.HeightFromHBlock(han)))
+}
+func (h *handles) HashFromHTransaction(han chainreadinterface.HTransaction) indexedhashes.Sha256 {
+	return HashOfInt(uint64(h.HeightFromHTransaction(han)))
+}
+func (h *handles) HTransactionFromHeight(hgt int64) chainreadinterface.HTransaction {
 	return handle{height: hgt}
 }
-func (h *handles) heightFromHTransaction(han chainreadinterface.HTransaction) int64 {
+func (h *handles) HeightFromHTransaction(han chainreadinterface.HTransaction) int64 {
 	return han.(handle).height
 }

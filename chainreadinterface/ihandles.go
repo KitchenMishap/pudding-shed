@@ -1,5 +1,7 @@
 package chainreadinterface
 
+import "github.com/KitchenMishap/pudding-shed/indexedhashes"
+
 type Handle interface {
 	// IsHandle is merely here to stop a consumer handing around pointers to arbitrary objects as Handles
 	IsHandle() bool
@@ -15,6 +17,9 @@ type HTransaction interface {
 }
 
 type IHandles interface {
-	HBlockFromHeight(BlockHeight int64) HBlock
+	HBlockFromHeight(blockHeight int64) HBlock
 	HeightFromHBlock(hBlock HBlock) int64
+	HeightFromHTransaction(hTrans HTransaction) int64
+	HashFromHBlock(hBlock HBlock) indexedhashes.Sha256
+	HashFromHTransaction(hTransaction HTransaction) indexedhashes.Sha256
 }
