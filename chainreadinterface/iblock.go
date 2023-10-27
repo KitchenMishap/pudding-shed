@@ -1,8 +1,7 @@
 package chainreadinterface
 
 type IBlock interface {
-	BlockHandle() HBlock
-	BlockHeight() int64
+	IBlockHandle
 	TransactionCount() int64
-	NthTransactionHandle(n int64) HTransaction
+	NthTransaction(n int64) ITransHandle
 }

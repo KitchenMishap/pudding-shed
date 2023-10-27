@@ -8,4 +8,3 @@ import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
 
 // Access to the top level interface to the chain
 var TheTinyChain = (chainreadinterface.IBlockChain)(&theTinyChain)
-var TheHandles = (chainreadinterface.IHandles)(&theHandles)

@@ -1,18 +1,19 @@
 package chainreadinterface
 
 type ITransaction interface {
-	TransactionHandle() HTransaction
+	ITransHandle
 	TxiCount() int64
-	NthTxiInterface(n int64) ITxi
+	NthTxi(n int64) ITxiHandle
 	TxoCount() int64
-	NthTxoInterface(n int64) ITxo
+	NthTxo(n int64) ITxoHandle
 }
 
 type ITxi interface {
-	SourceTransaction() HTransaction
-	SourceIndex() int64
+	ITxiHandle
+	SourceTxo() ITxoHandle
 }
 
 type ITxo interface {
+	ITxoHandle
 	Satoshis() int64
 }

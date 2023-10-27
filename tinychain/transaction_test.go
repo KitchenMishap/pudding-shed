@@ -3,33 +3,35 @@ package tinychain
 import "testing"
 
 func TestTransaction(t *testing.T) {
-	transHandle := TheTinyChain.GenesisTransaction()
-	transInt := TheTinyChain.TransactionInterface(transHandle)
-	if transInt.TxiCount() != 0 {
-		t.Error()
+	handle := TheTinyChain.GenesisTransaction()
+	trans := TheTinyChain.TransInterface(handle)
+	if trans.TxiCount() != 0 {
+		t.Error("genesis transaction must have no txis")
 	}
-	if transInt.TxoCount() != 1 {
-		t.Error()
+	if trans.TxoCount() != 1 {
+		t.Error("genesis transaction must have one txo")
 	}
 }
 
 func TestThirdTransaction(t *testing.T) {
-	transHandle := TheTinyChain.GenesisTransaction()
-	nextTrans := TheTinyChain.NextTransaction(transHandle)
+	trans := TheTinyChain.GenesisTransaction()
+	nextTrans := TheTinyChain.NextTransaction(trans)
 	thirdTrans := TheTinyChain.NextTransaction(nextTrans)
-	transInt := TheTinyChain.TransactionInterface(thirdTrans)
+	transInt := TheTinyChain.TransInterface(thirdTrans)
 	if transInt.TxiCount() != 1 {
-		t.Error()
+		t.Error("third transaction should have one txi")
 	}
-	atxi := transInt.NthTxiInterface(0)
-	if atxi.SourceTransaction() != TheTinyChain.GenesisTransaction() {
-		t.Error()
+	txiHandle := transInt.NthTxi(0)
+	txiInt := TheTinyChain.TxiInterface(txiHandle)
+	if txiInt.SourceTxo().ParentTrans() != TheTinyChain.GenesisTransaction() {
+		t.Error("first txi of third transaction should be from genesis transaction")
 	}
 	if transInt.TxoCount() != 2 {
-		t.Error()
+		t.Error("should be two txos from third transaction")
 	}
-	atxo := transInt.NthTxoInterface(1)
-	if atxo.Satoshis() != 25 {
-		t.Error()
+	txoHandle := transInt.NthTxo(1)
+	txoInt := TheTinyChain.TxoInterface(txoHandle)
+	if txoInt.Satoshis() != 25 {
+		t.Error("2nd txo of third transaction should be 25 satoshis")
 	}
 }

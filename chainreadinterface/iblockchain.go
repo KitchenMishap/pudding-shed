@@ -1,18 +1,21 @@
 package chainreadinterface
 
 type IBlockTree interface {
-	GenesisBlock() HBlock
-	ParentBlock(hBlock HBlock) HBlock
-	GenesisTransaction() HTransaction
-	PreviousTransaction(hTransaction HTransaction) HTransaction
+	GenesisBlock() IBlockHandle
+	ParentBlock(block IBlockHandle) IBlockHandle
+	GenesisTransaction() ITransHandle
+	PreviousTransaction(trans ITransHandle) ITransHandle
+	IsBlockTree() bool
+	BlockInterface(IBlockHandle) IBlock
+	TransInterface(ITransHandle) ITransaction
+	TxiInterface(ITxiHandle) ITxi
+	TxoInterface(ITxoHandle) ITxo
 }
 
 type IBlockChain interface {
 	IBlockTree
-	LatestBlock() HBlock
-	NextBlock(hBlock HBlock) HBlock
-	BlockInterface(hBlock HBlock) IBlock
-	LatestTransaction() HTransaction
-	NextTransaction(hTransaction HTransaction) HTransaction
-	TransactionInterface(hTransaction HTransaction) ITransaction
+	LatestBlock() IBlockHandle
+	NextBlock(block IBlockHandle) IBlockHandle
+	LatestTransaction() ITransHandle
+	NextTransaction(trans ITransHandle) ITransHandle
 }

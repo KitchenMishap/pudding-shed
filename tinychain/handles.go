@@ -1,38 +1,120 @@
 package tinychain
 
-import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
+import (
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+)
 
-// A handle implements the Handle interface
-// We choose to use heights for handles, held as int64's
-type handle struct {
+// A HashHeight for tinychain that doesn't store a hash
+type HashHeight struct {
 	height int64
 }
 
-// Implement Handle
-func (h handle) IsHandle() bool {
+func (hh HashHeight) Height() int64 {
+	return hh.height
+}
+func (hh HashHeight) Hash() indexedhashes.Sha256 {
+	return indexedhashes.Sha256{}
+}
+func (hh HashHeight) HeightSpecified() bool {
 	return true
 }
+func (hh HashHeight) HashSpecified() bool {
+	return false
+}
 
-func (h handle) IsInvalid() bool {
-	return h.height == -1
+// BlockHandle implements IBlockHandle
+type BlockHandle struct {
+	HashHeight
+}
+
+func (bh BlockHandle) IsBlockHandle() {
+}
+func (bh BlockHandle) IsInvalid() bool {
+	return bh.Height() == -1
 }
 
 // Check that implements
-var _ chainreadinterface.Handle = (*handle)(nil)
+var _ chainreadinterface.IBlockHandle = (*BlockHandle)(nil)
 
-type handles struct {
+// TransHandle implements ITransHandle
+type TransHandle struct {
+	HashHeight
 }
 
-// Implement IHandles
-func (h *handles) HBlockFromHeight(hgt int64) chainreadinterface.HBlock {
-	return handle{height: hgt}
+func (th TransHandle) IsTransHandle() {
 }
-func (h *handles) HeightFromHBlock(han chainreadinterface.HBlock) int64 {
-	return han.(handle).height
+
+func (th TransHandle) IsInvalid() bool {
+	return th.Height() == -1
 }
-func (h *handles) hTransactionFromHeight(hgt int64) chainreadinterface.HTransaction {
-	return handle{height: hgt}
+
+// Check that implements
+var _ chainreadinterface.ITransHandle = (*TransHandle)(nil)
+
+// A TransIndex for tinychain
+type TransIndex struct {
+	TransHandle
+	index int64
 }
-func (h *handles) heightFromHTransaction(han chainreadinterface.HTransaction) int64 {
-	return han.(handle).height
+
+// A TxxHandle for tinychain
+type TxxHandle struct {
+	TransIndex
+	txxHeight          int64
+	txxHeightSpecified bool
 }
+
+// TxiHandle implements ITxiHandle
+type TxiHandle struct {
+	TxxHandle
+}
+
+func (th TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return th
+}
+func (th TxiHandle) ParentIndex() int64 {
+	return th.index
+}
+func (th TxiHandle) TxiHeight() int64 {
+	return th.txxHeight
+}
+func (th TxiHandle) ParentSpecified() bool {
+	return true
+}
+func (th TxiHandle) TxiHeightSpecified() bool {
+	return true
+}
+
+// Check that implements
+var _ chainreadinterface.ITxiHandle = (*TxiHandle)(nil)
+
+// TxoHandle implements ITxoHandle
+type TxoHandle struct {
+	TxxHandle
+}
+
+func (th TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return th
+}
+func (th TxoHandle) ParentIndex() int64 {
+	return th.index
+}
+func (th TxoHandle) TxoHeight() int64 {
+	return th.txxHeight
+}
+func (th TxoHandle) ParentSpecified() bool {
+	return true
+}
+func (th TxoHandle) TxoHeightSpecified() bool {
+	return true
+}
+
+func InvalidBlock() BlockHandle {
+	result := BlockHandle{}
+	result.height = -1
+	return result
+}
+
+// Check that implements
+var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil)

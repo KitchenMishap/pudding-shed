@@ -1,20 +1,37 @@
 package chainreadinterface
 
-type Handle interface {
-	// IsHandle is merely here to stop a consumer handing around pointers to arbitrary objects as Handles
-	IsHandle() bool
+import "github.com/KitchenMishap/pudding-shed/indexedhashes"
+
+type IBlockHandle interface {
+	Height() int64
+	Hash() indexedhashes.Sha256
+	HeightSpecified() bool
+	HashSpecified() bool
+	IsBlockHandle()
 	IsInvalid() bool
 }
 
-type HBlock interface {
-	Handle
+type ITransHandle interface {
+	Height() int64
+	Hash() indexedhashes.Sha256
+	HeightSpecified() bool
+	HashSpecified() bool
+	IsTransHandle()
+	IsInvalid() bool
 }
 
-type HTransaction interface {
-	Handle
+type ITxiHandle interface {
+	ParentTrans() ITransHandle
+	ParentIndex() int64
+	TxiHeight() int64
+	ParentSpecified() bool
+	TxiHeightSpecified() bool
 }
 
-type IHandles interface {
-	HBlockFromHeight(BlockHeight int64) HBlock
-	HeightFromHBlock(hBlock HBlock) int64
+type ITxoHandle interface {
+	ParentTrans() ITransHandle
+	ParentIndex() int64
+	TxoHeight() int64
+	ParentSpecified() bool
+	TxoHeightSpecified() bool
 }
