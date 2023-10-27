@@ -23,7 +23,7 @@ func TestThirdTransaction(t *testing.T) {
 	}
 	txiHandle := transInt.NthTxi(0)
 	txiInt := TheTinyChain.TxiInterface(txiHandle)
-	if txiInt.SourceTxo().ParentTrans() != TheTinyChain.GenesisTransaction() {
+	if txiInt.SourceTxo().ParentTrans().Height() != TheTinyChain.GenesisTransaction().Height() {
 		t.Error("first txi of third transaction should be from genesis transaction")
 	}
 	if transInt.TxoCount() != 2 {

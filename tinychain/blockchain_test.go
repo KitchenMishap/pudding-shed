@@ -35,7 +35,7 @@ func TestGenesisNextParent(t *testing.T) {
 	if prev.IsInvalid() {
 		t.Error("parent of next of genesis cannot be invalid")
 	}
-	if prev != handle {
+	if prev.Height() != handle.Height() {
 		t.Error("parent of next block after genesis must be genesis")
 	}
 }
@@ -68,7 +68,7 @@ func TestLatestNextBlock(t *testing.T) {
 func TestLatestBlockNotGenesis(t *testing.T) {
 	genesisBlock := TheTinyChain.GenesisBlock()
 	latestBlock := TheTinyChain.LatestBlock()
-	if latestBlock == genesisBlock {
+	if latestBlock.Height() == genesisBlock.Height() {
 		t.Error("latest block should not be genesis block")
 	}
 }
@@ -76,11 +76,11 @@ func TestLatestBlockNotGenesis(t *testing.T) {
 func TestLatestPrevNextBlock(t *testing.T) {
 	latestBlock := TheTinyChain.LatestBlock()
 	prevBlock := TheTinyChain.ParentBlock(latestBlock)
-	if prevBlock == latestBlock {
+	if prevBlock.Height() == latestBlock.Height() {
 		t.Error("prev before latest block cannot be latest block")
 	}
 	nextBlock := TheTinyChain.NextBlock(prevBlock)
-	if nextBlock != latestBlock {
+	if nextBlock.Height() != latestBlock.Height() {
 		t.Error("next after prev of latest block should be latest block")
 	}
 }

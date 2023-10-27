@@ -70,20 +70,20 @@ type TxiHandle struct {
 	TxxHandle
 }
 
-func (th TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return th
+func (txi TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return txi.TransHandle
 }
-func (th TxiHandle) ParentIndex() int64 {
-	return th.index
+func (txi TxiHandle) ParentIndex() int64 {
+	return txi.index
 }
-func (th TxiHandle) TxiHeight() int64 {
-	return th.txxHeight
+func (txi TxiHandle) TxiHeight() int64 {
+	return -1
 }
-func (th TxiHandle) ParentSpecified() bool {
+func (txi TxiHandle) ParentSpecified() bool {
 	return true
 }
 func (th TxiHandle) TxiHeightSpecified() bool {
-	return true
+	return false
 }
 
 // Check that implements
@@ -94,20 +94,20 @@ type TxoHandle struct {
 	TxxHandle
 }
 
-func (th TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return th
+func (txo TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return txo.TransHandle
 }
-func (th TxoHandle) ParentIndex() int64 {
-	return th.index
+func (txo TxoHandle) ParentIndex() int64 {
+	return txo.index
 }
-func (th TxoHandle) TxoHeight() int64 {
-	return th.txxHeight
+func (txo TxoHandle) TxoHeight() int64 {
+	return -1
 }
 func (th TxoHandle) ParentSpecified() bool {
 	return true
 }
 func (th TxoHandle) TxoHeightSpecified() bool {
-	return true
+	return false
 }
 
 func InvalidBlock() BlockHandle {

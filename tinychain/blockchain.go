@@ -111,15 +111,20 @@ func (bc Blockchain) LatestBlock() chainreadinterface.IBlockHandle {
 }
 
 func (bc Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) chainreadinterface.IBlockHandle {
+	blocks := len(bc.blocks)
 	if !handle.HeightSpecified() {
 		panic("This function depends on block handles specifying block height")
 	}
-	height := handle.Height()
+	nextHeight := handle.Height() + 1
 	next := BlockHandle{}
 	if next.HashSpecified() {
 		panic("This function can't create block handles that specify the hash")
 	}
-	next.height = height + 1
+	if nextHeight == int64(blocks) {
+		next.height = -1
+	} else {
+		next.height = nextHeight
+	}
 	return next
 }
 
