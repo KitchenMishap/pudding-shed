@@ -155,5 +155,5 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
 		result.txiVout.Close()
 		return nil, err
 	}
-	return &result, nil
+	return result, nil
 }

@@ -17,23 +17,31 @@ type concreteAppendableChain struct {
 	txoSats       wordfile.ReadWriteAtWordCounter
 }
 
-func (cac *concreteAppendableChain) AppendBlock(handleHandler chainreadinterface.IHandles,
-	blockChain chainreadinterface.IBlockChain,
-	block chainreadinterface.IBlock) error {
-	hBlock := block.BlockHandle()
-	blkHash := handleHandler.HashFromHBlock(hBlock)
+func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,
+	hBlock chainreadinterface.IBlockHandle) error {
+	block := blockChain.BlockInterface(hBlock)
+	if !block.HashSpecified() {
+		panic("this function assumes block specifies a hash")
+	}
+	blkHash := block.Hash()
 	blkNum, err := cac.blkHashes.AppendHash(&blkHash)
 	if err != nil {
 		return err
 	}
+	if hBlock.HeightSpecified() && hBlock.Height() != blkNum {
+		panic("cannot append a block out of sequence")
+	}
 
 	nTrans := block.TransactionCount()
 	for t := int64(0); t < nTrans; t++ {
-		hTrans := block.NthTransactionHandle(t)
-		trans := blockChain.TransactionInterface(hTrans)
-		transNum, err := cac.appendTransaction(handleHandler, blockChain, trans)
+		hTrans := block.NthTransaction(t)
+		trans := blockChain.TransInterface(hTrans)
+		transNum, err := cac.appendTransaction(blockChain, trans)
 		if err != nil {
 			return err
+		}
+		if trans.HeightSpecified() && trans.Height() != transNum {
+			panic("cannot append a transaction out of sequence")
 		}
 		if t == 0 {
 			err = cac.blkFirstTrans.WriteWordAt(transNum, blkNum)
@@ -45,38 +53,53 @@ func (cac *concreteAppendableChain) AppendBlock(handleHandler chainreadinterface
 	return nil
 }
 
-func (cac *concreteAppendableChain) appendTransaction(handleHandler chainreadinterface.IHandles,
-	blockChain chainreadinterface.IBlockChain, trans chainreadinterface.ITransaction) (int64, error) {
-	hTrans := trans.TransactionHandle()
-	transHash := handleHandler.HashFromHTransaction(hTrans)
+func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterface.IBlockChain,
+	hTrans chainreadinterface.ITransHandle) (int64, error) {
+	trans := blockChain.TransInterface(hTrans)
+	if !trans.HashSpecified() {
+		panic("this function assumes that trans specifies a hash")
+	}
+	transHash := trans.Hash()
 	transNum, err := cac.trnHashes.AppendHash(&transHash)
 	if err != nil {
 		return -1, err
 	}
+	if trans.HeightSpecified() && trans.Height() != transNum {
+		panic("cannot append a transaction out of sequence")
+	}
 
 	nTxis := trans.TxiCount()
 	for nTxi := int64(0); nTxi < nTxis; nTxi++ {
-		iTxi := trans.NthTxiInterface(nTxi)
-		nTxi, err := cac.appendTxi(handleHandler, iTxi)
+		hTxi := trans.NthTxi(nTxi)
+		txi := blockChain.TxiInterface(hTxi)
+		txiHeight, err := cac.appendTxi(txi)
 		if err != nil {
 			return -1, err
 		}
+		if txi.TxiHeightSpecified() && txi.TxiHeight() != txiHeight {
+			panic("cannot append a txi out of sequence")
+		}
 		if nTxi == 0 {
-			err := cac.trnFirstTxi.WriteWordAt(nTxis, transNum)
+			err := cac.trnFirstTxi.WriteWordAt(txiHeight, transNum)
 			if err != nil {
 				return -1, err
 			}
 		}
 	}
+
 	nTxos := trans.TxoCount()
 	for nTxo := int64(0); nTxo < nTxos; nTxo++ {
-		iTxo := trans.NthTxoInterface(nTxo)
-		nTxo, err := cac.appendTxo(iTxo)
+		hTxo := trans.NthTxo(nTxo)
+		txo := blockChain.TxoInterface(hTxo)
+		txoHeight, err := cac.appendTxo(txo)
 		if err != nil {
 			return -1, err
 		}
+		if txo.TxoHeightSpecified() && txo.TxoHeight() != txoHeight {
+			panic("cannot append a txo out of sequence")
+		}
 		if nTxo == 0 {
-			err := cac.trnFirstTxo.WriteWordAt(nTxos, transNum)
+			err := cac.trnFirstTxo.WriteWordAt(txoHeight, transNum)
 			if err != nil {
 				return -1, err
 			}
@@ -86,31 +109,54 @@ func (cac *concreteAppendableChain) appendTransaction(handleHandler chainreadint
 	return transNum, nil
 }
 
-func (cac *concreteAppendableChain) appendTxi(iHandles chainreadinterface.IHandles,
-	iTxi chainreadinterface.ITxi) (int64, error) {
-	hSourceTrans := iTxi.SourceTransaction()
-	transHeight := iHandles.HeightFromHTransaction(hSourceTrans)
-	sourceIndex := iTxi.SourceIndex()
-	nTxi, err := cac.txiTx.CountWords()
+func (cac concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
+	sourceTxo := txi.SourceTxo()
+	if !sourceTxo.ParentSpecified() {
+		panic("this implementation assumes the txi's source txo specifies a parent transaction and index")
+	}
+	sourceTrans := sourceTxo.ParentTrans()
+	sourceIndex := sourceTxo.ParentIndex()
+	if !sourceTrans.HeightSpecified() {
+		panic("this implementation assumes the source transaction specifies a height")
+	}
+	sourceTransHeight := sourceTrans.Height()
+	txiHeight, err := cac.txiTx.CountWords()
 	if err != nil {
 		return -1, err
 	}
-	cac.txiTx.WriteWordAt(transHeight, nTxi)
-	cac.txiVout.WriteWordAt(sourceIndex, nTxi)
-	return nTxi, nil
-}
-
-func (cac *concreteAppendableChain) appendTxo(iTxo chainreadinterface.ITxo) (int64, error) {
-	sats := iTxo.Satoshis()
-	nTxo, err := cac.txoSats.CountWords()
+	if txi.TxiHeightSpecified() && txi.TxiHeight() != txiHeight {
+		panic("cannot append a txi out of sequence")
+	}
+	err = cac.txiTx.WriteWordAt(sourceTransHeight, txiHeight)
 	if err != nil {
 		return -1, err
 	}
-	cac.txoSats.WriteWordAt(sats, nTxo)
-	return nTxo, nil
+	err = cac.txiVout.WriteWordAt(sourceIndex, txiHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	return txiHeight, nil
 }
 
-func (cac *concreteAppendableChain) Close() error {
+func (cac concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64, error) {
+	sats := txo.Satoshis()
+	txoHeight, err := cac.txoSats.CountWords()
+	if err != nil {
+		return -1, err
+	}
+	if txo.TxoHeightSpecified() && txo.TxoHeight() != txoHeight {
+		panic("cannot append a txo out of sequence")
+	}
+	err = cac.txoSats.WriteWordAt(sats, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	return txoHeight, nil
+}
+
+func (cac concreteAppendableChain) Close() error {
 	err := cac.blkHashes.Close()
 	if err != nil {
 		return err

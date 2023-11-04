@@ -27,7 +27,7 @@ func TestCopyTinyChain(t *testing.T) {
 
 	hBlock := tinychain.TheTinyChain.GenesisBlock()
 	block := tinychain.TheTinyChain.BlockInterface(hBlock)
-	err = ac.AppendBlock(tinychain.TheHandles, tinychain.TheTinyChain, block)
+	err = ac.AppendBlock(tinychain.TheTinyChain, block)
 	if err != nil {
 		t.Fail()
 	}
@@ -35,7 +35,7 @@ func TestCopyTinyChain(t *testing.T) {
 	hBlock = tinychain.TheTinyChain.NextBlock(hBlock)
 	for !hBlock.IsInvalid() {
 		block := tinychain.TheTinyChain.BlockInterface(hBlock)
-		err = ac.AppendBlock(tinychain.TheHandles, tinychain.TheTinyChain, block)
+		err = ac.AppendBlock(tinychain.TheTinyChain, block)
 		if err != nil {
 			t.Fail()
 		}

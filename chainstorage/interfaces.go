@@ -3,7 +3,7 @@ package chainstorage
 import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
 
 type IAppendableChain interface {
-	AppendBlock(chainreadinterface.IHandles, chainreadinterface.IBlockChain, chainreadinterface.IBlock) error
+	AppendBlock(chainreadinterface.IBlockChain, chainreadinterface.IBlockHandle) error
 	Close() error
 }
 
