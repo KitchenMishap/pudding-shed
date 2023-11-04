@@ -6,6 +6,7 @@ import (
 )
 
 // A HashHeight for tinychain that doesn't store a hash
+// The hash is merely the hash of the height number
 type HashHeight struct {
 	height int64
 }
@@ -14,13 +15,13 @@ func (hh HashHeight) Height() int64 {
 	return hh.height
 }
 func (hh HashHeight) Hash() indexedhashes.Sha256 {
-	return indexedhashes.Sha256{}
+	return HashOfInt(uint64(hh.height))
 }
 func (hh HashHeight) HeightSpecified() bool {
 	return true
 }
 func (hh HashHeight) HashSpecified() bool {
-	return false
+	return true
 }
 
 // BlockHandle implements IBlockHandle

@@ -40,10 +40,6 @@ func (bc Blockchain) PreviousTransaction(t chainreadinterface.ITransHandle) chai
 	}
 	transHeight := t.Height() - 1
 	transHandle := TransHandle{}
-	// We are in the tinychain package, so we know TransHandle doesn't need a hash
-	if transHandle.HashSpecified() {
-		panic("Transaction handles cannot have a Hash in this function")
-	}
 	transHandle.height = transHeight
 	return transHandle
 }
@@ -117,9 +113,6 @@ func (bc Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) chainread
 	}
 	nextHeight := handle.Height() + 1
 	next := BlockHandle{}
-	if next.HashSpecified() {
-		panic("This function can't create block handles that specify the hash")
-	}
 	if nextHeight == int64(blocks) {
 		next.height = -1
 	} else {
@@ -131,9 +124,6 @@ func (bc Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) chainread
 func (bc Blockchain) LatestTransaction() chainreadinterface.ITransHandle {
 	transactions := len(bc.transactions)
 	latest := TransHandle{}
-	if latest.HashSpecified() {
-		panic("This function can't create transaction handles that specify the hash")
-	}
 	latest.height = int64(transactions - 1)
 	return latest
 }
@@ -149,9 +139,6 @@ func (bc Blockchain) NextTransaction(t chainreadinterface.ITransHandle) chainrea
 		nextHeight = -1
 	}
 	next := TransHandle{}
-	if next.HashSpecified() {
-		panic("This function can't create transaction handles that specify the hash")
-	}
 	next.height = nextHeight
 	return next
 }
