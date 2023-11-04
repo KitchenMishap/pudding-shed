@@ -29,3 +29,17 @@ func TestInvalidHandle_helper(blockchain chainreadinterface.IBlockChain, t *test
 		t.Error("parent block of genesis block should be invalid handle")
 	}
 }
+
+func TestHashEquality_helper(hBlock0 chainreadinterface.IBlockHandle,
+	hBlock00 chainreadinterface.IBlockHandle,
+	hBlock1 chainreadinterface.IBlockHandle, t *testing.T) {
+	if !hBlock0.HashSpecified() {
+		t.Error("block handles must have hashes")
+	}
+	if hBlock0.Hash() != hBlock00.Hash() {
+		t.Error("block height 0 must have same hash as block height 0")
+	}
+	if hBlock0.Hash() == hBlock1.Hash() {
+		t.Error("block height 1 must have different hash from block height 0")
+	}
+}
