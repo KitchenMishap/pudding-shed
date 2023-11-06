@@ -3,19 +3,19 @@ package chainreadinterface
 type IBlockTree interface {
 	GenesisBlock() IBlockHandle
 	ParentBlock(block IBlockHandle) IBlockHandle
-	GenesisTransaction() ITransHandle
+	GenesisTransaction() (ITransHandle, error)
 	PreviousTransaction(trans ITransHandle) ITransHandle
 	IsBlockTree() bool
-	BlockInterface(IBlockHandle) IBlock
-	TransInterface(ITransHandle) ITransaction
-	TxiInterface(ITxiHandle) ITxi
-	TxoInterface(ITxoHandle) ITxo
+	BlockInterface(IBlockHandle) (IBlock, error)
+	TransInterface(ITransHandle) (ITransaction, error)
+	TxiInterface(ITxiHandle) (ITxi, error)
+	TxoInterface(ITxoHandle) (ITxo, error)
 }
 
 type IBlockChain interface {
 	IBlockTree
-	LatestBlock() IBlockHandle
-	NextBlock(block IBlockHandle) IBlockHandle
-	LatestTransaction() ITransHandle
-	NextTransaction(trans ITransHandle) ITransHandle
+	LatestBlock() (IBlockHandle, error)
+	NextBlock(block IBlockHandle) (IBlockHandle, error)
+	LatestTransaction() (ITransHandle, error)
+	NextTransaction(trans ITransHandle) (ITransHandle, error)
 }

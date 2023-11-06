@@ -11,7 +11,10 @@ func TestGenesisBlock_helper(blockchain chainreadinterface.IBlockChain, t *testi
 		t.Error("genesis block handle cannot be invalid")
 	}
 
-	block := blockchain.BlockInterface(handle)
+	block, err := blockchain.BlockInterface(handle)
+	if err != nil {
+		t.Error("could not get BlockInterface from blockchain")
+	}
 	if block == nil {
 		t.Error("genesis block cannot be nil")
 	}
@@ -22,7 +25,10 @@ func TestGenesisBlock_helper(blockchain chainreadinterface.IBlockChain, t *testi
 
 func TestGenesisParentInvalid_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
 	handle := blockchain.GenesisBlock()
-	block := blockchain.BlockInterface(handle)
+	block, err := blockchain.BlockInterface(handle)
+	if err != nil {
+		t.Error("could not get BlockInterface from blockchain")
+	}
 	parent := blockchain.ParentBlock(block)
 	if !parent.IsInvalid() {
 		t.Error("parent of genesis block must be invalid")
@@ -31,7 +37,10 @@ func TestGenesisParentInvalid_helper(blockchain chainreadinterface.IBlockChain, 
 
 func TestGenesisNextParent_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
 	handle := blockchain.GenesisBlock()
-	nextHandle := blockchain.NextBlock(handle)
+	nextHandle, err := blockchain.NextBlock(handle)
+	if err != nil {
+		t.Error("could not get NextBlock from blockchain")
+	}
 	if nextHandle.IsInvalid() {
 		t.Error("next after genesis block cannot be invalid")
 	}
@@ -45,7 +54,10 @@ func TestGenesisNextParent_helper(blockchain chainreadinterface.IBlockChain, t *
 }
 
 func TestGenesisTransaction_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
-	genesisTrans := blockchain.GenesisTransaction()
+	genesisTrans, err := blockchain.GenesisTransaction()
+	if err != nil {
+		t.Error("could not get GenesisTransaction from blockchain")
+	}
 	if genesisTrans.IsInvalid() {
 		t.Error("genesis transaction cannot be invalid")
 	}
@@ -56,14 +68,20 @@ func TestGenesisTransaction_helper(blockchain chainreadinterface.IBlockChain, t 
 }
 
 func TestLatestNextBlock_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
-	block := blockchain.LatestBlock()
+	block, err := blockchain.LatestBlock()
+	if err != nil {
+		t.Error("Could not get LatestBlock from blockchain")
+	}
 	if block == nil {
 		t.Error("latest block cannot be nil")
 	}
 	if block.IsInvalid() {
 		t.Error("latest block cannot be invalid")
 	}
-	next := blockchain.NextBlock(block)
+	next, err := blockchain.NextBlock(block)
+	if err != nil {
+		t.Error("could not get NextBlock from blockchain")
+	}
 	if !next.IsInvalid() {
 		t.Error("next after latest block should be invalid")
 	}
@@ -71,30 +89,45 @@ func TestLatestNextBlock_helper(blockchain chainreadinterface.IBlockChain, t *te
 
 func TestLatestBlockNotGenesis_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
 	genesisBlock := blockchain.GenesisBlock()
-	latestBlock := blockchain.LatestBlock()
+	latestBlock, err := blockchain.LatestBlock()
+	if err != nil {
+		t.Error("Could not get LatestBlock from blockchain")
+	}
 	if latestBlock.Height() == genesisBlock.Height() {
 		t.Error("latest block should not be genesis block")
 	}
 }
 
 func TestLatestPrevNextBlock_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
-	latestBlock := blockchain.LatestBlock()
+	latestBlock, err := blockchain.LatestBlock()
+	if err != nil {
+		t.Error("Could not get LatestBlock from blockchain")
+	}
 	prevBlock := blockchain.ParentBlock(latestBlock)
 	if prevBlock.Height() == latestBlock.Height() {
 		t.Error("prev before latest block cannot be latest block")
 	}
-	nextBlock := blockchain.NextBlock(prevBlock)
+	nextBlock, err := blockchain.NextBlock(prevBlock)
+	if err != nil {
+		t.Error("could not get NextBlock from blockchain")
+	}
 	if nextBlock.Height() != latestBlock.Height() {
 		t.Error("next after prev of latest block should be latest block")
 	}
 }
 
 func TestLatestNextTransaction_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
-	transaction := blockchain.LatestTransaction()
+	transaction, err := blockchain.LatestTransaction()
+	if err != nil {
+		t.Error("could not get LatestTransaction from blockchain")
+	}
 	if transaction.IsInvalid() {
 		t.Error("latest transaction cannot be invalid")
 	}
-	nextTransaction := blockchain.NextTransaction(transaction)
+	nextTransaction, err := blockchain.NextTransaction(transaction)
+	if err != nil {
+		t.Error("could not get NextTransaction from blockchain")
+	}
 	if !nextTransaction.IsInvalid() {
 		t.Error("next after latest transaction must be invalid")
 	}

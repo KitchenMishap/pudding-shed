@@ -17,13 +17,32 @@ type concreteAppendableChain struct {
 	txoSats       wordfile.ReadWriteAtWordCounter
 }
 
+func (cac concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
+	return concreteReadableChain{
+		blkFirstTrans: cac.blkFirstTrans,
+		blkHashes:     cac.blkHashes,
+		trnHashes:     cac.trnHashes,
+		trnFirstTxi:   cac.trnFirstTxi,
+		trnFirstTxo:   cac.trnFirstTxo,
+		txiTx:         cac.txiTx,
+		txiVout:       cac.txiVout,
+		txoSats:       cac.txoSats,
+	}
+}
+
 func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,
 	hBlock chainreadinterface.IBlockHandle) error {
-	block := blockChain.BlockInterface(hBlock)
+	block, err := blockChain.BlockInterface(hBlock)
+	if err != nil {
+		return err
+	}
 	if !block.HashSpecified() {
 		panic("this function assumes block specifies a hash")
 	}
-	blkHash := block.Hash()
+	blkHash, err := block.Hash()
+	if err != nil {
+		return err
+	}
 	blkNum, err := cac.blkHashes.AppendHash(&blkHash)
 	if err != nil {
 		return err
@@ -32,10 +51,19 @@ func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBl
 		panic("cannot append a block out of sequence")
 	}
 
-	nTrans := block.TransactionCount()
+	nTrans, err := block.TransactionCount()
+	if err != nil {
+		return err
+	}
 	for t := int64(0); t < nTrans; t++ {
-		hTrans := block.NthTransaction(t)
-		trans := blockChain.TransInterface(hTrans)
+		hTrans, err := block.NthTransaction(t)
+		if err != nil {
+			return err
+		}
+		trans, err := blockChain.TransInterface(hTrans)
+		if err != nil {
+			return err
+		}
 		transNum, err := cac.appendTransaction(blockChain, trans)
 		if err != nil {
 			return err
@@ -55,11 +83,17 @@ func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBl
 
 func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterface.IBlockChain,
 	hTrans chainreadinterface.ITransHandle) (int64, error) {
-	trans := blockChain.TransInterface(hTrans)
+	trans, err := blockChain.TransInterface(hTrans)
+	if err != nil {
+		return -1, err
+	}
 	if !trans.HashSpecified() {
 		panic("this function assumes that trans specifies a hash")
 	}
-	transHash := trans.Hash()
+	transHash, err := trans.Hash()
+	if err != nil {
+		return -1, err
+	}
 	transNum, err := cac.trnHashes.AppendHash(&transHash)
 	if err != nil {
 		return -1, err
@@ -68,10 +102,19 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 		panic("cannot append a transaction out of sequence")
 	}
 
-	nTxis := trans.TxiCount()
+	nTxis, err := trans.TxiCount()
+	if err != nil {
+		return -1, err
+	}
 	for nTxi := int64(0); nTxi < nTxis; nTxi++ {
-		hTxi := trans.NthTxi(nTxi)
-		txi := blockChain.TxiInterface(hTxi)
+		hTxi, err := trans.NthTxi(nTxi)
+		if err != nil {
+			return -1, err
+		}
+		txi, err := blockChain.TxiInterface(hTxi)
+		if err != nil {
+			return -1, err
+		}
 		txiHeight, err := cac.appendTxi(txi)
 		if err != nil {
 			return -1, err
@@ -87,10 +130,19 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 		}
 	}
 
-	nTxos := trans.TxoCount()
+	nTxos, err := trans.TxoCount()
+	if err != nil {
+		return -1, err
+	}
 	for nTxo := int64(0); nTxo < nTxos; nTxo++ {
-		hTxo := trans.NthTxo(nTxo)
-		txo := blockChain.TxoInterface(hTxo)
+		hTxo, err := trans.NthTxo(nTxo)
+		if err != nil {
+			return -1, err
+		}
+		txo, err := blockChain.TxoInterface(hTxo)
+		if err != nil {
+			return -1, err
+		}
 		txoHeight, err := cac.appendTxo(txo)
 		if err != nil {
 			return -1, err
@@ -110,7 +162,10 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 }
 
 func (cac concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
-	sourceTxo := txi.SourceTxo()
+	sourceTxo, err := txi.SourceTxo()
+	if err != nil {
+		return -1, err
+	}
 	if !sourceTxo.ParentSpecified() {
 		panic("this implementation assumes the txi's source txo specifies a parent transaction and index")
 	}
@@ -140,7 +195,10 @@ func (cac concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64
 }
 
 func (cac concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64, error) {
-	sats := txo.Satoshis()
+	sats, err := txo.Satoshis()
+	if err != nil {
+		return -1, err
+	}
 	txoHeight, err := cac.txoSats.CountWords()
 	if err != nil {
 		return -1, err

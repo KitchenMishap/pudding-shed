@@ -26,21 +26,36 @@ func TestCopyTinyChain(t *testing.T) {
 	}
 
 	hBlock := tinychain.TheTinyChain.GenesisBlock()
-	block := tinychain.TheTinyChain.BlockInterface(hBlock)
+	block, err := tinychain.TheTinyChain.BlockInterface(hBlock)
+	if err != nil {
+		t.Fail()
+	}
 	err = ac.AppendBlock(tinychain.TheTinyChain, block)
 	if err != nil {
 		t.Fail()
 	}
 
-	hBlock = tinychain.TheTinyChain.NextBlock(hBlock)
+	hBlock, err = tinychain.TheTinyChain.NextBlock(hBlock)
+	if err != nil {
+		t.Fail()
+	}
 	for !hBlock.IsInvalid() {
-		block := tinychain.TheTinyChain.BlockInterface(hBlock)
+		block, err := tinychain.TheTinyChain.BlockInterface(hBlock)
+		if err != nil {
+			t.Fail()
+		}
 		err = ac.AppendBlock(tinychain.TheTinyChain, block)
 		if err != nil {
 			t.Fail()
 		}
-		hBlock = tinychain.TheTinyChain.NextBlock(hBlock)
+		hBlock, err = tinychain.TheTinyChain.NextBlock(hBlock)
+		if err != nil {
+			t.Fail()
+		}
 	}
+
+	crc := ac.GetAsChainReadInterface()
+	TestCopyOfTinyChain_Helper(crc, t)
 
 	err = ac.Close()
 	if err != nil {

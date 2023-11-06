@@ -8,8 +8,8 @@ type Txo struct {
 	satoshis int64
 }
 
-func (atxo Txo) Satoshis() int64 {
-	return atxo.satoshis
+func (atxo Txo) Satoshis() (int64, error) {
+	return atxo.satoshis, nil
 }
 
 // Compiler check that it implements

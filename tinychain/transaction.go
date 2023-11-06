@@ -9,20 +9,20 @@ type Transaction struct {
 	txos []Txo
 }
 
-func (t Transaction) TxiCount() int64 {
-	return int64(len(t.txis))
+func (t Transaction) TxiCount() (int64, error) {
+	return int64(len(t.txis)), nil
 }
 
-func (t Transaction) NthTxi(n int64) chainreadinterface.ITxiHandle {
-	return t.txis[n]
+func (t Transaction) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) {
+	return t.txis[n], nil
 }
 
-func (t Transaction) TxoCount() int64 {
-	return int64(len(t.txos))
+func (t Transaction) TxoCount() (int64, error) {
+	return int64(len(t.txos)), nil
 }
 
-func (t Transaction) NthTxo(n int64) chainreadinterface.ITxoHandle {
-	return t.txos[n]
+func (t Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
+	return t.txos[n], nil
 }
 
 // Compiler check that implements

@@ -7,12 +7,12 @@ type Block struct {
 	transactions []Transaction
 }
 
-func (b Block) TransactionCount() int64 {
-	return int64(len(b.transactions))
+func (b Block) TransactionCount() (int64, error) {
+	return int64(len(b.transactions)), nil
 }
 
-func (b Block) NthTransaction(n int64) chainreadinterface.ITransHandle {
-	return b.transactions[n]
+func (b Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
+	return b.transactions[n], nil
 }
 
 // Compiler check that implements

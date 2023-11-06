@@ -4,7 +4,7 @@ import "github.com/KitchenMishap/pudding-shed/indexedhashes"
 
 type IBlockHandle interface {
 	Height() int64
-	Hash() indexedhashes.Sha256
+	Hash() (indexedhashes.Sha256, error)
 	HeightSpecified() bool
 	HashSpecified() bool
 	IsBlockHandle()
@@ -13,7 +13,7 @@ type IBlockHandle interface {
 
 type ITransHandle interface {
 	Height() int64
-	Hash() indexedhashes.Sha256
+	Hash() (indexedhashes.Sha256, error)
 	HeightSpecified() bool
 	HashSpecified() bool
 	IsTransHandle()

@@ -9,8 +9,8 @@ type Txi struct {
 	sourceTxo TxoHandle
 }
 
-func (atxi Txi) SourceTxo() chainreadinterface.ITxoHandle {
-	return atxi.sourceTxo
+func (atxi Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
+	return atxi.sourceTxo, nil
 }
 
 // Compiler check that it implements
