@@ -13,28 +13,41 @@ type HashHeight struct {
 	hashSpecified   bool
 }
 
-func (hh HashHeight) Height() int64 {
-	return hh.height
-}
-func (hh HashHeight) Hash() (indexedhashes.Sha256, error) {
-	return hh.hash, nil
-}
-func (hh HashHeight) HeightSpecified() bool {
-	return hh.heightSpecified
-}
-func (hh HashHeight) HashSpecified() bool {
-	return hh.hashSpecified
-}
-
 // BlockHandle in package chainstorage implements IBlockHandle
 type BlockHandle struct {
 	HashHeight
+	data *concreteReadableChain
 }
 
 // Check that implements
 var _ chainreadinterface.IBlockHandle = (*BlockHandle)(nil)
 
 // Functions to implement IBlockHandle
+
+func (bh BlockHandle) Height() int64 {
+	if bh.heightSpecified {
+		return bh.height
+	} else {
+		// ToDo Height() needs to return error
+		height, _ := bh.data.blkHashes.IndexOfHash(&bh.hash)
+		return height
+	}
+}
+func (bh BlockHandle) Hash() (indexedhashes.Sha256, error) {
+	if bh.hashSpecified {
+		return bh.hash, nil
+	} else {
+		hash := indexedhashes.Sha256{}
+		err := bh.data.blkHashes.GetHashAtIndex(bh.height, &hash)
+		return hash, err
+	}
+}
+func (bh BlockHandle) HeightSpecified() bool {
+	return true
+}
+func (bh BlockHandle) HashSpecified() bool {
+	return true
+}
 
 func (bh BlockHandle) IsBlockHandle() {
 }
@@ -45,6 +58,7 @@ func (bh BlockHandle) IsInvalid() bool {
 // TransHandle in package chainstorage implements ITransHandle
 type TransHandle struct {
 	HashHeight
+	data *concreteReadableChain
 }
 
 // Check that implements
@@ -52,6 +66,30 @@ var _ chainreadinterface.ITransHandle = (*TransHandle)(nil)
 
 // Functions to implement ITransHandle
 
+func (th TransHandle) Height() int64 {
+	if th.heightSpecified {
+		return th.height
+	} else {
+		// ToDo Height() needs to return error
+		height, _ := th.data.trnHashes.IndexOfHash(&th.hash)
+		return height
+	}
+}
+func (th TransHandle) Hash() (indexedhashes.Sha256, error) {
+	if th.hashSpecified {
+		return th.hash, nil
+	} else {
+		hash := indexedhashes.Sha256{}
+		err := th.data.trnHashes.GetHashAtIndex(th.height, &hash)
+		return hash, err
+	}
+}
+func (th TransHandle) HeightSpecified() bool {
+	return true
+}
+func (th TransHandle) HashSpecified() bool {
+	return true
+}
 func (th TransHandle) IsTransHandle() {
 }
 func (th TransHandle) IsInvalid() bool {
@@ -122,11 +160,4 @@ func (txo TxoHandle) ParentSpecified() bool {
 }
 func (txo TxoHandle) TxoHeightSpecified() bool {
 	return txo.txxHeightSpecified
-}
-
-func InvalidBlock() BlockHandle {
-	return BlockHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}}
-}
-func InvalidTrans() TransHandle {
-	return TransHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}}
 }

@@ -165,7 +165,7 @@ func (txi Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
 				hash:            indexedhashes.Sha256{},
 				heightSpecified: true,
 				hashSpecified:   false,
-			}},
+			}, txi.data},
 			index: sourceTransVout,
 		},
 		txxHeight:           -1,

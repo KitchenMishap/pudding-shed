@@ -13,11 +13,18 @@ var _ chainreadinterface.IBlockChain = (*Blockchain)(nil)
 
 // Functions to implement IBlockTree as part of IBlockChain
 
-func (bc Blockchain) GenesisBlock() chainreadinterface.IBlockHandle {
+func (bc *Blockchain) InvalidBlock() chainreadinterface.IBlockHandle {
+	return BlockHandle{HashHeight{-1}}
+}
+func (bc *Blockchain) InvalidTrans() chainreadinterface.ITransHandle {
+	return TransHandle{HashHeight{-1}}
+}
+
+func (bc *Blockchain) GenesisBlock() chainreadinterface.IBlockHandle {
 	return bc.blocks[0]
 }
 
-func (bc Blockchain) ParentBlock(b chainreadinterface.IBlockHandle) chainreadinterface.IBlockHandle {
+func (bc *Blockchain) ParentBlock(b chainreadinterface.IBlockHandle) chainreadinterface.IBlockHandle {
 	if bc.IsBlockTree() {
 		panic("BlockTree not supported by this code. Only Blockchains (ie longest chain) work here")
 	}
@@ -28,7 +35,7 @@ func (bc Blockchain) ParentBlock(b chainreadinterface.IBlockHandle) chainreadint
 	return InvalidBlock()
 }
 
-func (bc Blockchain) GenesisTransaction() (chainreadinterface.ITransHandle, error) {
+func (bc *Blockchain) GenesisTransaction() (chainreadinterface.ITransHandle, error) {
 	block := bc.GenesisBlock()
 	blockInt, err := bc.BlockInterface(block)
 	if err != nil {
@@ -41,7 +48,7 @@ func (bc Blockchain) GenesisTransaction() (chainreadinterface.ITransHandle, erro
 	return hGenesisTrans, nil
 }
 
-func (bc Blockchain) PreviousTransaction(t chainreadinterface.ITransHandle) chainreadinterface.ITransHandle {
+func (bc *Blockchain) PreviousTransaction(t chainreadinterface.ITransHandle) chainreadinterface.ITransHandle {
 	if bc.IsBlockTree() {
 		panic("BlockTree not supported by this function. Only Blockchains (ie longest chain) work here")
 	}
@@ -55,13 +62,13 @@ func (bc Blockchain) PreviousTransaction(t chainreadinterface.ITransHandle) chai
 	return transHandle
 }
 
-func (bc Blockchain) IsBlockTree() bool {
+func (bc *Blockchain) IsBlockTree() bool {
 	// A block tree can have multiple blocks as a block's parent block
 	// Not the case here (even though we derive from IBlockTree and implement its functions)
 	return false
 }
 
-func (bc Blockchain) BlockInterface(b chainreadinterface.IBlockHandle) (chainreadinterface.IBlock, error) {
+func (bc *Blockchain) BlockInterface(b chainreadinterface.IBlockHandle) (chainreadinterface.IBlock, error) {
 	// We are in the tinychain package, so we know Heights are specified in IBlockHandles
 	if !b.HeightSpecified() {
 		panic("This function requires blocks to be specified by height")
@@ -70,7 +77,7 @@ func (bc Blockchain) BlockInterface(b chainreadinterface.IBlockHandle) (chainrea
 	return bc.blocks[blockHeight], nil
 }
 
-func (bc Blockchain) TransInterface(t chainreadinterface.ITransHandle) (chainreadinterface.ITransaction, error) {
+func (bc *Blockchain) TransInterface(t chainreadinterface.ITransHandle) (chainreadinterface.ITransaction, error) {
 	// We are in the tinychain package, so we know Heights are specified in ITransHandles
 	if !t.HeightSpecified() {
 		panic("This function requires transactions to be specified by height")
@@ -79,7 +86,7 @@ func (bc Blockchain) TransInterface(t chainreadinterface.ITransHandle) (chainrea
 	return bc.transactions[transHeight], nil
 }
 
-func (bc Blockchain) TxoInterface(txo chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
+func (bc *Blockchain) TxoInterface(txo chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
 	// This is a bit of a fiddle for tinychain package. We have stored the Txos in the Transactions.
 	if !txo.ParentSpecified() {
 		panic("This function depends upon the txo handle having the parent specified")
@@ -95,7 +102,7 @@ func (bc Blockchain) TxoInterface(txo chainreadinterface.ITxoHandle) (chainreadi
 	return txoObject, nil
 }
 
-func (bc Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainreadinterface.ITxi, error) {
+func (bc *Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainreadinterface.ITxi, error) {
 	// This is a bit of a fiddle for tinychain package. We have stored the Txis in the Transactions.
 	if !txi.ParentSpecified() {
 		panic("This function depends upon the txi handle having the parent specified")
@@ -112,12 +119,12 @@ func (bc Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainreadi
 }
 
 // Implement the rest of IBlockChain
-func (bc Blockchain) LatestBlock() (chainreadinterface.IBlockHandle, error) {
+func (bc *Blockchain) LatestBlock() (chainreadinterface.IBlockHandle, error) {
 	blocks := len(bc.blocks)
 	return bc.blocks[blocks-1], nil
 }
 
-func (bc Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
+func (bc *Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
 	blocks := len(bc.blocks)
 	if !handle.HeightSpecified() {
 		panic("This function depends on block handles specifying block height")
@@ -132,14 +139,14 @@ func (bc Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) (chainrea
 	return next, nil
 }
 
-func (bc Blockchain) LatestTransaction() (chainreadinterface.ITransHandle, error) {
+func (bc *Blockchain) LatestTransaction() (chainreadinterface.ITransHandle, error) {
 	transactions := len(bc.transactions)
 	latest := TransHandle{}
 	latest.height = int64(transactions - 1)
 	return latest, nil
 }
 
-func (bc Blockchain) NextTransaction(t chainreadinterface.ITransHandle) (chainreadinterface.ITransHandle, error) {
+func (bc *Blockchain) NextTransaction(t chainreadinterface.ITransHandle) (chainreadinterface.ITransHandle, error) {
 	// This returns a height of -1 for next after last transaction
 	if !t.HeightSpecified() {
 		panic("This function depends on transaction handles which specify transaction height")

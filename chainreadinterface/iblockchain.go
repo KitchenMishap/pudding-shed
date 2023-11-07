@@ -1,6 +1,8 @@
 package chainreadinterface
 
 type IBlockTree interface {
+	InvalidBlock() IBlockHandle
+	InvalidTrans() ITransHandle
 	GenesisBlock() IBlockHandle
 	ParentBlock(block IBlockHandle) IBlockHandle
 	GenesisTransaction() (ITransHandle, error)

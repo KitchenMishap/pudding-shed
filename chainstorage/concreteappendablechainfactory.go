@@ -92,30 +92,30 @@ func (cacc *ConcreteAppendableChainCreator) Create() error {
 	return nil
 }
 
-func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
+func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteAppendableChain, error) {
 	result := concreteAppendableChain{}
 	var err error
 	result.blkHashes, err = cacc.blockHashStoreCreator.OpenHashStore()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	result.trnHashes, err = cacc.transactionHashStoreCreator.OpenHashStore()
 	if err != nil {
 		result.blkHashes.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.blkFirstTrans, err = cacc.blkFirstTransWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.trnFirstTxi, err = cacc.trnFirstTxiWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.trnFirstTxo, err = cacc.trnFirstTxoWordFileCreator.OpenWordFile()
 	if err != nil {
@@ -123,7 +123,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnFirstTxi.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.txiTx, err = cacc.txiTxWordFileCreator.OpenWordFile()
 	if err != nil {
@@ -132,7 +132,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
 		result.blkFirstTrans.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.txiVout, err = cacc.txiVoutWordFileCreator.OpenWordFile()
 	if err != nil {
@@ -142,7 +142,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
-		return nil, err
+		return nil, nil, err
 	}
 	result.txoSats, err = cacc.txoSatsWordFileCreator.OpenWordFile()
 	if err != nil {
@@ -153,7 +153,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, error) {
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
 		result.txiVout.Close()
-		return nil, err
+		return nil, nil, err
 	}
-	return result, nil
+	return result, &result, nil
 }

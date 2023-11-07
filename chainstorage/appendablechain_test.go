@@ -20,7 +20,7 @@ func TestCopyTinyChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ac, err := acc.Open()
+	ac, cac, err := acc.Open()
 	if err != nil {
 		t.Fail()
 	}
@@ -54,8 +54,15 @@ func TestCopyTinyChain(t *testing.T) {
 		}
 	}
 
-	crc := ac.GetAsChainReadInterface()
-	TestCopyOfTinyChain_Helper(crc, t)
+	bc := ac.GetAsChainReadInterface()
+	TestCopyOfTinyChain_Helper(bc, t)
+
+	crc := cac.GetAsConcreteReadableChain()
+
+	hBlock0 := BlockHandle{HashHeight{height: 0, heightSpecified: true, hashSpecified: false}, crc}
+	hBlock00 := BlockHandle{HashHeight{height: 0, heightSpecified: true, hashSpecified: false}, crc}
+	hBlock1 := BlockHandle{HashHeight{height: 1, heightSpecified: true, hashSpecified: false}, crc}
+	tinychain.TestHashEquality_helper(hBlock0, hBlock00, hBlock1, t)
 
 	err = ac.Close()
 	if err != nil {

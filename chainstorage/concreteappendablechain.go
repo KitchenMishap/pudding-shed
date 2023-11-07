@@ -17,8 +17,8 @@ type concreteAppendableChain struct {
 	txoSats       wordfile.ReadWriteAtWordCounter
 }
 
-func (cac concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
-	return concreteReadableChain{
+func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
+	return &concreteReadableChain{
 		blkFirstTrans: cac.blkFirstTrans,
 		blkHashes:     cac.blkHashes,
 		trnHashes:     cac.trnHashes,
@@ -28,6 +28,10 @@ func (cac concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.
 		txiVout:       cac.txiVout,
 		txoSats:       cac.txoSats,
 	}
+}
+
+func (cac concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
+	return cac.GetAsConcreteReadableChain()
 }
 
 func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,

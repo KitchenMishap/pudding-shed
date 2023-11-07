@@ -62,8 +62,8 @@ func (block Block) TransactionCount() (int64, error) {
 func (block Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
 	blockFirstTransHeight, err := block.data.blkFirstTrans.ReadWordAt(block.height)
 	if err != nil {
-		return InvalidTrans(), err
+		return block.data.InvalidTrans(), err
 	}
 	transHeight := blockFirstTransHeight + n
-	return TransHandle{HashHeight{height: transHeight, hashSpecified: false, heightSpecified: true}}, nil
+	return TransHandle{HashHeight{height: transHeight, hashSpecified: false, heightSpecified: true}, block.data}, nil
 }
