@@ -59,20 +59,20 @@ func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBl
 	if err != nil {
 		return err
 	}
+	if nTrans == 0 {
+		panic("this code assumes at least one transaction per block")
+		// Otherwise, not every entry in blkFirstTrans will be written
+	}
 	for t := int64(0); t < nTrans; t++ {
 		hTrans, err := block.NthTransaction(t)
 		if err != nil {
 			return err
 		}
-		trans, err := blockChain.TransInterface(hTrans)
+		transNum, err := cac.appendTransaction(blockChain, hTrans)
 		if err != nil {
 			return err
 		}
-		transNum, err := cac.appendTransaction(blockChain, trans)
-		if err != nil {
-			return err
-		}
-		if trans.HeightSpecified() && trans.Height() != transNum {
+		if hTrans.HeightSpecified() && hTrans.Height() != transNum {
 			panic("cannot append a transaction out of sequence")
 		}
 		if t == 0 {
@@ -110,6 +110,15 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 	if err != nil {
 		return -1, err
 	}
+	// We MUST write to the trnFirstTxi file, REGARDLESS of whether there ARE any Txis
+	putativeTxiHeight, err := cac.txiTx.CountWords() // Count all the txis by counting the txiTx field file
+	if err != nil {
+		return -1, err
+	}
+	err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transNum)
+	if err != nil {
+		return -1, err
+	}
 	for nTxi := int64(0); nTxi < nTxis; nTxi++ {
 		hTxi, err := trans.NthTxi(nTxi)
 		if err != nil {
@@ -126,15 +135,18 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 		if txi.TxiHeightSpecified() && txi.TxiHeight() != txiHeight {
 			panic("cannot append a txi out of sequence")
 		}
-		if nTxi == 0 {
-			err := cac.trnFirstTxi.WriteWordAt(txiHeight, transNum)
-			if err != nil {
-				return -1, err
-			}
-		}
 	}
 
 	nTxos, err := trans.TxoCount()
+	if err != nil {
+		return -1, err
+	}
+	// We MUST write to the trnFirstTxo file, REGARDLESS of whether there ARE any Txos
+	putativeTxoHeight, err := cac.txoSats.CountWords() // Count all the txis by counting the txiSats field file
+	if err != nil {
+		return -1, err
+	}
+	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transNum)
 	if err != nil {
 		return -1, err
 	}
@@ -153,12 +165,6 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 		}
 		if txo.TxoHeightSpecified() && txo.TxoHeight() != txoHeight {
 			panic("cannot append a txo out of sequence")
-		}
-		if nTxo == 0 {
-			err := cac.trnFirstTxo.WriteWordAt(txoHeight, transNum)
-			if err != nil {
-				return -1, err
-			}
 		}
 	}
 
