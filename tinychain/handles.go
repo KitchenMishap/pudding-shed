@@ -11,16 +11,16 @@ type HashHeight struct {
 	height int64
 }
 
-func (hh HashHeight) Height() int64 {
+func (hh *HashHeight) Height() int64 {
 	return hh.height
 }
-func (hh HashHeight) Hash() (indexedhashes.Sha256, error) {
+func (hh *HashHeight) Hash() (indexedhashes.Sha256, error) {
 	return HashOfInt(uint64(hh.height)), nil
 }
-func (hh HashHeight) HeightSpecified() bool {
+func (hh *HashHeight) HeightSpecified() bool {
 	return true
 }
-func (hh HashHeight) HashSpecified() bool {
+func (hh *HashHeight) HashSpecified() bool {
 	return true
 }
 
@@ -29,9 +29,9 @@ type BlockHandle struct {
 	HashHeight
 }
 
-func (bh BlockHandle) IsBlockHandle() {
+func (bh *BlockHandle) IsBlockHandle() {
 }
-func (bh BlockHandle) IsInvalid() bool {
+func (bh *BlockHandle) IsInvalid() bool {
 	return bh.Height() == -1
 }
 
@@ -43,10 +43,10 @@ type TransHandle struct {
 	HashHeight
 }
 
-func (th TransHandle) IsTransHandle() {
+func (th *TransHandle) IsTransHandle() {
 }
 
-func (th TransHandle) IsInvalid() bool {
+func (th *TransHandle) IsInvalid() bool {
 	return th.Height() == -1
 }
 
@@ -71,19 +71,19 @@ type TxiHandle struct {
 	TxxHandle
 }
 
-func (txi TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return txi.TransHandle
+func (txi *TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txi.TransHandle
 }
-func (txi TxiHandle) ParentIndex() int64 {
+func (txi *TxiHandle) ParentIndex() int64 {
 	return txi.index
 }
-func (txi TxiHandle) TxiHeight() int64 {
+func (txi *TxiHandle) TxiHeight() int64 {
 	return -1
 }
-func (txi TxiHandle) ParentSpecified() bool {
+func (txi *TxiHandle) ParentSpecified() bool {
 	return true
 }
-func (th TxiHandle) TxiHeightSpecified() bool {
+func (th *TxiHandle) TxiHeightSpecified() bool {
 	return false
 }
 
@@ -95,26 +95,20 @@ type TxoHandle struct {
 	TxxHandle
 }
 
-func (txo TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return txo.TransHandle
+func (txo *TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txo.TransHandle
 }
-func (txo TxoHandle) ParentIndex() int64 {
+func (txo *TxoHandle) ParentIndex() int64 {
 	return txo.index
 }
-func (txo TxoHandle) TxoHeight() int64 {
+func (txo *TxoHandle) TxoHeight() int64 {
 	return -1
 }
-func (th TxoHandle) ParentSpecified() bool {
+func (th *TxoHandle) ParentSpecified() bool {
 	return true
 }
-func (th TxoHandle) TxoHeightSpecified() bool {
+func (th *TxoHandle) TxoHeightSpecified() bool {
 	return false
-}
-
-func InvalidBlock() BlockHandle {
-	result := BlockHandle{}
-	result.height = -1
-	return result
 }
 
 // Check that implements

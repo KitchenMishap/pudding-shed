@@ -10,7 +10,7 @@ type Txi struct {
 }
 
 func (atxi Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
-	return atxi.sourceTxo, nil
+	return &atxi.sourceTxo, nil
 }
 
 // Compiler check that it implements

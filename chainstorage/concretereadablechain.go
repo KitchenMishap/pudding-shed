@@ -20,7 +20,7 @@ type concreteReadableChain struct {
 // Functions to implement IBlockTree as part of IBlockChain
 
 func (crc *concreteReadableChain) GenesisBlock() chainreadinterface.IBlockHandle {
-	return BlockHandle{HashHeight{height: 0, hashSpecified: false, heightSpecified: true}, crc}
+	return &BlockHandle{HashHeight{height: 0, hashSpecified: false, heightSpecified: true}, crc}
 }
 func (crc *concreteReadableChain) ParentBlock(block chainreadinterface.IBlockHandle) chainreadinterface.IBlockHandle {
 	if block.IsInvalid() {
@@ -30,10 +30,10 @@ func (crc *concreteReadableChain) ParentBlock(block chainreadinterface.IBlockHan
 		panic("this implementation of ParentBlock assumes block height is specified")
 	}
 	parentHeight := block.Height() - 1
-	return BlockHandle{HashHeight{height: parentHeight, hashSpecified: false, heightSpecified: true}, crc}
+	return &BlockHandle{HashHeight{height: parentHeight, hashSpecified: false, heightSpecified: true}, crc}
 }
 func (crc *concreteReadableChain) GenesisTransaction() (chainreadinterface.ITransHandle, error) {
-	return TransHandle{HashHeight{height: 0, hashSpecified: false, heightSpecified: true}, crc}, nil
+	return &TransHandle{HashHeight{height: 0, hashSpecified: false, heightSpecified: true}, crc}, nil
 }
 func (crc *concreteReadableChain) PreviousTransaction(trans chainreadinterface.ITransHandle) chainreadinterface.ITransHandle {
 	if trans.IsInvalid() {
@@ -43,7 +43,7 @@ func (crc *concreteReadableChain) PreviousTransaction(trans chainreadinterface.I
 		panic("this implementation of PreviousTransaction assumes trans height is specified")
 	}
 	prevHeight := trans.Height() - 1
-	return TransHandle{HashHeight{height: prevHeight, hashSpecified: false, heightSpecified: true}, crc}
+	return &TransHandle{HashHeight{height: prevHeight, hashSpecified: false, heightSpecified: true}, crc}
 }
 func (crc *concreteReadableChain) IsBlockTree() bool {
 	return false
@@ -51,17 +51,17 @@ func (crc *concreteReadableChain) IsBlockTree() bool {
 func (crc *concreteReadableChain) BlockInterface(hBlock chainreadinterface.IBlockHandle) (chainreadinterface.IBlock, error) {
 	if hBlock.HeightSpecified() {
 		blockHeight := hBlock.Height()
-		return Block{height: blockHeight, data: crc}, nil
+		return &Block{height: blockHeight, data: crc}, nil
 	} else if hBlock.HashSpecified() {
 		hash, err := hBlock.Hash()
 		if err != nil {
-			return Block{}, err
+			return &Block{}, err
 		}
 		blockHeight, err := crc.blkHashes.IndexOfHash(&hash)
 		if err != nil {
-			return Block{}, err
+			return &Block{}, err
 		}
-		return Block{height: blockHeight, data: crc}, nil
+		return &Block{height: blockHeight, data: crc}, nil
 	} else {
 		panic("neither height nor hash was specified in BlockHandle")
 	}
@@ -69,17 +69,17 @@ func (crc *concreteReadableChain) BlockInterface(hBlock chainreadinterface.IBloc
 func (crc *concreteReadableChain) TransInterface(hTrans chainreadinterface.ITransHandle) (chainreadinterface.ITransaction, error) {
 	if hTrans.HeightSpecified() {
 		transHeight := hTrans.Height()
-		return Transaction{height: transHeight, data: crc}, nil
+		return &Transaction{height: transHeight, data: crc}, nil
 	} else if hTrans.HashSpecified() {
 		hash, err := hTrans.Hash()
 		if err != nil {
-			return Transaction{}, err
+			return &Transaction{}, err
 		}
 		transHeight, err := crc.trnHashes.IndexOfHash(&hash)
 		if err != nil {
-			return Transaction{}, err
+			return &Transaction{}, err
 		}
-		return Transaction{height: transHeight, data: crc}, nil
+		return &Transaction{height: transHeight, data: crc}, nil
 	} else {
 		panic("neither height nor hash was specified in TransHandle")
 	}
@@ -87,20 +87,20 @@ func (crc *concreteReadableChain) TransInterface(hTrans chainreadinterface.ITran
 
 func (crc *concreteReadableChain) TxiInterface(hTxi chainreadinterface.ITxiHandle) (chainreadinterface.ITxi, error) {
 	if hTxi.TxiHeightSpecified() {
-		return Txi{height: hTxi.TxiHeight(), data: crc}, nil
+		return &Txi{height: hTxi.TxiHeight(), data: crc}, nil
 	} else if hTxi.ParentSpecified() {
 		hTrans := hTxi.ParentTrans()
 		trans, err := crc.TransInterface(hTrans)
 		if err != nil {
-			return Txi{}, err
+			return &Txi{}, err
 		}
 		transFirstTxiHeight, error := crc.trnFirstTxi.ReadWordAt(trans.Height())
 		if error != nil {
-			return Txi{}, err
+			return &Txi{}, err
 		}
 		index := hTxi.ParentIndex()
 		txiHeight := transFirstTxiHeight + index
-		return Txi{height: txiHeight, data: crc}, nil
+		return &Txi{height: txiHeight, data: crc}, nil
 	} else {
 		panic("hTxi specifies neither txiHeight nor parent")
 	}
@@ -108,20 +108,20 @@ func (crc *concreteReadableChain) TxiInterface(hTxi chainreadinterface.ITxiHandl
 
 func (crc *concreteReadableChain) TxoInterface(hTxo chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
 	if hTxo.TxoHeightSpecified() {
-		return Txo{height: hTxo.TxoHeight(), data: crc}, nil
+		return &Txo{height: hTxo.TxoHeight(), data: crc}, nil
 	} else if hTxo.ParentSpecified() {
 		hTrans := hTxo.ParentTrans()
 		trans, err := crc.TransInterface(hTrans)
 		if err != nil {
-			return Txo{}, err
+			return &Txo{}, err
 		}
 		transFirstTxoHeight, err := crc.trnFirstTxo.ReadWordAt(trans.Height())
 		if err != nil {
-			return Txo{}, err
+			return &Txo{}, err
 		}
 		index := hTxo.ParentIndex()
 		txoHeight := transFirstTxoHeight + index
-		return Txo{height: txoHeight, data: crc}, nil
+		return &Txo{height: txoHeight, data: crc}, nil
 	} else {
 		panic("hTxo specifies neither txoHeight nor parent")
 	}
@@ -130,10 +130,10 @@ func (crc *concreteReadableChain) TxoInterface(hTxo chainreadinterface.ITxoHandl
 // Functions to implement IBlockChain
 
 func (crc *concreteReadableChain) InvalidBlock() chainreadinterface.IBlockHandle {
-	return BlockHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}, crc}
+	return &BlockHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}, crc}
 }
 func (crc *concreteReadableChain) InvalidTrans() chainreadinterface.ITransHandle {
-	return TransHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}, crc}
+	return &TransHandle{HashHeight{height: -1, hashSpecified: false, heightSpecified: true}, crc}
 }
 
 func (crc *concreteReadableChain) LatestBlock() (chainreadinterface.IBlockHandle, error) {
@@ -141,7 +141,7 @@ func (crc *concreteReadableChain) LatestBlock() (chainreadinterface.IBlockHandle
 	if err != nil || blocksInChain == 0 {
 		return crc.InvalidBlock(), err
 	}
-	return BlockHandle{HashHeight{
+	return &BlockHandle{HashHeight{
 		height:          blocksInChain - 1,
 		hash:            indexedhashes.Sha256{},
 		heightSpecified: true,
@@ -156,7 +156,7 @@ func (crc *concreteReadableChain) NextBlock(hBlock chainreadinterface.IBlockHand
 	if err != nil || nextBlockNum >= blocksInChain {
 		return crc.InvalidBlock(), err
 	}
-	return BlockHandle{HashHeight{
+	return &BlockHandle{HashHeight{
 		height:          nextBlockNum,
 		hash:            indexedhashes.Sha256{},
 		heightSpecified: true,
@@ -169,7 +169,7 @@ func (crc *concreteReadableChain) LatestTransaction() (chainreadinterface.ITrans
 	if err != nil || transInChain == 0 {
 		return crc.InvalidTrans(), err
 	}
-	return TransHandle{HashHeight{
+	return &TransHandle{HashHeight{
 		height:          transInChain - 1,
 		hash:            indexedhashes.Sha256{},
 		heightSpecified: true,
@@ -184,7 +184,7 @@ func (crc *concreteReadableChain) NextTransaction(hTrans chainreadinterface.ITra
 	if err != nil || nextTransNum >= transInChain {
 		return crc.InvalidTrans(), err
 	}
-	return TransHandle{HashHeight{
+	return &TransHandle{HashHeight{
 		height:          nextTransNum,
 		hash:            indexedhashes.Sha256{},
 		heightSpecified: true,

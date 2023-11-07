@@ -19,5 +19,5 @@ func TestHashEquality(t *testing.T) {
 	hBlock00.height = 0
 	hBlock1 := BlockHandle{}
 	hBlock1.height = 1
-	TestHashEquality_helper(hBlock0, hBlock00, hBlock1, t)
+	TestHashEquality_helper(&hBlock0, &hBlock00, &hBlock1, t)
 }

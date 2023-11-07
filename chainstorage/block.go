@@ -12,28 +12,28 @@ type Block struct {
 
 // Functions to implement IBlockHandle as part of IBlock
 
-func (block Block) Height() int64 {
+func (block *Block) Height() int64 {
 	return block.height
 }
-func (block Block) Hash() (indexedhashes.Sha256, error) {
+func (block *Block) Hash() (indexedhashes.Sha256, error) {
 	hash := indexedhashes.Sha256{}
 	err := block.data.blkHashes.GetHashAtIndex(block.height, &hash)
 	return hash, err
 }
-func (block Block) HeightSpecified() bool {
+func (block *Block) HeightSpecified() bool {
 	return true
 }
-func (block Block) HashSpecified() bool {
+func (block *Block) HashSpecified() bool {
 	return true
 }
-func (block Block) IsBlockHandle() {}
-func (block Block) IsInvalid() bool {
+func (block *Block) IsBlockHandle() {}
+func (block *Block) IsInvalid() bool {
 	return block.height == -1
 }
 
 // Functions to implement IBlock
 
-func (block Block) TransactionCount() (int64, error) {
+func (block *Block) TransactionCount() (int64, error) {
 	blocksInChain, err := block.data.blkHashes.CountHashes()
 	if err != nil {
 		return -1, err
@@ -59,11 +59,11 @@ func (block Block) TransactionCount() (int64, error) {
 		return transInChain - blockFirstTransHeight, nil
 	}
 }
-func (block Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
+func (block *Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
 	blockFirstTransHeight, err := block.data.blkFirstTrans.ReadWordAt(block.height)
 	if err != nil {
 		return block.data.InvalidTrans(), err
 	}
 	transHeight := blockFirstTransHeight + n
-	return TransHandle{HashHeight{height: transHeight, hashSpecified: false, heightSpecified: true}, block.data}, nil
+	return &TransHandle{HashHeight{height: transHeight, hashSpecified: false, heightSpecified: true}, block.data}, nil
 }

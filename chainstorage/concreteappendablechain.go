@@ -30,11 +30,11 @@ func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadab
 	}
 }
 
-func (cac concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
+func (cac *concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
 	return cac.GetAsConcreteReadableChain()
 }
 
-func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,
+func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,
 	hBlock chainreadinterface.IBlockHandle) error {
 	block, err := blockChain.BlockInterface(hBlock)
 	if err != nil {
@@ -85,7 +85,7 @@ func (cac concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBl
 	return nil
 }
 
-func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterface.IBlockChain,
+func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterface.IBlockChain,
 	hTrans chainreadinterface.ITransHandle) (int64, error) {
 	trans, err := blockChain.TransInterface(hTrans)
 	if err != nil {
@@ -171,7 +171,7 @@ func (cac concreteAppendableChain) appendTransaction(blockChain chainreadinterfa
 	return transNum, nil
 }
 
-func (cac concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
+func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
 	sourceTxo, err := txi.SourceTxo()
 	if err != nil {
 		return -1, err
@@ -204,7 +204,7 @@ func (cac concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64
 	return txiHeight, nil
 }
 
-func (cac concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64, error) {
+func (cac *concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64, error) {
 	sats, err := txo.Satoshis()
 	if err != nil {
 		return -1, err
@@ -224,7 +224,7 @@ func (cac concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64
 	return txoHeight, nil
 }
 
-func (cac concreteAppendableChain) Close() error {
+func (cac *concreteAppendableChain) Close() error {
 	err := cac.blkHashes.Close()
 	if err != nil {
 		return err

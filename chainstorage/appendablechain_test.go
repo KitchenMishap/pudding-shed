@@ -62,7 +62,7 @@ func TestCopyTinyChain(t *testing.T) {
 	hBlock0 := BlockHandle{HashHeight{height: 0, heightSpecified: true, hashSpecified: false}, crc}
 	hBlock00 := BlockHandle{HashHeight{height: 0, heightSpecified: true, hashSpecified: false}, crc}
 	hBlock1 := BlockHandle{HashHeight{height: 1, heightSpecified: true, hashSpecified: false}, crc}
-	tinychain.TestHashEquality_helper(hBlock0, hBlock00, hBlock1, t)
+	tinychain.TestHashEquality_helper(&hBlock0, &hBlock00, &hBlock1, t)
 
 	err = ac.Close()
 	if err != nil {

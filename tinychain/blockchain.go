@@ -14,14 +14,14 @@ var _ chainreadinterface.IBlockChain = (*Blockchain)(nil)
 // Functions to implement IBlockTree as part of IBlockChain
 
 func (bc *Blockchain) InvalidBlock() chainreadinterface.IBlockHandle {
-	return BlockHandle{HashHeight{-1}}
+	return &BlockHandle{HashHeight{-1}}
 }
 func (bc *Blockchain) InvalidTrans() chainreadinterface.ITransHandle {
-	return TransHandle{HashHeight{-1}}
+	return &TransHandle{HashHeight{-1}}
 }
 
 func (bc *Blockchain) GenesisBlock() chainreadinterface.IBlockHandle {
-	return bc.blocks[0]
+	return &bc.blocks[0]
 }
 
 func (bc *Blockchain) ParentBlock(b chainreadinterface.IBlockHandle) chainreadinterface.IBlockHandle {
@@ -30,20 +30,20 @@ func (bc *Blockchain) ParentBlock(b chainreadinterface.IBlockHandle) chainreadin
 	}
 	height := b.Height() - 1
 	if height >= 0 {
-		return bc.blocks[height]
+		return &bc.blocks[height]
 	}
-	return InvalidBlock()
+	return bc.InvalidBlock()
 }
 
 func (bc *Blockchain) GenesisTransaction() (chainreadinterface.ITransHandle, error) {
 	block := bc.GenesisBlock()
 	blockInt, err := bc.BlockInterface(block)
 	if err != nil {
-		return TransHandle{}, err
+		return &TransHandle{}, err
 	}
 	hGenesisTrans, err := blockInt.NthTransaction(0)
 	if err != nil {
-		return TransHandle{}, err
+		return &TransHandle{}, err
 	}
 	return hGenesisTrans, nil
 }
@@ -59,7 +59,7 @@ func (bc *Blockchain) PreviousTransaction(t chainreadinterface.ITransHandle) cha
 	transHeight := t.Height() - 1
 	transHandle := TransHandle{}
 	transHandle.height = transHeight
-	return transHandle
+	return &transHandle
 }
 
 func (bc *Blockchain) IsBlockTree() bool {
@@ -74,7 +74,7 @@ func (bc *Blockchain) BlockInterface(b chainreadinterface.IBlockHandle) (chainre
 		panic("This function requires blocks to be specified by height")
 	}
 	blockHeight := b.Height()
-	return bc.blocks[blockHeight], nil
+	return &bc.blocks[blockHeight], nil
 }
 
 func (bc *Blockchain) TransInterface(t chainreadinterface.ITransHandle) (chainreadinterface.ITransaction, error) {
@@ -83,7 +83,7 @@ func (bc *Blockchain) TransInterface(t chainreadinterface.ITransHandle) (chainre
 		panic("This function requires transactions to be specified by height")
 	}
 	transHeight := t.Height()
-	return bc.transactions[transHeight], nil
+	return &bc.transactions[transHeight], nil
 }
 
 func (bc *Blockchain) TxoInterface(txo chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
@@ -99,7 +99,7 @@ func (bc *Blockchain) TxoInterface(txo chainreadinterface.ITxoHandle) (chainread
 	parentTransObject := bc.transactions[parentTransHeight]
 	parentIndex := txo.ParentIndex()
 	txoObject := parentTransObject.txos[parentIndex]
-	return txoObject, nil
+	return &txoObject, nil
 }
 
 func (bc *Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainreadinterface.ITxi, error) {
@@ -115,13 +115,13 @@ func (bc *Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainread
 	parentTransObject := bc.transactions[parentTransHeight]
 	parentIndex := txi.ParentIndex()
 	txiObject := parentTransObject.txis[parentIndex]
-	return txiObject, nil
+	return &txiObject, nil
 }
 
 // Implement the rest of IBlockChain
 func (bc *Blockchain) LatestBlock() (chainreadinterface.IBlockHandle, error) {
 	blocks := len(bc.blocks)
-	return bc.blocks[blocks-1], nil
+	return &bc.blocks[blocks-1], nil
 }
 
 func (bc *Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
@@ -136,14 +136,14 @@ func (bc *Blockchain) NextBlock(handle chainreadinterface.IBlockHandle) (chainre
 	} else {
 		next.height = nextHeight
 	}
-	return next, nil
+	return &next, nil
 }
 
 func (bc *Blockchain) LatestTransaction() (chainreadinterface.ITransHandle, error) {
 	transactions := len(bc.transactions)
 	latest := TransHandle{}
 	latest.height = int64(transactions - 1)
-	return latest, nil
+	return &latest, nil
 }
 
 func (bc *Blockchain) NextTransaction(t chainreadinterface.ITransHandle) (chainreadinterface.ITransHandle, error) {
@@ -158,5 +158,5 @@ func (bc *Blockchain) NextTransaction(t chainreadinterface.ITransHandle) (chainr
 	}
 	next := TransHandle{}
 	next.height = nextHeight
-	return next, nil
+	return &next, nil
 }

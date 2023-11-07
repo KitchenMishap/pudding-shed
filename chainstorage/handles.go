@@ -24,7 +24,7 @@ var _ chainreadinterface.IBlockHandle = (*BlockHandle)(nil)
 
 // Functions to implement IBlockHandle
 
-func (bh BlockHandle) Height() int64 {
+func (bh *BlockHandle) Height() int64 {
 	if bh.heightSpecified {
 		return bh.height
 	} else {
@@ -33,7 +33,7 @@ func (bh BlockHandle) Height() int64 {
 		return height
 	}
 }
-func (bh BlockHandle) Hash() (indexedhashes.Sha256, error) {
+func (bh *BlockHandle) Hash() (indexedhashes.Sha256, error) {
 	if bh.hashSpecified {
 		return bh.hash, nil
 	} else {
@@ -42,16 +42,16 @@ func (bh BlockHandle) Hash() (indexedhashes.Sha256, error) {
 		return hash, err
 	}
 }
-func (bh BlockHandle) HeightSpecified() bool {
+func (bh *BlockHandle) HeightSpecified() bool {
 	return true
 }
-func (bh BlockHandle) HashSpecified() bool {
+func (bh *BlockHandle) HashSpecified() bool {
 	return true
 }
 
-func (bh BlockHandle) IsBlockHandle() {
+func (bh *BlockHandle) IsBlockHandle() {
 }
-func (bh BlockHandle) IsInvalid() bool {
+func (bh *BlockHandle) IsInvalid() bool {
 	return bh.Height() == -1
 }
 
@@ -66,7 +66,7 @@ var _ chainreadinterface.ITransHandle = (*TransHandle)(nil)
 
 // Functions to implement ITransHandle
 
-func (th TransHandle) Height() int64 {
+func (th *TransHandle) Height() int64 {
 	if th.heightSpecified {
 		return th.height
 	} else {
@@ -75,7 +75,7 @@ func (th TransHandle) Height() int64 {
 		return height
 	}
 }
-func (th TransHandle) Hash() (indexedhashes.Sha256, error) {
+func (th *TransHandle) Hash() (indexedhashes.Sha256, error) {
 	if th.hashSpecified {
 		return th.hash, nil
 	} else {
@@ -84,15 +84,15 @@ func (th TransHandle) Hash() (indexedhashes.Sha256, error) {
 		return hash, err
 	}
 }
-func (th TransHandle) HeightSpecified() bool {
+func (th *TransHandle) HeightSpecified() bool {
 	return true
 }
-func (th TransHandle) HashSpecified() bool {
+func (th *TransHandle) HashSpecified() bool {
 	return true
 }
-func (th TransHandle) IsTransHandle() {
+func (th *TransHandle) IsTransHandle() {
 }
-func (th TransHandle) IsInvalid() bool {
+func (th *TransHandle) IsInvalid() bool {
 	return th.Height() == -1
 }
 
@@ -120,19 +120,19 @@ var _ chainreadinterface.ITxiHandle = (*TxiHandle)(nil)
 
 // Functions to implement ITxiHandle
 
-func (txi TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return txi.TransHandle
+func (txi *TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txi.TransHandle
 }
-func (txi TxiHandle) ParentIndex() int64 {
+func (txi *TxiHandle) ParentIndex() int64 {
 	return txi.index
 }
-func (txi TxiHandle) TxiHeight() int64 {
+func (txi *TxiHandle) TxiHeight() int64 {
 	return txi.txxHeight
 }
-func (txi TxiHandle) ParentSpecified() bool {
+func (txi *TxiHandle) ParentSpecified() bool {
 	return txi.transIndexSpecified
 }
-func (txi TxiHandle) TxiHeightSpecified() bool {
+func (txi *TxiHandle) TxiHeightSpecified() bool {
 	return txi.txxHeightSpecified
 }
 
@@ -146,18 +146,18 @@ var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil)
 
 // Functions to implement ITxoHandle
 
-func (txo TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
-	return txo.TransHandle
+func (txo *TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txo.TransHandle
 }
-func (txo TxoHandle) ParentIndex() int64 {
+func (txo *TxoHandle) ParentIndex() int64 {
 	return txo.index
 }
-func (txo TxoHandle) TxoHeight() int64 {
+func (txo *TxoHandle) TxoHeight() int64 {
 	return txo.txxHeight
 }
-func (txo TxoHandle) ParentSpecified() bool {
+func (txo *TxoHandle) ParentSpecified() bool {
 	return txo.transIndexSpecified
 }
-func (txo TxoHandle) TxoHeightSpecified() bool {
+func (txo *TxoHandle) TxoHeightSpecified() bool {
 	return txo.txxHeightSpecified
 }
