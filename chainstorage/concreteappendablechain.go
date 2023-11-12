@@ -181,10 +181,28 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	}
 	sourceTrans := sourceTxo.ParentTrans()
 	sourceIndex := sourceTxo.ParentIndex()
+	// sourceTrans is a transaction in the source chain
+	// But the source chain (for example, Bitcoin Core) might not have heights for transactions
+	sourceTransHeight := int64(-1)
 	if !sourceTrans.HeightSpecified() {
-		panic("this implementation assumes the source transaction specifies a height")
+		// So sourceTrans must be a transaction specified by a hash
+		if !sourceTrans.HashSpecified() {
+			panic("source chain transactions must have height or hash")
+		}
+		// In concreteAppendableChain, transactions are primarily identified by height
+		// But we'll need to use the hash to determine the height, as the source hash is all we've got
+		sourceTransHash, err := sourceTrans.Hash()
+		if err != nil {
+			return -1, err
+		}
+		// To determine the height of the transaction (from the source), ironically we'll have to use the chain we're building
+		sourceTransHeight, err = cac.trnHashes.IndexOfHash(&sourceTransHash)
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		sourceTransHeight = sourceTrans.Height()
 	}
-	sourceTransHeight := sourceTrans.Height()
 	txiHeight, err := cac.txiTx.CountWords()
 	if err != nil {
 		return -1, err
