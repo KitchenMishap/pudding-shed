@@ -85,7 +85,7 @@ var trans_b2_t0 = Transaction{
 // TXIs
 var transIndex_txi_b2_t1_txi0 = TransIndex{TransHandle: TransHandle{HashHeight: HashHeight{height: 4}}, index: 0}
 var handle_txi_b2_t1_txi0 = TxiHandle{TxxHandle{TransIndex: transIndex_txi_b2_t1_txi0, txxHeight: -1, txxHeightSpecified: false}}
-var txi_b2_t1_txi0 = Txi{TxiHandle: handle_txi_b2_t1_txi0, sourceTxo: handle_txo_b2_t1_txo0}
+var txi_b2_t1_txi0 = Txi{TxiHandle: handle_txi_b2_t1_txi0, sourceTxo: handle_txo_b2_t2_txo0}
 
 // TXOs
 var transIndex_txo_b2_t1_txo0 = TransIndex{TransHandle: TransHandle{HashHeight: HashHeight{height: 4}}, index: 0}
@@ -123,7 +123,7 @@ var trans_b2_t2 = Transaction{
 // Block
 var block_b2 = Block{
 	BlockHandle:  BlockHandle{HashHeight{height: 2}},
-	transactions: []Transaction{trans_b2_t0, trans_b2_t1, trans_b2_t2}, // Note t1,t2 reversed
+	transactions: []Transaction{trans_b2_t0, trans_b2_t1, trans_b2_t2},
 }
 
 // ------------
