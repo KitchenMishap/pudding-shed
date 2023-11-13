@@ -55,6 +55,7 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		panic("cannot append a block out of sequence")
 	}
 
+	// First the "frames" of the transactions
 	nTrans, err := block.TransactionCount()
 	if err != nil {
 		return err
@@ -68,7 +69,7 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		if err != nil {
 			return err
 		}
-		transNum, err := cac.appendTransaction(blockChain, hTrans)
+		transNum, err := cac.appendTransactionFrame(blockChain, hTrans)
 		if err != nil {
 			return err
 		}
@@ -82,10 +83,28 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 			}
 		}
 	}
+
+	// Then the "contents" of the transactions
+	nTrans, err = block.TransactionCount()
+	if err != nil {
+		return err
+	}
+	if nTrans == 0 {
+		panic("this code assumes at least one transaction per block")
+		// Otherwise, not every entry in blkFirstTrans will be written
+	}
+	for t := int64(0); t < nTrans; t++ {
+		hTrans, err := block.NthTransaction(t)
+		if err != nil {
+			return err
+		}
+		_, err = cac.appendTransactionContents(blockChain, hTrans)
+	}
+
 	return nil
 }
 
-func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterface.IBlockChain,
+func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadinterface.IBlockChain,
 	hTrans chainreadinterface.ITransHandle) (int64, error) {
 	trans, err := blockChain.TransInterface(hTrans)
 	if err != nil {
@@ -106,6 +125,31 @@ func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterf
 		panic("cannot append a transaction out of sequence")
 	}
 
+	return transNum, nil
+}
+
+func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainreadinterface.IBlockChain,
+	hTrans chainreadinterface.ITransHandle) (int64, error) {
+	trans, err := blockChain.TransInterface(hTrans)
+	if err != nil {
+		return -1, err
+	}
+
+	// The transaction height might only be known on account of the chain we are appending to
+	transHeight := int64(-1)
+	if trans.HeightSpecified() {
+		transHeight = trans.Height()
+	} else {
+		transHash, err := trans.Hash()
+		if err != nil {
+			return -1, err
+		}
+		transHeight, err = cac.trnHashes.IndexOfHash(&transHash)
+		if err != nil {
+			return -1, err
+		}
+	}
+
 	nTxis, err := trans.TxiCount()
 	if err != nil {
 		return -1, err
@@ -115,7 +159,7 @@ func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterf
 	if err != nil {
 		return -1, err
 	}
-	err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transNum)
+	err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transHeight)
 	if err != nil {
 		return -1, err
 	}
@@ -146,7 +190,7 @@ func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterf
 	if err != nil {
 		return -1, err
 	}
-	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transNum)
+	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transHeight)
 	if err != nil {
 		return -1, err
 	}
@@ -168,7 +212,7 @@ func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterf
 		}
 	}
 
-	return transNum, nil
+	return transHeight, nil
 }
 
 func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
