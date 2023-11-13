@@ -96,3 +96,54 @@ func TestThirdTransaction_helper(blockchain chainreadinterface.IBlockChain, t *t
 		t.Error("2nd txo of third transaction should be 25 satoshis")
 	}
 }
+
+func TestBlock2Trans2_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
+	block := blockchain.GenesisBlock()
+	if block.IsInvalid() {
+		t.Error("could not get GenesisBlock from blockchain")
+	}
+	nextBlock, err := blockchain.NextBlock(block)
+	if err != nil {
+		t.Error("could not get NextBlock from blockchain")
+	}
+	thirdBlock, err := blockchain.NextBlock(nextBlock)
+	if err != nil {
+		t.Error("could not get NextBlock (2nd) from blockchain")
+	}
+	blockInt, err := blockchain.BlockInterface(thirdBlock)
+	if err != nil {
+		t.Error("could not get BlockInterface from blockchain")
+	}
+	transHandle, err := blockInt.NthTransaction(1)
+	if err != nil {
+		t.Error("could not get transaction 1 from block 2")
+	}
+	transInt, err := blockchain.TransInterface(transHandle)
+	if err != nil {
+		t.Error("could not get transaction interface")
+	}
+	txiCount, err := transInt.TxiCount()
+	if err != nil {
+		t.Error("could not get TxiCount of transaction")
+	}
+	if txiCount != 1 {
+		t.Error("block 2 transaction 1 should have one txi")
+	}
+	txiHandle, err := transInt.NthTxi(0)
+	if err != nil {
+		t.Error("could not get NthTxi of transaction")
+	}
+	txiInt, err := blockchain.TxiInterface(txiHandle)
+	if err != nil {
+		t.Error("could not get TxiInterface from blockchain")
+	}
+	sourceTxoHandle, err := txiInt.SourceTxo()
+	if err != nil {
+		t.Error("could not get sourceTxo handle from txi interface")
+	}
+	sourceTxoTrans := sourceTxoHandle.ParentTrans()
+	sourceTransHeight := sourceTxoTrans.Height()
+	if sourceTransHeight != 5 {
+		t.Error("source trans should be height 5")
+	}
+}

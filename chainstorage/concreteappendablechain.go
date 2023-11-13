@@ -172,6 +172,8 @@ func (cac *concreteAppendableChain) appendTransaction(blockChain chainreadinterf
 }
 
 func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
+	alwaysUseTransHash := true // Useful for testing
+
 	sourceTxo, err := txi.SourceTxo()
 	if err != nil {
 		return -1, err
@@ -184,7 +186,7 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	// sourceTrans is a transaction in the source chain
 	// But the source chain (for example, Bitcoin Core) might not have heights for transactions
 	sourceTransHeight := int64(-1)
-	if !sourceTrans.HeightSpecified() {
+	if alwaysUseTransHash || !sourceTrans.HeightSpecified() {
 		// So sourceTrans must be a transaction specified by a hash
 		if !sourceTrans.HashSpecified() {
 			panic("source chain transactions must have height or hash")

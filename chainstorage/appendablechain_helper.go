@@ -7,6 +7,7 @@ import (
 )
 
 func TestCopyOfTinyChain_Helper(bc chainreadinterface.IBlockChain, t *testing.T) {
+	tinychain.TestBlock2Trans2_helper(bc, t)
 	tinychain.TestThirdTransaction_helper(bc, t)
 	tinychain.TestLatestNextTransaction_helper(bc, t)
 	tinychain.TestTransaction_helper(bc, t)
