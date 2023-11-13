@@ -141,8 +141,8 @@ func TestBlock2Trans2_helper(blockchain chainreadinterface.IBlockChain, t *testi
 	if err != nil {
 		t.Error("could not get sourceTxo handle from txi interface")
 	}
-	sourceTxoTrans := sourceTxoHandle.ParentTrans()
-	sourceTransHeight := sourceTxoTrans.Height()
+	sourceTxoTransHandle := sourceTxoHandle.ParentTrans()
+	sourceTransHeight := sourceTxoTransHandle.Height()
 	if sourceTransHeight != 5 {
 		t.Error("source trans should be height 5")
 	}
