@@ -1,6 +1,7 @@
 package jsonblock
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -33,6 +34,21 @@ func TestBlocks(t *testing.T) {
 		}
 		if len(ja[b].Tx[0].Vout) < 1 {
 			t.Error("coinbase transaction with no vouts")
+		}
+		encoded, err := encodeJsonBlock(ja[b])
+		if err != nil {
+			t.Error(err)
+		}
+		parsed, err := parseJsonBlock(encoded)
+		if err != nil {
+			t.Error(err)
+		}
+		reEncoded, err := encodeJsonBlock(parsed)
+		if err != nil {
+			t.Error(err)
+		}
+		if !bytes.Equal(encoded, reEncoded) {
+			t.Error("encode/parse/encode doesn't give same result")
 		}
 	}
 }
