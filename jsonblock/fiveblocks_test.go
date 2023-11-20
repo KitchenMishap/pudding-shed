@@ -23,14 +23,8 @@ func TestBlocks(t *testing.T) {
 		if ja[b].Height != b {
 			t.Error("block height wrong")
 		}
-		if len(ja[b].Hash) != 64 {
-			t.Error("block hash should be 64 chars")
-		}
 		if len(ja[b].Tx) < 1 {
 			t.Error("block without any transactions")
-		}
-		if len(ja[b].Tx[0].Txid) != 64 {
-			t.Error("transaction id should be 64 chars")
 		}
 		if len(ja[b].Tx[0].Vout) < 1 {
 			t.Error("coinbase transaction with no vouts")

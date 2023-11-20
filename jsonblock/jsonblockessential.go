@@ -2,6 +2,7 @@ package jsonblock
 
 import (
 	"encoding/json"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 // In here are partial specifications of the JSON format for a block (and contained transactions etc) coming from Bitcoin core REST API.
@@ -10,18 +11,18 @@ import (
 
 type jsonBlockEssential struct {
 	Height int64
-	Hash   string
+	Hash   indexedhashes.Sha256
 	Tx     []jsonTransEssential
 }
 
 type jsonTransEssential struct {
-	Txid string
+	Txid indexedhashes.Sha256
 	Vin  []jsonTxiEssential
 	Vout []jsonTxoEssential
 }
 
 type jsonTxiEssential struct {
-	Txid string
+	Txid indexedhashes.Sha256
 	Vout int64
 }
 
@@ -30,18 +31,18 @@ type jsonTxoEssential struct {
 }
 
 func parseJsonBlock(jsonBytes []byte) (*jsonBlockEssential, error) {
-	var obj jsonBlockEssential
-	err := json.Unmarshal(jsonBytes, &obj)
+	var res jsonBlockEssential
+	err := json.Unmarshal(jsonBytes, &res)
 	if err != nil {
 		return nil, err
 	}
-	return &obj, nil
+	return &res, nil
 }
 
 func encodeJsonBlock(jsonBlock *jsonBlockEssential) ([]byte, error) {
-	marshal, err := json.Marshal(jsonBlock)
+	jsonBytes, err := json.Marshal(jsonBlock)
 	if err != nil {
 		return nil, err
 	}
-	return marshal, nil
+	return jsonBytes, nil
 }
