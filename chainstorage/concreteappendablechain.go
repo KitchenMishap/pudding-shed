@@ -216,7 +216,12 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 }
 
 func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
-	alwaysUseTransHash := true // Useful for testing
+	alwaysUseTransHash := false // Useful for testing
+
+	// Note that we have no concept of a "coinbase txi". Instead we of course have coinbase transactions,
+	// but these are DEFINED as having no txis. This is in contrast to Bitcoin Core's JSON format.
+
+	// Txi's therefore always have a source txo
 
 	sourceTxo, err := txi.SourceTxo()
 	if err != nil {

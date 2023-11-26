@@ -20,13 +20,13 @@ func TestBlocks(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if ja[b].Height != b {
+		if int64(ja[b].J_height) != b {
 			t.Error("block height wrong")
 		}
-		if len(ja[b].Tx) < 1 {
+		if len(ja[b].J_tx) < 1 {
 			t.Error("block without any transactions")
 		}
-		if len(ja[b].Tx[0].Vout) < 1 {
+		if len(ja[b].J_tx[0].J_vout) < 1 {
 			t.Error("coinbase transaction with no vouts")
 		}
 		encoded, err := encodeJsonBlock(ja[b])
@@ -45,4 +45,12 @@ func TestBlocks(t *testing.T) {
 			t.Error("encode/parse/encode doesn't give same result")
 		}
 	}
+}
+
+func TestGenesisHandle(t *testing.T) {
+	TestGenesisHandle_helper(&TheOneBlockChain, t)
+}
+
+func TestInvalidHandle(t *testing.T) {
+	TestInvalidHandle_helper(&TheOneBlockChain, t)
 }

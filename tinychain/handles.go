@@ -43,6 +43,9 @@ type TransHandle struct {
 	HashHeight
 }
 
+func (th *TransHandle) IndicesPath() (int64, int64) { return -1, -1 }
+func (th *TransHandle) IndicesPathSpecified() bool  { return false }
+
 func (th *TransHandle) IsTransHandle() {
 }
 
@@ -66,7 +69,8 @@ type TxxHandle struct {
 	txxHeightSpecified bool
 }
 
-// TxiHandle implements ITxiHandle
+// tinychain.TxiHandle implements chainreadinterface.ITxiHandle
+var _ chainreadinterface.ITxiHandle = (*TxiHandle)(nil) // Check that implements
 type TxiHandle struct {
 	TxxHandle
 }
@@ -86,11 +90,11 @@ func (txi *TxiHandle) ParentSpecified() bool {
 func (th *TxiHandle) TxiHeightSpecified() bool {
 	return false
 }
+func (th *TxiHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (th *TxiHandle) IndicesPathSpecified() bool         { return false }
 
-// Check that implements
-var _ chainreadinterface.ITxiHandle = (*TxiHandle)(nil)
-
-// TxoHandle implements ITxoHandle
+// tinychain.TxoHandle implements chainreadinterface.ITxoHandle
+var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil) // Check that implements
 type TxoHandle struct {
 	TxxHandle
 }
@@ -104,12 +108,11 @@ func (txo *TxoHandle) ParentIndex() int64 {
 func (txo *TxoHandle) TxoHeight() int64 {
 	return -1
 }
-func (th *TxoHandle) ParentSpecified() bool {
+func (txo *TxoHandle) ParentSpecified() bool {
 	return true
 }
-func (th *TxoHandle) TxoHeightSpecified() bool {
+func (txo *TxoHandle) TxoHeightSpecified() bool {
 	return false
 }
-
-// Check that implements
-var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil)
+func (txo *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txo *TxoHandle) IndicesPathSpecified() bool         { return false }

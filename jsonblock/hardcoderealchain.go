@@ -18,3 +18,15 @@ func HardCodedJsonBlock(height int64) string {
 func HardCodedJsonBlockCount() int64 {
 	return int64(len(hardCodedJsonBlocks))
 }
+
+// implements IBlockJsonFetcher
+var _ IBlockJsonFetcher = (*hardCodedBlockFetcher)(nil) // Check that implements
+type hardCodedBlockFetcher struct {
+}
+
+func (fbf *hardCodedBlockFetcher) CountBlocks() (int64, error) {
+	return HardCodedJsonBlockCount(), nil
+}
+func (fbf *hardCodedBlockFetcher) FetchBlockJsonBytes(height int64) ([]byte, error) {
+	return []byte(HardCodedJsonBlock(height)), nil
+}

@@ -7,27 +7,39 @@ import (
 
 // In here are partial specifications of the JSON format for a block (and contained transactions etc) coming from Bitcoin core REST API.
 // They are partial as we're not interested in everything that's in the JSON.
-// Hence the word "essential"
+// Hence the word "essential".
+
+// SEE ALSO transaction.go, where these json types are furnished with functions to implement various interfaces
 
 type jsonBlockEssential struct {
-	Height int64
-	Hash   indexedhashes.Sha256
-	Tx     []jsonTransEssential
+	J_height int                  `json:"height"`
+	J_hash   string               `json:"hash"`
+	J_tx     []jsonTransEssential `json:"tx"`
+	hash     indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 }
 
 type jsonTransEssential struct {
-	Txid indexedhashes.Sha256
-	Vin  []jsonTxiEssential
-	Vout []jsonTxoEssential
+	J_txid string               `json:"txid"`
+	J_vin  []jsonTxiEssential   `json:"vin"`
+	J_vout []jsonTxoEssential   `json:"vout"`
+	txid   indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	handle TransHandle          `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 }
 
 type jsonTxiEssential struct {
-	Txid indexedhashes.Sha256
-	Vout int64
+	J_txid       string               `json:"txid"`
+	J_vout       int                  `json:"vout"`
+	txid         indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	parentTrans  TransHandle          `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+	parentVIndex int64                `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+	sourceTrans  TransHandle          `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 }
 
 type jsonTxoEssential struct {
-	Value float64
+	J_value      float64     `json:"value"`
+	satoshis     int64       `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	parentTrans  TransHandle `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+	parentVIndex int64       `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 }
 
 func parseJsonBlock(jsonBytes []byte) (*jsonBlockEssential, error) {
@@ -39,8 +51,8 @@ func parseJsonBlock(jsonBytes []byte) (*jsonBlockEssential, error) {
 	return &res, nil
 }
 
-func encodeJsonBlock(jsonBlock *jsonBlockEssential) ([]byte, error) {
-	jsonBytes, err := json.Marshal(jsonBlock)
+func encodeJsonBlock(block *jsonBlockEssential) ([]byte, error) {
+	jsonBytes, err := json.Marshal(block)
 	if err != nil {
 		return nil, err
 	}

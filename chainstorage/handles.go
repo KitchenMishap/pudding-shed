@@ -90,11 +90,10 @@ func (th *TransHandle) HeightSpecified() bool {
 func (th *TransHandle) HashSpecified() bool {
 	return true
 }
-func (th *TransHandle) IsTransHandle() {
-}
-func (th *TransHandle) IsInvalid() bool {
-	return th.Height() == -1
-}
+func (th *TransHandle) IndicesPath() (int64, int64) { return -1, -1 }
+func (th *TransHandle) IndicesPathSpecified() bool  { return false }
+func (th *TransHandle) IsTransHandle()              {}
+func (th *TransHandle) IsInvalid() bool             { return th.Height() == -1 }
 
 // TransIndex in package chainstorage
 type TransIndex struct {
@@ -135,6 +134,8 @@ func (txi *TxiHandle) ParentSpecified() bool {
 func (txi *TxiHandle) TxiHeightSpecified() bool {
 	return txi.txxHeightSpecified
 }
+func (txi *TxiHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txi *TxiHandle) IndicesPathSpecified() bool         { return false }
 
 // TxoHandle implements ITxoHandle
 type TxoHandle struct {
@@ -161,3 +162,5 @@ func (txo *TxoHandle) ParentSpecified() bool {
 func (txo *TxoHandle) TxoHeightSpecified() bool {
 	return txo.txxHeightSpecified
 }
+func (txo *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txo *TxoHandle) IndicesPathSpecified() bool         { return false }

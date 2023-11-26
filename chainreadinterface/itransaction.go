@@ -8,6 +8,9 @@ type ITransaction interface {
 	NthTxo(n int64) (ITxoHandle, error)
 }
 
+// Note that the Bitcoin Core "standard" json for a coinbase transaction DOES have an entry in vin for "coinbase".
+// We instead define a coinbase transaction as not having ANY vins (not even coinbase)
+
 type ITxi interface {
 	ITxiHandle
 	SourceTxo() (ITxoHandle, error)

@@ -6,7 +6,7 @@ type IBlockTree interface {
 	GenesisBlock() IBlockHandle
 	ParentBlock(block IBlockHandle) IBlockHandle
 	GenesisTransaction() (ITransHandle, error)
-	PreviousTransaction(trans ITransHandle) ITransHandle
+	PreviousTransaction(trans ITransHandle) ITransHandle // Todo [  ] Cannot be implemented in some cases
 	IsBlockTree() bool
 	BlockInterface(IBlockHandle) (IBlock, error)
 	TransInterface(ITransHandle) (ITransaction, error)

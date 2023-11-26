@@ -5,81 +5,74 @@ import (
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
-// jsonblock.Transaction implements chainreadinterface.ITransaction
-var _ chainreadinterface.ITransaction = (*Transaction)(nil) // Check that implements
-type Transaction struct {
-	json jsonTransEssential
+// jsonblock.jsonTransEssential implements chainreadinterface.ITransaction
+var _ chainreadinterface.ITransaction = (*jsonTransEssential)(nil) // Check that implements
+
+// Functions in jsonBlock.jsonTransEssential that implement chainreadinterface.ITransHandle as part of chainreadinterface.ITransaction
+
+func (t *jsonTransEssential) Height() int64                       { return -1 }
+func (t *jsonTransEssential) Hash() (indexedhashes.Sha256, error) { return t.txid, nil }
+func (t *jsonTransEssential) IndicesPath() (int64, int64)         { return -1, -1 }
+func (t *jsonTransEssential) HeightSpecified() bool               { return false }
+func (t *jsonTransEssential) HashSpecified() bool                 { return true }
+func (t *jsonTransEssential) IndicesPathSpecified() bool          { return false }
+func (t *jsonTransEssential) IsTransHandle()                      {}
+func (t *jsonTransEssential) IsInvalid() bool                     { return false } // A jsonTransEssential is always a valid handle
+
+// Functions in jsonBlock.jsonTransEssential that implement chainreadinterface.ITransaction
+
+func (t *jsonTransEssential) TxiCount() (int64, error) {
+	return int64(len(t.J_vin)), nil
+}
+func (t *jsonTransEssential) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) {
+	return &t.J_vin[n], nil
+}
+func (t *jsonTransEssential) TxoCount() (int64, error) {
+	return int64(len(t.J_vout)), nil
+}
+func (t *jsonTransEssential) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
+	return &t.J_vout[n], nil
 }
 
-// Functions in jsonBlock.Transaction that implement chainreadinterface.ITransHandle as part of chainreadinterface.ITransaction
+// jsonblock.jsonTxiEssential implements chainreadinterface.ITxi
+var _ chainreadinterface.ITxi = (*jsonTxiEssential)(nil) // Check that implements
 
-func (t *Transaction) Height() int64                       { return -1 }
-func (t *Transaction) Hash() (indexedhashes.Sha256, error) { return t.json.Txid, nil }
-func (t *Transaction) HeightSpecified() bool               { return false }
-func (t *Transaction) HashSpecified() bool                 { return true }
-func (t *Transaction) IsTransHandle()                      {}
-func (t *Transaction) IsInvalid() bool                     { return false } // A Transaction is always a valid handle
+// functions in jsonblock.jsonTxiEssential to implement chainreadinterface.ITxiHandle as part of chainreadinterface.ITxi
 
-// Functions in jsonBlock.Transaction that implement chainreadinterface.ITransaction
-
-func (t *Transaction) TxiCount() (int64, error) { return int64(len(t.json.Vin)), nil }
-func (t *Transaction) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) {
-	var txi Txi
-	txi.parentTrans = t
-	txi.parentIndex = n
-	return &txi, nil
+func (txi *jsonTxiEssential) ParentTrans() chainreadinterface.ITransHandle { return &txi.parentTrans }
+func (txi *jsonTxiEssential) ParentIndex() int64                           { return txi.parentVIndex }
+func (txi *jsonTxiEssential) TxiHeight() int64                             { return -1 }
+func (txi *jsonTxiEssential) IndicesPath() (int64, int64, int64) {
+	return txi.parentTrans.blockHeight, txi.parentTrans.nthInBlock, txi.parentVIndex
 }
-func (t *Transaction) TxoCount() (int64, error) { return int64(len(t.json.Vout)), nil }
-func (t *Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
+func (txi *jsonTxiEssential) ParentSpecified() bool      { return true }
+func (txi *jsonTxiEssential) TxiHeightSpecified() bool   { return false }
+func (txi *jsonTxiEssential) IndicesPathSpecified() bool { return true }
+
+// functions in jsonblock.jsonTxiEssential to implement chainreadinterface.ITxi
+
+func (txi *jsonTxiEssential) SourceTxo() (chainreadinterface.ITxoHandle, error) {
 	var txo TxoHandle
-	txo.txid = t.json.Txid
-	txo.vout = n
+	txo.transHandle = txi.sourceTrans
+	txo.vIndex = int64(txi.J_vout)
 	return &txo, nil
 }
 
-// jsonblock.Txi implements chainreadinterface.ITxi and is also used for chainreadinterface.ITxiHandle
-var _ chainreadinterface.ITxi = (*Txi)(nil) // Check that implements
-type Txi struct {
-	parentTrans *Transaction // A jsonblock.Txi only exists in the context of a transaction, so just use ptr
-	parentIndex int64
+// jsonblock.jsonTxoEssential implements chainreadinterface.ITxo
+var _ chainreadinterface.ITxo = (*jsonTxoEssential)(nil) // Check that implements
+
+// functions in jsonblock.jsonTxoEssential to implement chainreadinterface.ITxoHandle as part of chainreadinterface.ITxo
+
+func (txo *jsonTxoEssential) ParentTrans() chainreadinterface.ITransHandle { return &txo.parentTrans }
+func (txo *jsonTxoEssential) ParentIndex() int64                           { return txo.parentVIndex }
+func (txo *jsonTxoEssential) TxoHeight() int64                             { return -1 }
+func (txo *jsonTxoEssential) IndicesPath() (int64, int64, int64) {
+	return txo.parentTrans.blockHeight, txo.parentTrans.nthInBlock, txo.parentVIndex
 }
+func (txo *jsonTxoEssential) ParentSpecified() bool      { return true }
+func (txo *jsonTxoEssential) TxoHeightSpecified() bool   { return false }
+func (txo *jsonTxoEssential) IndicesPathSpecified() bool { return true }
 
-// functions in jsonblock.Txi to implement chainreadinterface.ITxiHandle
+// functions in jsonblock.jsonTxoEssential to implement chainreadinterface.ITxo
 
-func (txi *Txi) ParentTrans() chainreadinterface.ITransHandle { return txi.parentTrans }
-func (txi *Txi) ParentIndex() int64                           { return txi.parentIndex }
-func (txi *Txi) TxiHeight() int64                             { return -1 }
-func (txi *Txi) ParentSpecified() bool                        { return true }
-func (txi *Txi) TxiHeightSpecified() bool                     { return false }
-
-// functions in jsonblock.Txi to implement chainreadinterface.ITxi
-
-func (txi *Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
-	var txo TxoHandle
-	vinElement := &txi.parentTrans.json.Vin[txi.parentIndex]
-	txo.txid = vinElement.Txid
-	txo.vout = vinElement.Vout
-	return &txo, nil
-}
-
-// jsonblock.Txo implements chainreadinterface.ITxo
-var _ chainreadinterface.ITxo = (*Txo)(nil) // Check that implements
-type Txo struct {
-	parentTrans *Transaction // A jsonblock.Txo only exists in the context of a transaction, so just use ptr
-	parentIndex int64
-}
-
-// functions in jsonblock.Txo to implement chainreadinterface.ITxoHandle as part of chainreadinterface.ITxo
-
-func (txo *Txo) ParentTrans() chainreadinterface.ITransHandle { return txo.parentTrans }
-func (txo *Txo) ParentIndex() int64                           { return txo.parentIndex }
-func (txo *Txo) TxoHeight() int64                             { return -1 }
-func (txo *Txo) ParentSpecified() bool                        { return true }
-func (txo *Txo) TxoHeightSpecified() bool                     { return false }
-
-// functions in jsonblock.Txo to implement chainreadinterface.ITxo
-
-func (txo *Txo) Satoshis() (int64, error) {
-	const SatoshisPerBitcoin = float64(100_000_000)
-	return int64(txo.parentTrans.json.Vout[txo.parentIndex].Value * SatoshisPerBitcoin), nil
-}
+func (txo *jsonTxoEssential) Satoshis() (int64, error) { return txo.satoshis, nil }

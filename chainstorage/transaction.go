@@ -30,7 +30,9 @@ func (tr *Transaction) HeightSpecified() bool {
 func (tr *Transaction) HashSpecified() bool {
 	return true
 }
-func (tr *Transaction) IsTransHandle() {}
+func (th *Transaction) IndicesPath() (int64, int64) { return -1, -1 }
+func (th *Transaction) IndicesPathSpecified() bool  { return false }
+func (tr *Transaction) IsTransHandle()              {}
 func (tr *Transaction) IsInvalid() bool {
 	return tr.height == -1
 }
@@ -146,6 +148,8 @@ func (txi *Txi) ParentSpecified() bool {
 func (txi *Txi) TxiHeightSpecified() bool {
 	return true
 }
+func (txi *Txi) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txi *Txi) IndicesPathSpecified() bool         { return false }
 
 // Functions to implement ITxi
 
@@ -200,6 +204,8 @@ func (txo *Txo) ParentSpecified() bool {
 func (txo *Txo) TxoHeightSpecified() bool {
 	return true
 }
+func (txo *Txo) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txo *Txo) IndicesPathSpecified() bool         { return false }
 
 // Functions to implement ITxo
 

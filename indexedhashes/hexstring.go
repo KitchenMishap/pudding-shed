@@ -13,7 +13,7 @@ func hashHexToBin(hexAscii string) ([32]byte, error) {
 	return res, err
 }
 
-func hashHexToSha256(hexAscii string, sha256 *Sha256) error {
+func HashHexToSha256(hexAscii string, sha256 *Sha256) error {
 	err := hashHexToSha256Internal(hexAscii, hexLookup, sha256)
 	return err
 }
@@ -134,7 +134,7 @@ func hashBinToHexString(hashBin *[32]byte) string {
 	return hex.EncodeToString(reversed[0:32])
 }
 
-func hashSha256ToHexString(hash *Sha256) string {
+func HashSha256ToHexString(hash *Sha256) string {
 	var reversed [32]byte
 	for i := 0; i < 32; i++ {
 		reversed[i] = hash[31-i]
