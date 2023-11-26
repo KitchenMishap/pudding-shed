@@ -12,7 +12,7 @@ func TestBlocks(t *testing.T) {
 		t.Error("Wrong number of blocks")
 	}
 	var sa [expectedCount]string
-	var ja [expectedCount]*jsonBlockEssential
+	var ja [expectedCount]*JsonBlockEssential
 	for b := int64(0); b < count; b++ {
 		sa[b] = HardCodedJsonBlock(b)
 		var err error
@@ -48,9 +48,11 @@ func TestBlocks(t *testing.T) {
 }
 
 func TestGenesisHandle(t *testing.T) {
-	TestGenesisHandle_helper(&TheOneBlockChain, t)
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	TestGenesisHandle_helper(aOneBlockChain, t)
 }
 
 func TestInvalidHandle(t *testing.T) {
-	TestInvalidHandle_helper(&TheOneBlockChain, t)
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	TestInvalidHandle_helper(aOneBlockChain, t)
 }

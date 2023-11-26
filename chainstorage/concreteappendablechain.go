@@ -216,8 +216,6 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 }
 
 func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
-	alwaysUseTransHash := false // Useful for testing
-
 	// Note that we have no concept of a "coinbase txi". Instead we of course have coinbase transactions,
 	// but these are DEFINED as having no txis. This is in contrast to Bitcoin Core's JSON format.
 
@@ -233,26 +231,39 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	sourceTrans := sourceTxo.ParentTrans()
 	sourceIndex := sourceTxo.ParentIndex()
 	// sourceTrans is a transaction in the source chain
+	// For a concreteAppendableChain, we need to store the sourceTransHeight
 	// But the source chain (for example, Bitcoin Core) might not have heights for transactions
+	// And furthermore, it might not even have hashes for transactions
 	sourceTransHeight := int64(-1)
-	if alwaysUseTransHash || !sourceTrans.HeightSpecified() {
-		// So sourceTrans must be a transaction specified by a hash
-		if !sourceTrans.HashSpecified() {
-			panic("source chain transactions must have height or hash")
+	// We try the following order:
+	// (a) sourceTransHeight directly specified
+	// (b) sourceTrans specified by indices path (block height and nthTransInBlock)
+	// (c) sourceTrans specified hash
+	if sourceTrans.HeightSpecified() {
+		sourceTransHeight = sourceTrans.Height()
+	} else if sourceTrans.IndicesPathSpecified() {
+		sourceTransBlockHeight, sourceTransNthTransInBlock := sourceTrans.IndicesPath()
+		// Get the trans height of the first trans in the relevant block,
+		// ironically this comes from the chain we're building
+		firstTransHeightInSourceTransBlock, err := cac.blkFirstTrans.ReadWordAt(sourceTransBlockHeight)
+		if err != nil {
+			return -1, err
 		}
-		// In concreteAppendableChain, transactions are primarily identified by height
-		// But we'll need to use the hash to determine the height, as the source hash is all we've got
+		sourceTransHeight = firstTransHeightInSourceTransBlock + sourceTransNthTransInBlock
+	} else if sourceTrans.HashSpecified() {
+		// We'll need to use the hash to determine the source transaction height, as the source hash is all we've got
 		sourceTransHash, err := sourceTrans.Hash()
 		if err != nil {
 			return -1, err
 		}
-		// To determine the height of the transaction (from the source), ironically we'll have to use the chain we're building
+		// To determine the height of the transaction (from the hash),
+		// ironically we'll have to use the chain we're appending to
 		sourceTransHeight, err = cac.trnHashes.IndexOfHash(&sourceTransHash)
 		if err != nil {
 			return -1, err
 		}
 	} else {
-		sourceTransHeight = sourceTrans.Height()
+		panic("source trans must be specified somehow")
 	}
 	txiHeight, err := cac.txiTx.CountWords()
 	if err != nil {

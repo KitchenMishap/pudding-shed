@@ -11,7 +11,7 @@ import (
 
 // SEE ALSO transaction.go, where these json types are furnished with functions to implement various interfaces
 
-type jsonBlockEssential struct {
+type JsonBlockEssential struct {
 	J_height int                  `json:"height"`
 	J_hash   string               `json:"hash"`
 	J_tx     []jsonTransEssential `json:"tx"`
@@ -42,8 +42,8 @@ type jsonTxoEssential struct {
 	parentVIndex int64       `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 }
 
-func parseJsonBlock(jsonBytes []byte) (*jsonBlockEssential, error) {
-	var res jsonBlockEssential
+func parseJsonBlock(jsonBytes []byte) (*JsonBlockEssential, error) {
+	var res JsonBlockEssential
 	err := json.Unmarshal(jsonBytes, &res)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func parseJsonBlock(jsonBytes []byte) (*jsonBlockEssential, error) {
 	return &res, nil
 }
 
-func encodeJsonBlock(block *jsonBlockEssential) ([]byte, error) {
+func encodeJsonBlock(block *JsonBlockEssential) ([]byte, error) {
 	jsonBytes, err := json.Marshal(block)
 	if err != nil {
 		return nil, err

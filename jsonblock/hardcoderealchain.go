@@ -20,13 +20,13 @@ func HardCodedJsonBlockCount() int64 {
 }
 
 // implements IBlockJsonFetcher
-var _ IBlockJsonFetcher = (*hardCodedBlockFetcher)(nil) // Check that implements
-type hardCodedBlockFetcher struct {
+var _ IBlockJsonFetcher = (*HardCodedBlockFetcher)(nil) // Check that implements
+type HardCodedBlockFetcher struct {
 }
 
-func (fbf *hardCodedBlockFetcher) CountBlocks() (int64, error) {
+func (fbf *HardCodedBlockFetcher) CountBlocks() (int64, error) {
 	return HardCodedJsonBlockCount(), nil
 }
-func (fbf *hardCodedBlockFetcher) FetchBlockJsonBytes(height int64) ([]byte, error) {
+func (fbf *HardCodedBlockFetcher) FetchBlockJsonBytes(height int64) ([]byte, error) {
 	return []byte(HardCodedJsonBlock(height)), nil
 }

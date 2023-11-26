@@ -1,6 +1,7 @@
 package chainstorage
 
 import (
+	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"os"
 	"testing"
@@ -77,6 +78,8 @@ func TestCopyJsonChain(t *testing.T) {
 		t.Fail()
 	}
 
+	aOneBlockChain := jsonblock.CreateOneBlockChain(&jsonblock.HardCodedBlockFetcher{}, "Temp_Testing/JsonBlock")
+
 	acc, err := NewConcreteAppendableChainCreator("Temp_Testing/JsonChain")
 	if err != nil {
 		t.Fail()
@@ -90,30 +93,30 @@ func TestCopyJsonChain(t *testing.T) {
 		t.Fail()
 	}
 
-	hBlock := jsonblock.TheOneBlockChain.GenesisBlock()
-	block, err := jsonblock.TheOneBlockChain.BlockInterface(hBlock)
+	hBlock := aOneBlockChain.GenesisBlock()
+	block, err := aOneBlockChain.BlockInterface(hBlock)
 	if err != nil {
 		t.Fail()
 	}
-	err = ac.AppendBlock(&jsonblock.TheOneBlockChain, block)
+	err = ac.AppendBlock(aOneBlockChain, block)
 	if err != nil {
 		t.Fail()
 	}
 
-	hBlock, err = jsonblock.TheOneBlockChain.NextBlock(hBlock)
+	hBlock, err = aOneBlockChain.NextBlock(hBlock)
 	if err != nil {
 		t.Fail()
 	}
 	for !hBlock.IsInvalid() {
-		block, err := jsonblock.TheOneBlockChain.BlockInterface(hBlock)
+		block, err := aOneBlockChain.BlockInterface(hBlock)
 		if err != nil {
 			t.Fail()
 		}
-		err = ac.AppendBlock(&jsonblock.TheOneBlockChain, block)
+		err = ac.AppendBlock(aOneBlockChain, block)
 		if err != nil {
 			t.Fail()
 		}
-		hBlock, err = jsonblock.TheOneBlockChain.NextBlock(hBlock)
+		hBlock, err = aOneBlockChain.NextBlock(hBlock)
 		if err != nil {
 			t.Fail()
 		}
@@ -125,5 +128,66 @@ func TestCopyJsonChain(t *testing.T) {
 	err = ac.Close()
 	if err != nil {
 		t.Fail()
+	}
+}
+
+func TestCopyRealChain(t *testing.T) {
+	err := os.RemoveAll("Temp_Testing\\RealChain")
+	if err != nil {
+		t.Error(err)
+	}
+
+	var aReader corereader.CoreReader
+	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, "Temp_Testing\\RealChain")
+
+	acc, err := NewConcreteAppendableChainCreator("Temp_Testing\\RealChain")
+	if err != nil {
+		t.Error(err)
+	}
+	err = acc.Create()
+	if err != nil {
+		t.Error(err)
+	}
+	ac, _, err := acc.Open()
+	if err != nil {
+		t.Error(err)
+	}
+
+	hBlock := aOneBlockChain.GenesisBlock()
+	block, err := aOneBlockChain.BlockInterface(hBlock)
+	if err != nil {
+		t.Error(err)
+	}
+	err = ac.AppendBlock(aOneBlockChain, block)
+	if err != nil {
+		t.Error(err)
+	}
+
+	hBlock, err = aOneBlockChain.NextBlock(hBlock)
+	if err != nil {
+		t.Error(err)
+	}
+	for i := 0; i < 1000; i++ {
+		if i%100 == 0 {
+			println("Block ", i)
+		}
+
+		block, err := aOneBlockChain.BlockInterface(hBlock)
+		if err != nil {
+			t.Error(err)
+		}
+		err = ac.AppendBlock(aOneBlockChain, block)
+		if err != nil {
+			t.Error(err)
+		}
+		hBlock, err = aOneBlockChain.NextBlock(hBlock)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	err = ac.Close()
+	if err != nil {
+		t.Error(err)
 	}
 }

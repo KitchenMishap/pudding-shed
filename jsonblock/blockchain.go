@@ -11,17 +11,19 @@ type OneBlockChain struct {
 	blockFetcher       IBlockJsonFetcher
 	transLocationStore ITransLocatorStore
 	currentJsonBytes   []byte
-	currentBlock       *jsonBlockEssential
+	currentBlock       *JsonBlockEssential
 }
 
-var TheOneBlockChain = OneBlockChain{
-	blockFetcher:       &hardCodedBlockFetcher{},
-	transLocationStore: CreateOpenTransLocationStore("Temp_Testing\\TransLocation"),
-	currentJsonBytes:   nil,
-	currentBlock:       nil,
+func CreateOneBlockChain(fetcher IBlockJsonFetcher, foldername string) *OneBlockChain {
+	res := OneBlockChain{blockFetcher: fetcher,
+		transLocationStore: CreateOpenTransLocationStore(foldername + "/TransLocation"),
+		currentJsonBytes:   nil,
+		currentBlock:       nil,
+	}
+	return &res
 }
 
-func (obc *OneBlockChain) switchBlock(blockHeight int64) (*jsonBlockEssential, error) {
+func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, error) {
 	if obc.currentBlock == nil || int64(obc.currentBlock.J_height) != blockHeight {
 		bytes, err := obc.blockFetcher.FetchBlockJsonBytes(blockHeight)
 		if err != nil {
@@ -67,7 +69,7 @@ func (obc *OneBlockChain) switchBlock(blockHeight int64) (*jsonBlockEssential, e
 	return obc.currentBlock, nil
 }
 
-func postJsonRemoveCoinbaseTxis(block *jsonBlockEssential) error {
+func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) error {
 	// Coinbase Txi's are a transaction's entry in vin[] which represent the concept of coinbase in Bitcoin Core's JSON
 	// We detect them by way of absence of hash string
 
@@ -84,7 +86,7 @@ func postJsonRemoveCoinbaseTxis(block *jsonBlockEssential) error {
 	return nil
 }
 
-func postJsonEncodeSha256s(block *jsonBlockEssential) error {
+func postJsonEncodeSha256s(block *JsonBlockEssential) error {
 	// First the block hash
 	err := indexedhashes.HashHexToSha256(block.J_hash, &block.hash)
 	if err != nil {
@@ -101,7 +103,7 @@ func postJsonEncodeSha256s(block *jsonBlockEssential) error {
 		// Then the references to trans hashes in the txis
 		for nthTxi := range transPtr.J_vin {
 			txiPtr := &transPtr.J_vin[nthTxi]
-			err = indexedhashes.HashHexToSha256(txiPtr.J_txid, &transPtr.txid)
+			err = indexedhashes.HashHexToSha256(txiPtr.J_txid, &txiPtr.txid)
 			if err != nil {
 				return err
 			}
@@ -110,7 +112,7 @@ func postJsonEncodeSha256s(block *jsonBlockEssential) error {
 	return nil
 }
 
-func postJsonCalculateSatoshis(block *jsonBlockEssential) {
+func postJsonCalculateSatoshis(block *JsonBlockEssential) {
 	const satoshisPerBitcoin = float64(100_000_000)
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
@@ -121,7 +123,7 @@ func postJsonCalculateSatoshis(block *jsonBlockEssential) {
 	}
 }
 
-func postJsonGatherTransHashes(block *jsonBlockEssential, store ITransLocatorStore) error {
+func postJsonGatherTransHashes(block *JsonBlockEssential, store ITransLocatorStore) error {
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
 		err := store.StoreIndicesPathForHash(transPtr.txid, int64(block.J_height), int64(nthTrans))
@@ -132,7 +134,7 @@ func postJsonGatherTransHashes(block *jsonBlockEssential, store ITransLocatorSto
 	return nil
 }
 
-func postJsonArrayIndicesIntoElements(block *jsonBlockEssential) {
+func postJsonArrayIndicesIntoElements(block *JsonBlockEssential) {
 	// We copy Height into each element of the Tx array,
 	// And place each element's index into each element
 	for nth := range block.J_tx {
@@ -155,7 +157,7 @@ func postJsonArrayIndicesIntoElements(block *jsonBlockEssential) {
 
 // postJsonUpdateTransReferences() uses the accrued transaction hash map to
 // locate the txos (by way of block/nthTrans/vindex path indices) corresponding to each txi.
-func postJsonUpdateTransReferences(block *jsonBlockEssential, transStore ITransLocatorStore) error {
+func postJsonUpdateTransReferences(block *JsonBlockEssential, transStore ITransLocatorStore) error {
 	// Use the map to locate the txos (by indices path) referenced by trans hashes in the txis in this block
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
