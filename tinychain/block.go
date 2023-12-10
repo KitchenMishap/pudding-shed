@@ -2,26 +2,18 @@ package tinychain
 
 import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
 
-type block struct {
-	height       int64
-	transactions []transaction
+type Block struct {
+	BlockHandle
+	transactions []Transaction
 }
 
-func (b *block) BlockHandle() chainreadinterface.HBlock {
-	return theHandles.HBlockFromHeight(b.height)
+func (b *Block) TransactionCount() (int64, error) {
+	return int64(len(b.transactions)), nil
 }
 
-func (b *block) BlockHeight() int64 {
-	return b.height
-}
-
-func (b *block) TransactionCount() int64 {
-	return int64(len(b.transactions))
-}
-
-func (b block) NthTransactionHandle(n int64) chainreadinterface.HTransaction {
-	return theHandles.hTransactionFromHeight(b.transactions[n].height)
+func (b *Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
+	return &b.transactions[n], nil
 }
 
 // Compiler check that implements
-var _ chainreadinterface.IBlock = (*block)(nil)
+var _ chainreadinterface.IBlock = (*Block)(nil)

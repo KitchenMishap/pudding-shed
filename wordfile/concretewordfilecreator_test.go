@@ -7,11 +7,11 @@ import (
 )
 
 func TestConcreteWordFileCreator(t *testing.T) {
-	var creator1 = NewConcreteWordFileCreator("CreatorTesting1", "", 1)
-	var creator8 = NewConcreteWordFileCreator("CreatorTesting8", "", 8)
+	var creator1 = NewConcreteWordFileCreator("CreatorTesting1", "Temp_Testing", 1)
+	var creator8 = NewConcreteWordFileCreator("CreatorTesting8", "Temp_Testing", 8)
 
 	// Delete the wordfile manually from any previous test
-	os.Remove("CreatorTesting1.int")
+	os.Remove("Temp_Testing\\CreatorTesting1.int")
 
 	if creator1.WordFileExists() {
 		t.Error("WordFileExists() should return false")

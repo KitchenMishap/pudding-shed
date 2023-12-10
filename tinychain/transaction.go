@@ -2,34 +2,28 @@ package tinychain
 
 import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
 
-type transaction struct {
-	height int64
-	txis   []txi
-	txos   []txo
+// Transaction implements ITransaction
+type Transaction struct {
+	TransHandle
+	txis []Txi
+	txos []Txo
 }
 
-func (t *transaction) TransactionHandle() chainreadinterface.HTransaction {
-	h := handle{
-		height: t.height,
-	}
-	return h
+func (t *Transaction) TxiCount() (int64, error) {
+	return int64(len(t.txis)), nil
 }
 
-func (t *transaction) TxiCount() int64 {
-	return int64(len(t.txis))
+func (t *Transaction) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) {
+	return &t.txis[n], nil
 }
 
-func (t *transaction) NthTxiInterface(n int64) chainreadinterface.ITxi {
-	return &t.txis[n]
+func (t *Transaction) TxoCount() (int64, error) {
+	return int64(len(t.txos)), nil
 }
 
-func (t *transaction) TxoCount() int64 {
-	return int64(len(t.txos))
-}
-
-func (t *transaction) NthTxoInterface(n int64) chainreadinterface.ITxo {
-	return &t.txos[n]
+func (t *Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
+	return &t.txos[n], nil
 }
 
 // Compiler check that implements
-var _ chainreadinterface.ITransaction = (*transaction)(nil)
+var _ chainreadinterface.ITransaction = (*Transaction)(nil)

@@ -1,18 +1,22 @@
 package chainreadinterface
 
 type ITransaction interface {
-	TransactionHandle() HTransaction
-	TxiCount() int64
-	NthTxiInterface(n int64) ITxi
-	TxoCount() int64
-	NthTxoInterface(n int64) ITxo
+	ITransHandle
+	TxiCount() (int64, error)
+	NthTxi(n int64) (ITxiHandle, error)
+	TxoCount() (int64, error)
+	NthTxo(n int64) (ITxoHandle, error)
 }
 
+// Note that the Bitcoin Core "standard" json for a coinbase transaction DOES have an entry in vin for "coinbase".
+// We instead define a coinbase transaction as not having ANY vins (not even coinbase)
+
 type ITxi interface {
-	SourceTransaction() HTransaction
-	SourceIndex() int64
+	ITxiHandle
+	SourceTxo() (ITxoHandle, error)
 }
 
 type ITxo interface {
-	Satoshis() int64
+	ITxoHandle
+	Satoshis() (int64, error)
 }

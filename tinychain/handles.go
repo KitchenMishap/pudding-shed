@@ -1,38 +1,118 @@
 package tinychain
 
-import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
+import (
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+)
 
-// A handle implements the Handle interface
-// We choose to use heights for handles, held as int64's
-type handle struct {
+// A HashHeight for tinychain that doesn't store a hash
+// The hash is merely the hash of the height number
+type HashHeight struct {
 	height int64
 }
 
-// Implement Handle
-func (h handle) IsHandle() bool {
+func (hh *HashHeight) Height() int64 {
+	return hh.height
+}
+func (hh *HashHeight) Hash() (indexedhashes.Sha256, error) {
+	return HashOfInt(uint64(hh.height)), nil
+}
+func (hh *HashHeight) HeightSpecified() bool {
+	return true
+}
+func (hh *HashHeight) HashSpecified() bool {
 	return true
 }
 
-func (h handle) IsInvalid() bool {
-	return h.height == -1
+// BlockHandle implements IBlockHandle
+type BlockHandle struct {
+	HashHeight
+}
+
+func (bh *BlockHandle) IsBlockHandle() {
+}
+func (bh *BlockHandle) IsInvalid() bool {
+	return bh.Height() == -1
 }
 
 // Check that implements
-var _ chainreadinterface.Handle = (*handle)(nil)
+var _ chainreadinterface.IBlockHandle = (*BlockHandle)(nil)
 
-type handles struct {
+// TransHandle implements ITransHandle
+type TransHandle struct {
+	HashHeight
 }
 
-// Implement IHandles
-func (h *handles) HBlockFromHeight(hgt int64) chainreadinterface.HBlock {
-	return handle{height: hgt}
+func (th *TransHandle) IndicesPath() (int64, int64) { return -1, -1 }
+func (th *TransHandle) IndicesPathSpecified() bool  { return false }
+
+func (th *TransHandle) IsTransHandle() {
 }
-func (h *handles) HeightFromHBlock(han chainreadinterface.HBlock) int64 {
-	return han.(handle).height
+
+func (th *TransHandle) IsInvalid() bool {
+	return th.Height() == -1
 }
-func (h *handles) hTransactionFromHeight(hgt int64) chainreadinterface.HTransaction {
-	return handle{height: hgt}
+
+// Check that implements
+var _ chainreadinterface.ITransHandle = (*TransHandle)(nil)
+
+// A TransIndex for tinychain
+type TransIndex struct {
+	TransHandle
+	index int64
 }
-func (h *handles) heightFromHTransaction(han chainreadinterface.HTransaction) int64 {
-	return han.(handle).height
+
+// A TxxHandle for tinychain
+type TxxHandle struct {
+	TransIndex
+	txxHeight          int64
+	txxHeightSpecified bool
 }
+
+// tinychain.TxiHandle implements chainreadinterface.ITxiHandle
+var _ chainreadinterface.ITxiHandle = (*TxiHandle)(nil) // Check that implements
+type TxiHandle struct {
+	TxxHandle
+}
+
+func (txi *TxiHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txi.TransHandle
+}
+func (txi *TxiHandle) ParentIndex() int64 {
+	return txi.index
+}
+func (txi *TxiHandle) TxiHeight() int64 {
+	return -1
+}
+func (txi *TxiHandle) ParentSpecified() bool {
+	return true
+}
+func (th *TxiHandle) TxiHeightSpecified() bool {
+	return false
+}
+func (th *TxiHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (th *TxiHandle) IndicesPathSpecified() bool         { return false }
+
+// tinychain.TxoHandle implements chainreadinterface.ITxoHandle
+var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil) // Check that implements
+type TxoHandle struct {
+	TxxHandle
+}
+
+func (txo *TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	return &txo.TransHandle
+}
+func (txo *TxoHandle) ParentIndex() int64 {
+	return txo.index
+}
+func (txo *TxoHandle) TxoHeight() int64 {
+	return -1
+}
+func (txo *TxoHandle) ParentSpecified() bool {
+	return true
+}
+func (txo *TxoHandle) TxoHeightSpecified() bool {
+	return false
+}
+func (txo *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txo *TxoHandle) IndicesPathSpecified() bool         { return false }

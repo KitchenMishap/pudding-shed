@@ -1,22 +1,23 @@
 package tinychain
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestGenesisHandle(t *testing.T) {
-	genesisHandle := TheTinyChain.GenesisBlock()
-	genesisHeight := TheHandles.HeightFromHBlock(genesisHandle)
-	if genesisHeight != 0 {
-		t.Error()
-	}
-	if TheHandles.HBlockFromHeight(genesisHeight) != genesisHandle {
-		t.Error()
-	}
+	TestGenesisHandle_helper(TheTinyChain, t)
 }
 
 func TestInvalidHandle(t *testing.T) {
-	genesisHandle := TheTinyChain.GenesisBlock()
-	invalidHandle := TheTinyChain.ParentBlock(genesisHandle)
-	if !invalidHandle.IsInvalid() {
-		t.Error()
-	}
+	TestInvalidHandle_helper(TheTinyChain, t)
+}
+
+func TestHashEquality(t *testing.T) {
+	hBlock0 := BlockHandle{}
+	hBlock0.height = 0
+	hBlock00 := BlockHandle{}
+	hBlock00.height = 0
+	hBlock1 := BlockHandle{}
+	hBlock1.height = 1
+	TestHashEquality_helper(&hBlock0, &hBlock00, &hBlock1, t)
 }

@@ -26,7 +26,7 @@ func TestWordFile8(t *testing.T) {
 // mask is a mask the size of the maximum word
 func HelperWordfile(wordsize int64, mask int64, t *testing.T) {
 	// Create an empty file for testing
-	f, err := os.Create("WordfileTesting.int")
+	f, err := os.Create("Temp_Testing\\WordfileTesting.int")
 	defer func(f *os.File) {
 		err := f.Close()
 		if err != nil {
