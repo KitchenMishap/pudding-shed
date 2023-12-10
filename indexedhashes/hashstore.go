@@ -189,7 +189,7 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 					collider = 0
 				} else {
 					// End of chunk but not end of linked list
-					println("Benign code coverage check(4 of 4): Reached end of chunk that's not end of linked list")
+					// println("Benign code coverage check(4 of 4): Reached end of chunk that's not end of linked list")
 
 					chunk = nextChunk - 1
 					_, err = hs.collisionsFile.ReadAt(colliderBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
