@@ -58,8 +58,6 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 	fullName := filepath.Join(wfc.folder, wfc.name+".int")
 	file, err := os.OpenFile(fullName, os.O_RDWR, 0)
 	if err != nil {
-		log.Println(err)
-		log.Println("OpenWordFile(): Could not call os.OpenFile()")
 		return nil, err
 	}
 
@@ -70,8 +68,6 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, e
 	fullName := filepath.Join(wfc.folder, wfc.name+".int")
 	file, err := os.OpenFile(fullName, os.O_RDONLY, 0)
 	if err != nil {
-		log.Println(err)
-		log.Println("OpenWordFile(): Could not call os.OpenFile()")
 		return nil, err
 	}
 

@@ -76,3 +76,7 @@ func (txo *jsonTxoEssential) IndicesPathSpecified() bool { return true }
 // functions in jsonblock.jsonTxoEssential to implement chainreadinterface.ITxo
 
 func (txo *jsonTxoEssential) Satoshis() (int64, error) { return txo.satoshis, nil }
+
+func (t *jsonTransEssential) NonEssentialInts() (*map[string]int64, error) {
+	return &t.nonEssentialInts, nil
+}

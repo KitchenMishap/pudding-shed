@@ -19,14 +19,16 @@ type JsonBlockEssential struct {
 	hash     indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 
 	// Non essential integers
-	J_version      int64 `json:"version"`
-	J_time         int64 `json:"time"`
-	J_mediantime   int64 `json:"mediantime"`
-	J_nonce        int64 `json:"nonce"`
-	J_difficulty   int64 `json:"difficulty"`
-	J_strippedsize int64 `json:"strippedsize"`
-	J_size         int64 `json:"size"`
-	J_weight       int64 `json:"weight"`
+	// Changes here should be reflected in postJsonGatherNonEssentialInts()
+	J_version        int64            `json:"version"`
+	J_time           int64            `json:"time"`
+	J_mediantime     int64            `json:"mediantime"`
+	J_nonce          int64            `json:"nonce"`
+	J_difficulty     int64            `json:"difficulty"`
+	J_strippedsize   int64            `json:"strippedsize"`
+	J_size           int64            `json:"size"`
+	J_weight         int64            `json:"weight"`
+	nonEssentialInts map[string]int64 `json:"-"` // Does not appear in json. Calculated after passing of whole block
 }
 
 type jsonTransEssential struct {
@@ -37,11 +39,12 @@ type jsonTransEssential struct {
 	handle TransHandle          `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 
 	// Non essential integers
-	J_version  int64 `json:"version"`
-	J_size     int64 `json:"size"`
-	J_vsize    int64 `json:"vsize"`
-	J_weight   int64 `json:"weight"`
-	J_locktime int64 `json:"locktime"`
+	J_version        int64            `json:"version"`
+	J_size           int64            `json:"size"`
+	J_vsize          int64            `json:"vsize"`
+	J_weight         int64            `json:"weight"`
+	J_locktime       int64            `json:"locktime"`
+	nonEssentialInts map[string]int64 `json:"-"` // Does not appear in json. Calculated after passing of whole block
 }
 
 type jsonTxiEssential struct {

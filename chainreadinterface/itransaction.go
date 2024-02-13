@@ -6,6 +6,7 @@ type ITransaction interface {
 	NthTxi(n int64) (ITxiHandle, error)
 	TxoCount() (int64, error)
 	NthTxo(n int64) (ITxoHandle, error)
+	NonEssentialInts() (*map[string]int64, error)
 }
 
 // Note that the Bitcoin Core "standard" json for a coinbase transaction DOES have an entry in vin for "coinbase".

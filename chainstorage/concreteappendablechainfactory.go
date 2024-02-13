@@ -5,6 +5,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"path"
+	"slices"
 )
 
 type ConcreteAppendableChainCreator struct {
@@ -20,9 +21,12 @@ type ConcreteAppendableChainCreator struct {
 	txiTxWordFileCreator         *wordfile.ConcreteWordFileCreator
 	txiVoutWordFileCreator       *wordfile.ConcreteWordFileCreator
 	txoSatsWordFileCreator       *wordfile.ConcreteWordFileCreator
+	supportedBlkNeis             map[string]int
+	supportedTrnNeis             map[string]int
 }
 
-func NewConcreteAppendableChainCreator(folder string) (*ConcreteAppendableChainCreator, error) {
+func NewConcreteAppendableChainCreator(
+	folder string) (*ConcreteAppendableChainCreator, error) {
 	result := ConcreteAppendableChainCreator{}
 
 	result.blocksFolder = path.Join(folder, "Blocks")
@@ -46,6 +50,25 @@ func NewConcreteAppendableChainCreator(folder string) (*ConcreteAppendableChainC
 	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, 4)
 	result.txiVoutWordFileCreator = wordfile.NewConcreteWordFileCreator("vout", result.transactionInputsFolder, 4)
 	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, 8)
+
+	result.supportedBlkNeis = map[string]int{
+		"version":      4,
+		"time":         4,
+		"mediantime":   4,
+		"nonce":        4,
+		"difficulty":   8, // Actually real not int, but we truncate to integer part. We might still run out of bytes
+		"strippedsize": 4,
+		"size":         4,
+		"weight":       4,
+	}
+	result.supportedTrnNeis = map[string]int{
+		"version":  4,
+		"size":     4,
+		"vsize":    4,
+		"weight":   4,
+		"locktime": 4,
+	}
+
 	return &result, nil
 }
 
@@ -53,7 +76,7 @@ func (cacc *ConcreteAppendableChainCreator) Exists() bool {
 	return cacc.blockHashStoreCreator.HashStoreExists()
 }
 
-func (cacc *ConcreteAppendableChainCreator) Create() error {
+func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiNames []string) error {
 	if cacc.Exists() {
 		return errors.New("AppendableChain already exists")
 	}
@@ -89,6 +112,39 @@ func (cacc *ConcreteAppendableChainCreator) Create() error {
 	if err != nil {
 		return err
 	}
+
+	for supportedName, size := range cacc.supportedBlkNeis {
+		if slices.Contains(blkNeiNames, supportedName) {
+			blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size))
+			err = blkNonEssentialIntCreator.CreateWordFile()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, requestedName := range blkNeiNames {
+		_, supported := cacc.supportedBlkNeis[requestedName]
+		if !supported {
+			return errors.New(requestedName + " is not a supported block NonEssentialInt")
+		}
+	}
+
+	for supportedName, size := range cacc.supportedTrnNeis {
+		if slices.Contains(trnNeiNames, supportedName) {
+			trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size))
+			err = trnNonEssentialIntCreator.CreateWordFile()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, requestedName := range trnNeiNames {
+		_, supported := cacc.supportedTrnNeis[requestedName]
+		if !supported {
+			return errors.New(requestedName + " is not a supported transaction NonEssentialInt")
+		}
+	}
+
 	return nil
 }
 
@@ -155,5 +211,28 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.txiVout.Close()
 		return nil, nil, err
 	}
+
+	result.blkNonEssentialInts = make(map[string]wordfile.ReadWriteAtWordCounter)
+	// We try to open each of the supported block NonEssentialInt wordfiles.
+	// However they do not need to exist, and if they're not there we don't error.
+	for supportedName, size := range cacc.supportedBlkNeis {
+		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size))
+		wfile, err := blkNonEssentialIntCreator.OpenWordFile()
+		if err == nil {
+			result.blkNonEssentialInts[supportedName] = wfile
+		}
+	}
+
+	result.trnNonEssentialInts = make(map[string]wordfile.ReadWriteAtWordCounter)
+	// We try to open each of the supported transaction NonEssentialInt wordfiles.
+	// However they do not need to exist, and if they're not there we don't error.
+	for supportedName, size := range cacc.supportedTrnNeis {
+		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size))
+		wfile, err := trnNonEssentialIntCreator.OpenWordFile()
+		if err == nil {
+			result.trnNonEssentialInts[supportedName] = wfile
+		}
+	}
+
 	return &result, &result, nil
 }

@@ -26,3 +26,6 @@ func (b *JsonBlockEssential) NthTransaction(n int64) (chainreadinterface.ITransH
 	th.nthInBlock = n
 	return &th, nil
 }
+func (b *JsonBlockEssential) NonEssentialInts() (*map[string]int64, error) {
+	return &b.nonEssentialInts, nil
+}

@@ -36,3 +36,46 @@ func TestCopyOfJsonRealChain_Helper(bc chainreadinterface.IBlockChain, t *testin
 	tinychain.TestGenesisHandle_helper(bc, t)
 	jsonblock.TestJustFiveCoinbaseBlocks_helper(bc, t)
 }
+
+func TestBlockNeiExistance_Helper(bc chainreadinterface.IBlockChain, neiName string, neiExpectedExistance bool, t *testing.T) {
+	genesisHandle := bc.GenesisBlock()
+	block, err := bc.BlockInterface(genesisHandle)
+	if err != nil {
+		t.FailNow()
+	}
+	nonEssentialInts, err := block.NonEssentialInts()
+	if err != nil {
+		t.FailNow()
+	}
+	_, neiExists := (*nonEssentialInts)[neiName]
+	if neiExists != neiExpectedExistance {
+		if neiExpectedExistance {
+			t.Error("expected to find non-essential int " + neiName + " in block")
+		} else {
+			t.Error("didn't expect to find non-essential int " + neiName + " in block")
+		}
+	}
+}
+
+func TestTransactionNeiExistance_Helper(bc chainreadinterface.IBlockChain, neiName string, neiExpectedExistance bool, t *testing.T) {
+	genesisHandle, err := bc.GenesisTransaction()
+	if err != nil {
+		t.FailNow()
+	}
+	trans, err := bc.TransInterface(genesisHandle)
+	if err != nil {
+		t.FailNow()
+	}
+	nonEssentialInts, err := trans.NonEssentialInts()
+	if err != nil {
+		t.FailNow()
+	}
+	_, neiExists := (*nonEssentialInts)[neiName]
+	if neiExists != neiExpectedExistance {
+		if neiExpectedExistance {
+			t.Error("expected to find non-essential int " + neiName + " in block")
+		} else {
+			t.Error("didn't expect to find non-essential int " + neiName + " in block")
+		}
+	}
+}

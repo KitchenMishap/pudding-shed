@@ -63,6 +63,9 @@ func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, e
 			return nil, err
 		}
 
+		// Gather a map of the non-essential ints
+		postJsonGatherNonEssentialInts(block)
+
 		obc.currentJsonBytes = bytes
 		obc.currentBlock = block
 	}
@@ -175,6 +178,27 @@ func postJsonUpdateTransReferences(block *JsonBlockEssential, transStore ITransL
 		}
 	}
 	return nil
+}
+
+func postJsonGatherNonEssentialInts(block *JsonBlockEssential) {
+	block.nonEssentialInts = make(map[string]int64)
+	block.nonEssentialInts["version"] = block.J_version
+	block.nonEssentialInts["time"] = block.J_time
+	block.nonEssentialInts["mediantime"] = block.J_mediantime
+	block.nonEssentialInts["nonce"] = block.J_nonce
+	block.nonEssentialInts["difficulty"] = block.J_difficulty
+	block.nonEssentialInts["strippedsize"] = block.J_strippedsize
+	block.nonEssentialInts["size"] = block.J_size
+	block.nonEssentialInts["weight"] = block.J_weight
+	for nthTrans := range block.J_tx {
+		transPtr := &block.J_tx[nthTrans]
+		transPtr.nonEssentialInts = make(map[string]int64)
+		transPtr.nonEssentialInts["version"] = transPtr.J_version
+		transPtr.nonEssentialInts["size"] = transPtr.J_size
+		transPtr.nonEssentialInts["vsize"] = transPtr.J_vsize
+		transPtr.nonEssentialInts["weight"] = transPtr.J_weight
+		transPtr.nonEssentialInts["locktime"] = transPtr.J_locktime
+	}
 }
 
 // Functions in jsonblock.OneBlockChain to implement chainreadinterface.IBlockTree as part of chainreadinterface.IBlockChain
@@ -392,7 +416,10 @@ func (obc *OneBlockChain) NextTransaction(transHandle chainreadinterface.ITransH
 			return obc.InvalidTrans(), nil
 		}
 		// First trans in next block
-		obc.switchBlock(nextBlock.Height())
+		_, err = obc.switchBlock(nextBlock.Height())
+		if err != nil {
+			return nil, err
+		}
 		return &obc.currentBlock.J_tx[0], nil
 	}
 	return &obc.currentBlock.J_tx[nthInBlock+1], nil

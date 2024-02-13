@@ -47,6 +47,57 @@ func TestBlocks(t *testing.T) {
 	}
 }
 
+func TestNonEssentialInts(t *testing.T) {
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	blockHandle := aOneBlockChain.GenesisBlock()
+	for !blockHandle.IsInvalid() {
+		block, err := aOneBlockChain.BlockInterface(blockHandle)
+		if err != nil {
+			t.Error("could not get BlockInterface from blockchain")
+		}
+		nonEssentialInts, err := block.NonEssentialInts()
+		if err != nil {
+			t.Error("could not get non-essential ints for block")
+		}
+		size, sizeExists := (*nonEssentialInts)["size"]
+		if sizeExists == false {
+			t.Error("size should exist")
+		}
+		if size <= 10 {
+			t.Error("size should be more than 10")
+		}
+		count, err := block.TransactionCount()
+		if err != nil {
+			t.Error("could not get transaction count from block")
+		}
+		for tr := int64(0); tr < count; tr++ {
+			transHandle, err := block.NthTransaction(tr)
+			if err != nil {
+				t.Error("could not get transaction handle from block")
+			}
+			trans, err := aOneBlockChain.TransInterface(transHandle)
+			if err != nil {
+				t.Error("could not get transaction interface")
+			}
+			nonEssentialInts, err := trans.NonEssentialInts()
+			if err != nil {
+				t.Error("could not get non-essential ints for transaction")
+			}
+			version, versionExists := (*nonEssentialInts)["version"]
+			if versionExists == false {
+				t.Error("version should exist")
+			}
+			if version != 1 {
+				t.Error("version should be 1")
+			}
+		}
+		blockHandle, err = aOneBlockChain.NextBlock(blockHandle)
+		if err != nil {
+			t.Error("could not get next block handle")
+		}
+	}
+}
+
 func TestGenesisHandle(t *testing.T) {
 	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
 	TestGenesisHandle_helper(aOneBlockChain, t)

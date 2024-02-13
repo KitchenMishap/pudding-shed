@@ -67,3 +67,14 @@ func (block *Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, er
 	transHeight := blockFirstTransHeight + n
 	return &TransHandle{HashHeight{height: transHeight, hashSpecified: false, heightSpecified: true}, block.data}, nil
 }
+func (block *Block) NonEssentialInts() (*map[string]int64, error) {
+	result := make(map[string]int64)
+	for name, wfile := range block.data.blkNonEssentialInts {
+		val, err := wfile.ReadWordAt(block.height)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = val
+	}
+	return &result, nil
+}

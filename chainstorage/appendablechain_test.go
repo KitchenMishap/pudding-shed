@@ -18,7 +18,7 @@ func TestCopyTinyChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	err = acc.Create()
+	err = acc.Create([]string{"size", "time"}, []string{"vsize", "version"})
 	if err != nil {
 		t.Fail()
 	}
@@ -84,7 +84,7 @@ func TestCopyJsonChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	err = acc.Create()
+	err = acc.Create([]string{"time", "size"}, []string{"version", "vsize"})
 	if err != nil {
 		t.Fail()
 	}
@@ -144,7 +144,7 @@ func TestCopyRealChain(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = acc.Create()
+	err = acc.Create([]string{"time"}, []string{"vsize"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,6 +185,12 @@ func TestCopyRealChain(t *testing.T) {
 			t.Error(err)
 		}
 	}
+
+	bc := ac.GetAsChainReadInterface()
+	TestBlockNeiExistance_Helper(bc, "size", false, t)
+	TestBlockNeiExistance_Helper(bc, "time", true, t)
+	TestTransactionNeiExistance_Helper(bc, "version", false, t)
+	TestTransactionNeiExistance_Helper(bc, "vsize", true, t)
 
 	err = ac.Close()
 	if err != nil {

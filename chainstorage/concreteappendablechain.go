@@ -1,24 +1,27 @@
 package chainstorage
 
 import (
+	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
 type concreteAppendableChain struct {
-	blkFirstTrans wordfile.ReadWriteAtWordCounter
-	blkHashes     indexedhashes.HashReadWriter
-	trnHashes     indexedhashes.HashReadWriter
-	trnFirstTxi   wordfile.ReadWriteAtWordCounter
-	trnFirstTxo   wordfile.ReadWriteAtWordCounter
-	txiTx         wordfile.ReadWriteAtWordCounter
-	txiVout       wordfile.ReadWriteAtWordCounter
-	txoSats       wordfile.ReadWriteAtWordCounter
+	blkFirstTrans       wordfile.ReadWriteAtWordCounter
+	blkHashes           indexedhashes.HashReadWriter
+	trnHashes           indexedhashes.HashReadWriter
+	trnFirstTxi         wordfile.ReadWriteAtWordCounter
+	trnFirstTxo         wordfile.ReadWriteAtWordCounter
+	txiTx               wordfile.ReadWriteAtWordCounter
+	txiVout             wordfile.ReadWriteAtWordCounter
+	txoSats             wordfile.ReadWriteAtWordCounter
+	blkNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
+	trnNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
 }
 
 func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
-	return &concreteReadableChain{
+	result := concreteReadableChain{
 		blkFirstTrans: cac.blkFirstTrans,
 		blkHashes:     cac.blkHashes,
 		trnHashes:     cac.trnHashes,
@@ -28,6 +31,16 @@ func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadab
 		txiVout:       cac.txiVout,
 		txoSats:       cac.txoSats,
 	}
+	result.blkNonEssentialInts = make(map[string]wordfile.ReadAtWordCounter)
+	result.trnNonEssentialInts = make(map[string]wordfile.ReadAtWordCounter)
+	for k, v := range cac.blkNonEssentialInts {
+		result.blkNonEssentialInts[k] = v
+	}
+	for k, v := range cac.trnNonEssentialInts {
+		result.trnNonEssentialInts[k] = v
+	}
+
+	return &result
 }
 
 func (cac *concreteAppendableChain) GetAsChainReadInterface() chainreadinterface.IBlockChain {
@@ -53,6 +66,21 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 	}
 	if hBlock.HeightSpecified() && hBlock.Height() != blkNum {
 		panic("cannot append a block out of sequence")
+	}
+
+	for name, wfile := range cac.blkNonEssentialInts {
+		themap, err := block.NonEssentialInts()
+		if err != nil {
+			return err
+		}
+		val, success := (*themap)[name]
+		if !success {
+			return errors.New("could not read block non-essential int named: " + name)
+		}
+		err = wfile.WriteWordAt(val, blkNum)
+		if err != nil {
+			return err
+		}
 	}
 
 	// First the "frames" of the transactions
@@ -145,6 +173,21 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 			return -1, err
 		}
 		transHeight, err = cac.trnHashes.IndexOfHash(&transHash)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	for name, wfile := range cac.trnNonEssentialInts {
+		themap, err := trans.NonEssentialInts()
+		if err != nil {
+			return -1, err
+		}
+		val, success := (*themap)[name]
+		if !success {
+			return -1, errors.New("could not read non-essential int named " + name)
+		}
+		err = wfile.WriteWordAt(val, transHeight)
 		if err != nil {
 			return -1, err
 		}

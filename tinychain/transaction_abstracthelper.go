@@ -28,6 +28,24 @@ func TestTransaction_helper(blockchain chainreadinterface.IBlockChain, t *testin
 	if txoCount != 1 {
 		t.Error("genesis transaction must have one txo")
 	}
+	nonEssentialInts, err := trans.NonEssentialInts()
+	if err != nil {
+		t.Error("error reading non-essential ints of genesis transaction")
+	}
+	if nonEssentialInts == nil {
+		t.Error("genesis transaction must have non-essential ints")
+	}
+	_, nothingExists := (*nonEssentialInts)["nothing"]
+	if nothingExists == true {
+		t.Error("genesis transaction should not have a non-essential int called nothing")
+	}
+	version, versionExists := (*nonEssentialInts)["version"]
+	if versionExists == false {
+		t.Error("genesis transaction should have a non-essential int called version")
+	}
+	if version != 2 {
+		t.Error("genesis transaction should have version 2")
+	}
 }
 
 func TestThirdTransaction_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {

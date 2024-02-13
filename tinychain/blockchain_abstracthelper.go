@@ -21,6 +21,24 @@ func TestGenesisBlock_helper(blockchain chainreadinterface.IBlockChain, t *testi
 	if block.IsInvalid() {
 		t.Error("genesis block cannot be invalid")
 	}
+	nonEssentialInts, err := block.NonEssentialInts()
+	if err != nil {
+		t.Error("error reading non-essential ints of genesis block")
+	}
+	if *nonEssentialInts == nil {
+		t.Error("genesis block must have non-essential ints")
+	}
+	_, nothingExists := (*nonEssentialInts)["nothing"]
+	if nothingExists == true {
+		t.Error("genesis block should not have a non-essential int called nothing")
+	}
+	size, sizeExists := (*nonEssentialInts)["size"]
+	if sizeExists == false {
+		t.Error("genesis block should have a non-essential int called size")
+	}
+	if size != 285 {
+		t.Error("genesis block size should be 285")
+	}
 }
 
 func TestGenesisParentInvalid_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {

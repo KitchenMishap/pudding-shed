@@ -118,6 +118,17 @@ func (tr *Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
 		txxHeightSpecified:  true,
 	}}, nil
 }
+func (tr *Transaction) NonEssentialInts() (*map[string]int64, error) {
+	result := make(map[string]int64)
+	for name, wfile := range tr.data.trnNonEssentialInts {
+		val, err := wfile.ReadWordAt(tr.height)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = val
+	}
+	return &result, nil
+}
 
 // Compiler check that implements
 var _ chainreadinterface.ITransaction = (*Transaction)(nil)

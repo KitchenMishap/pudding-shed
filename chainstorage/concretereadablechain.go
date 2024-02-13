@@ -7,14 +7,16 @@ import (
 )
 
 type concreteReadableChain struct {
-	blkFirstTrans wordfile.ReadAtWordCounter
-	blkHashes     indexedhashes.HashReader
-	trnHashes     indexedhashes.HashReader
-	trnFirstTxi   wordfile.ReadAtWordCounter
-	trnFirstTxo   wordfile.ReadAtWordCounter
-	txiTx         wordfile.ReadAtWordCounter
-	txiVout       wordfile.ReadAtWordCounter
-	txoSats       wordfile.ReadAtWordCounter
+	blkFirstTrans       wordfile.ReadAtWordCounter
+	blkHashes           indexedhashes.HashReader
+	trnHashes           indexedhashes.HashReader
+	trnFirstTxi         wordfile.ReadAtWordCounter
+	trnFirstTxo         wordfile.ReadAtWordCounter
+	txiTx               wordfile.ReadAtWordCounter
+	txiVout             wordfile.ReadAtWordCounter
+	txoSats             wordfile.ReadAtWordCounter
+	blkNonEssentialInts map[string]wordfile.ReadAtWordCounter
+	trnNonEssentialInts map[string]wordfile.ReadAtWordCounter
 }
 
 // Functions to implement IBlockTree as part of IBlockChain
@@ -94,8 +96,8 @@ func (crc *concreteReadableChain) TxiInterface(hTxi chainreadinterface.ITxiHandl
 		if err != nil {
 			return &Txi{}, err
 		}
-		transFirstTxiHeight, error := crc.trnFirstTxi.ReadWordAt(trans.Height())
-		if error != nil {
+		transFirstTxiHeight, err := crc.trnFirstTxi.ReadWordAt(trans.Height())
+		if err != nil {
 			return &Txi{}, err
 		}
 		index := hTxi.ParentIndex()

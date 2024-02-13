@@ -25,5 +25,12 @@ func (t *Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
 	return &t.txos[n], nil
 }
 
+func (t *Transaction) NonEssentialInts() (*map[string]int64, error) {
+	nonEssentialInts := make(map[string]int64)
+	nonEssentialInts["version"] = 2
+	nonEssentialInts["vsize"] = 123
+	return &nonEssentialInts, nil
+}
+
 // Compiler check that implements
 var _ chainreadinterface.ITransaction = (*Transaction)(nil)
