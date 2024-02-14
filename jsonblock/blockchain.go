@@ -186,7 +186,7 @@ func postJsonGatherNonEssentialInts(block *JsonBlockEssential) {
 	block.nonEssentialInts["time"] = block.J_time
 	block.nonEssentialInts["mediantime"] = block.J_mediantime
 	block.nonEssentialInts["nonce"] = block.J_nonce
-	block.nonEssentialInts["difficulty"] = block.J_difficulty
+	block.nonEssentialInts["difficulty"] = int64(block.J_difficulty)
 	block.nonEssentialInts["strippedsize"] = block.J_strippedsize
 	block.nonEssentialInts["size"] = block.J_size
 	block.nonEssentialInts["weight"] = block.J_weight

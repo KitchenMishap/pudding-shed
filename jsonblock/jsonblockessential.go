@@ -24,7 +24,7 @@ type JsonBlockEssential struct {
 	J_time           int64            `json:"time"`
 	J_mediantime     int64            `json:"mediantime"`
 	J_nonce          int64            `json:"nonce"`
-	J_difficulty     int64            `json:"difficulty"`
+	J_difficulty     float64          `json:"difficulty"`
 	J_strippedsize   int64            `json:"strippedsize"`
 	J_size           int64            `json:"size"`
 	J_weight         int64            `json:"weight"`
