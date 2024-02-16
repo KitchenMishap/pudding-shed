@@ -70,22 +70,26 @@ func TestCopyTinyChain(t *testing.T) {
 }
 
 func TestCopyJsonChain(t *testing.T) {
-	err := os.RemoveAll("Temp_Testing/JsonChain")
+	err := os.RemoveAll("Temp_Testing\\JsonChain")
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 
-	acc, err := NewConcreteAppendableChainCreator("Temp_Testing/JsonChain")
+	acc, err := NewConcreteAppendableChainCreator("Temp_Testing\\JsonChain")
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 	err = acc.Create([]string{"time", "size"}, []string{"version", "vsize"})
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 	ac, cac, err := acc.Open(true)
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 
 	aOneBlockChain := jsonblock.CreateOneBlockChain(&jsonblock.HardCodedBlockFetcher{}, cac.GetAsDelegatedTransactionIndexer())
@@ -93,29 +97,35 @@ func TestCopyJsonChain(t *testing.T) {
 	hBlock := aOneBlockChain.GenesisBlock()
 	block, err := aOneBlockChain.BlockInterface(hBlock)
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 	err = ac.AppendBlock(aOneBlockChain, block)
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 
 	hBlock, err = aOneBlockChain.NextBlock(hBlock)
 	if err != nil {
-		t.Fail()
+		t.Error(err)
+		t.FailNow()
 	}
 	for !hBlock.IsInvalid() {
 		block, err := aOneBlockChain.BlockInterface(hBlock)
 		if err != nil {
-			t.Fail()
+			t.Error(err)
+			t.FailNow()
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
 		if err != nil {
-			t.Fail()
+			t.Error(err)
+			t.FailNow()
 		}
 		hBlock, err = aOneBlockChain.NextBlock(hBlock)
 		if err != nil {
-			t.Fail()
+			t.Error(err)
+			t.FailNow()
 		}
 	}
 

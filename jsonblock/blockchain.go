@@ -15,6 +15,14 @@ type OneBlockChain struct {
 	currentBlock             *JsonBlockEssential
 	latestBlockVisited       int64
 	latestTransactionVisited int64
+	nextBlockChannel         chan nextBlockReport
+}
+
+type nextBlockReport struct {
+	parsedHeight     int64
+	jsonBytes        []byte
+	parsedJson       *JsonBlockEssential
+	errorEncountered error
 }
 
 func CreateOneBlockChain(
@@ -28,64 +36,107 @@ func CreateOneBlockChain(
 		currentBlock:             nil,
 		latestBlockVisited:       -1,
 		latestTransactionVisited: -1,
+		nextBlockChannel:         make(chan nextBlockReport),
 	}
+
+	res.startParsingNextBlock(0) // We expect the next block asked for to be the genesis block (0)
+
 	return &res
 }
 
-func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, error) {
-	if blockHeight-obc.latestBlockVisited > 1 {
+func (obc *OneBlockChain) startParsingNextBlock(nextHeight int64) {
+	go func() {
+		// (1) Fetch bytes
+		bytes, err := obc.blockFetcher.FetchBlockJsonBytes(nextHeight)
+		if err != nil {
+			// Something happened, send error report to channel
+			obc.nextBlockChannel <- nextBlockReport{nextHeight, nil, nil, err}
+		} else {
+			// (2) Parse json
+			block, err := parseJsonBlock(bytes)
+			if err != nil {
+				// Something happened, send error report to channel
+				obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, nil, err}
+			} else {
+				// (3) We can safely do the following in this parallel go routine too
+				postJsonRemoveCoinbaseTxis(block)
+				// Convert bitcoin floats to satoshi ints
+				postJsonCalculateSatoshis(block)
+				// Convert the hash strings to binary
+				err = postJsonEncodeSha256s(block)
+				if err != nil {
+					// Something happened, send error report to channel
+					obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, err}
+				} else {
+					// Success! Send it via channel back to main goroutine
+					// (Note there's some further processing needed, but we can only do that in the main goroutine)
+					obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, nil}
+				}
+			}
+		}
+	}()
+}
+
+func (obc *OneBlockChain) switchBlock(blockHeightRequested int64) (*JsonBlockEssential, error) {
+	if blockHeightRequested-obc.latestBlockVisited > 1 {
 		return nil, errors.New("blocks visited must first be visited in sequence from genesis block")
 	}
-	obc.latestBlockVisited = blockHeight
-	if obc.currentBlock == nil || int64(obc.currentBlock.J_height) != blockHeight {
-		bytes, err := obc.blockFetcher.FetchBlockJsonBytes(blockHeight)
-		if err != nil {
-			return nil, err
-		}
-		block, err := parseJsonBlock(bytes)
-		if err != nil {
-			return nil, err
+
+	// Arrange for requested block to be represented in obc
+	if obc.currentBlock == nil || int64(obc.currentBlock.J_height) != blockHeightRequested {
+		// It's not there already
+
+		// Wait (if necessary) and see what comes through next from the goroutine channel
+		waitingForUs := <-obc.nextBlockChannel
+
+		// Is it not the one we want?
+		if waitingForUs.parsedHeight != blockHeightRequested {
+			println("found ", waitingForUs.parsedHeight, " but waiting for ", blockHeightRequested)
+			// Ask for it and wait for it
+			obc.startParsingNextBlock(blockHeightRequested)
+			waitingForUs = <-obc.nextBlockChannel
+			println("now found ", waitingForUs.parsedHeight, " after requesting ", blockHeightRequested)
 		}
 
-		// Remove coinbase txis (instead we model coinbase transactions DEFINED as having NO entries in vin)
-		err = postJsonRemoveCoinbaseTxis(block)
-		if err != nil {
-			return nil, err
+		// Is it rubbish?
+		if waitingForUs.errorEncountered != nil {
+			// Ask for the genesis block, just so there's always something passing through the channel for next time
+			obc.startParsingNextBlock(0)
+			return nil, waitingForUs.errorEncountered
 		}
 
-		// Convert the hash strings to binary
-		err = postJsonEncodeSha256s(block)
-		if err != nil {
-			return nil, err
+		// Not rubbish
+		if blockHeightRequested > obc.latestBlockVisited {
+			obc.latestBlockVisited = blockHeightRequested
 		}
+		obc.currentJsonBytes = waitingForUs.jsonBytes
+		obc.currentBlock = waitingForUs.parsedJson
 
-		// Convert bitcoin floats to satoshi ints
-		postJsonCalculateSatoshis(block)
+		// Ask for the most likely next block, so there's always something passing through the channel for next time
+		obc.startParsingNextBlock(blockHeightRequested + 1)
 
 		// Gather the transaction hashes, as we'll need to look them up, from now and forevermore
-		err = obc.postJsonGatherTransHashes(block)
+		err := obc.postJsonGatherTransHashes(obc.currentBlock)
 		if err != nil {
 			return nil, err
 		}
 
 		// Store in each array element (tx, txi, txo), the element's index into that array
-		postJsonArrayIndicesIntoElements(block)
+		postJsonArrayIndicesIntoElements(obc.currentBlock)
 
-		err = obc.postJsonUpdateTransReferences(block)
+		err = obc.postJsonUpdateTransReferences(obc.currentBlock)
 		if err != nil {
 			return nil, err
 		}
 
 		// Gather a map of the non-essential ints
-		postJsonGatherNonEssentialInts(block)
-
-		obc.currentJsonBytes = bytes
-		obc.currentBlock = block
+		postJsonGatherNonEssentialInts(obc.currentBlock)
 	}
+
 	return obc.currentBlock, nil
 }
 
-func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) error {
+func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) {
 	// Coinbase Txi's are a transaction's entry in vin[] which represent the concept of coinbase in Bitcoin Core's JSON
 	// We detect them by way of absence of hash string
 
@@ -99,7 +150,6 @@ func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) error {
 			}
 		}
 	}
-	return nil
 }
 
 func postJsonEncodeSha256s(block *JsonBlockEssential) error {
