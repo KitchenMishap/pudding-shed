@@ -4,26 +4,39 @@ import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
 // OneBlockChain - We call it a one block chain, as one block is in memory at any point in time
 type OneBlockChain struct {
-	blockFetcher       IBlockJsonFetcher
-	transLocationStore ITransLocatorStore
-	currentJsonBytes   []byte
-	currentBlock       *JsonBlockEssential
+	blockFetcher             IBlockJsonFetcher
+	transactionIndexer       transactionindexing.ITransactionIndexer
+	currentJsonBytes         []byte
+	currentBlock             *JsonBlockEssential
+	latestBlockVisited       int64
+	latestTransactionVisited int64
 }
 
-func CreateOneBlockChain(fetcher IBlockJsonFetcher, foldername string) *OneBlockChain {
-	res := OneBlockChain{blockFetcher: fetcher,
-		transLocationStore: CreateOpenTransLocationStore(foldername + "/TransLocation"),
-		currentJsonBytes:   nil,
-		currentBlock:       nil,
+func CreateOneBlockChain(
+	fetcher IBlockJsonFetcher,
+	indexer transactionindexing.ITransactionIndexer,
+) *OneBlockChain {
+	res := OneBlockChain{
+		blockFetcher:             fetcher,
+		transactionIndexer:       indexer,
+		currentJsonBytes:         nil,
+		currentBlock:             nil,
+		latestBlockVisited:       -1,
+		latestTransactionVisited: -1,
 	}
 	return &res
 }
 
 func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, error) {
+	if blockHeight-obc.latestBlockVisited > 1 {
+		return nil, errors.New("blocks visited must first be visited in sequence from genesis block")
+	}
+	obc.latestBlockVisited = blockHeight
 	if obc.currentBlock == nil || int64(obc.currentBlock.J_height) != blockHeight {
 		bytes, err := obc.blockFetcher.FetchBlockJsonBytes(blockHeight)
 		if err != nil {
@@ -50,7 +63,7 @@ func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, e
 		postJsonCalculateSatoshis(block)
 
 		// Gather the transaction hashes, as we'll need to look them up, from now and forevermore
-		err = postJsonGatherTransHashes(block, obc.transLocationStore)
+		err = obc.postJsonGatherTransHashes(block)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +71,7 @@ func (obc *OneBlockChain) switchBlock(blockHeight int64) (*JsonBlockEssential, e
 		// Store in each array element (tx, txi, txo), the element's index into that array
 		postJsonArrayIndicesIntoElements(block)
 
-		err = postJsonUpdateTransReferences(block, obc.transLocationStore)
+		err = obc.postJsonUpdateTransReferences(block)
 		if err != nil {
 			return nil, err
 		}
@@ -126,14 +139,27 @@ func postJsonCalculateSatoshis(block *JsonBlockEssential) {
 	}
 }
 
-func postJsonGatherTransHashes(block *JsonBlockEssential, store ITransLocatorStore) error {
+func (obc *OneBlockChain) postJsonGatherTransHashes(block *JsonBlockEssential) error {
+	blockHeight := int64(block.J_height)
+	firstTransHeight := obc.latestTransactionVisited + 1
+	err := obc.transactionIndexer.StoreBlockHeightToFirstTrans(blockHeight, firstTransHeight)
+	if err != nil {
+		return err
+	}
+	transHeight := obc.latestTransactionVisited
 	for nthTrans := range block.J_tx {
+		transHeight++
+		err = obc.transactionIndexer.StoreTransHeightToParentBlock(transHeight, blockHeight)
+		if err != nil {
+			return err
+		}
 		transPtr := &block.J_tx[nthTrans]
-		err := store.StoreIndicesPathForHash(transPtr.txid, int64(block.J_height), int64(nthTrans))
+		err = obc.transactionIndexer.StoreTransHashToHeight(&transPtr.txid, transHeight)
 		if err != nil {
 			return err
 		}
 	}
+	obc.latestTransactionVisited = transHeight
 	return nil
 }
 
@@ -160,20 +186,31 @@ func postJsonArrayIndicesIntoElements(block *JsonBlockEssential) {
 
 // postJsonUpdateTransReferences() uses the accrued transaction hash map to
 // locate the txos (by way of block/nthTrans/vindex path indices) corresponding to each txi.
-func postJsonUpdateTransReferences(block *JsonBlockEssential, transStore ITransLocatorStore) error {
+func (obc *OneBlockChain) postJsonUpdateTransReferences(block *JsonBlockEssential) error {
 	// Use the map to locate the txos (by indices path) referenced by trans hashes in the txis in this block
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
 		for nthTxi := range transPtr.J_vin {
 			txiPtr := &transPtr.J_vin[nthTxi]
+
 			// Look up the path indices by source transaction hash
-			transIndicesPath, err := transStore.GetTransIndicesPathByHash(txiPtr.txid)
+			sourceTransHeight, err := obc.transactionIndexer.RetrieveTransHashToHeight(&txiPtr.txid)
 			if err != nil {
 				return err
 			}
+			sourceBlockHeight, err := obc.transactionIndexer.RetrieveTransHeightToParentBlock(sourceTransHeight)
+			if err != nil {
+				return err
+			}
+			sourceBlockFirstTrans, err := obc.transactionIndexer.RetrieveBlockHeightToFirstTrans(sourceBlockHeight)
+			if err != nil {
+				return err
+			}
+			sourceNthTrans := sourceTransHeight - sourceBlockFirstTrans
+
 			// Store the path indices of the source txo, into the txi that referenced it
-			txiPtr.sourceTrans.blockHeight = transIndicesPath.BlockHeight()
-			txiPtr.sourceTrans.nthInBlock = transIndicesPath.NthTransInBlock()
+			txiPtr.sourceTrans.blockHeight = sourceBlockHeight
+			txiPtr.sourceTrans.nthInBlock = sourceNthTrans
 			// txiPtr.J_vout is already there of course
 		}
 	}

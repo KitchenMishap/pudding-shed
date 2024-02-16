@@ -48,7 +48,8 @@ func TestBlocks(t *testing.T) {
 }
 
 func TestNonEssentialInts(t *testing.T) {
-	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	indexer := CreateOpenTransactionIndexerFiles("Temp_Testing\\JsonBlock\\Indexing")
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, indexer)
 	blockHandle := aOneBlockChain.GenesisBlock()
 	for !blockHandle.IsInvalid() {
 		block, err := aOneBlockChain.BlockInterface(blockHandle)
@@ -96,14 +97,19 @@ func TestNonEssentialInts(t *testing.T) {
 			t.Error("could not get next block handle")
 		}
 	}
+	indexer.Close()
 }
 
 func TestGenesisHandle(t *testing.T) {
-	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	indexer := CreateOpenTransactionIndexerFiles("Temp_Testing\\JsonBlock\\Indexing")
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, indexer)
 	TestGenesisHandle_helper(aOneBlockChain, t)
+	indexer.Close()
 }
 
 func TestInvalidHandle(t *testing.T) {
-	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, "Temp_Testing\\JsonBlock")
+	indexer := CreateOpenTransactionIndexerFiles("Temp_Testing\\JsonBlock\\Indexing")
+	aOneBlockChain := CreateOneBlockChain(&HardCodedBlockFetcher{}, indexer)
 	TestInvalidHandle_helper(aOneBlockChain, t)
+	indexer.Close()
 }

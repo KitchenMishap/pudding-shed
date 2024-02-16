@@ -4,13 +4,12 @@ import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
 type concreteAppendableChain struct {
-	blkFirstTrans       wordfile.ReadWriteAtWordCounter
 	blkHashes           indexedhashes.HashReadWriter
-	trnHashes           indexedhashes.HashReadWriter
 	trnFirstTxi         wordfile.ReadWriteAtWordCounter
 	trnFirstTxo         wordfile.ReadWriteAtWordCounter
 	txiTx               wordfile.ReadWriteAtWordCounter
@@ -18,6 +17,13 @@ type concreteAppendableChain struct {
 	txoSats             wordfile.ReadWriteAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
+
+	transactionIndexingIsDelegated bool
+	// The following must only be written to by this class if the above is false
+	// (if true, they are written to by an external actor via IDelegatedTransactionIndexing)
+	blkFirstTrans  wordfile.ReadWriteAtWordCounter
+	trnHashes      indexedhashes.HashReadWriter
+	trnParentBlock wordfile.ReadWriteAtWordCounter
 }
 
 func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
@@ -97,14 +103,14 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		if err != nil {
 			return err
 		}
-		transNum, err := cac.appendTransactionFrame(blockChain, hTrans)
+		transNum, err := cac.appendTransactionFrame(blockChain, blkNum, hTrans)
 		if err != nil {
 			return err
 		}
 		if hTrans.HeightSpecified() && hTrans.Height() != transNum {
 			panic("cannot append a transaction out of sequence")
 		}
-		if t == 0 {
+		if t == 0 && !cac.transactionIndexingIsDelegated {
 			err = cac.blkFirstTrans.WriteWordAt(transNum, blkNum)
 			if err != nil {
 				return err
@@ -133,7 +139,7 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 }
 
 func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadinterface.IBlockChain,
-	hTrans chainreadinterface.ITransHandle) (int64, error) {
+	blkNum int64, hTrans chainreadinterface.ITransHandle) (int64, error) {
 	trans, err := blockChain.TransInterface(hTrans)
 	if err != nil {
 		return -1, err
@@ -145,15 +151,43 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 	if err != nil {
 		return -1, err
 	}
-	transNum, err := cac.trnHashes.AppendHash(&transHash)
-	if err != nil {
-		return -1, err
+	if !cac.transactionIndexingIsDelegated {
+		transNum, err := cac.trnHashes.AppendHash(&transHash)
+		if err != nil {
+			return -1, err
+		}
+		if trans.HeightSpecified() && trans.Height() != transNum {
+			panic("cannot append a transaction out of sequence")
+		}
+		err = cac.trnParentBlock.WriteWordAt(blkNum, transNum)
+		if err != nil {
+			return -1, err
+		}
+		return transNum, nil
 	}
-	if trans.HeightSpecified() && trans.Height() != transNum {
-		panic("cannot append a transaction out of sequence")
+	if hTrans.HeightSpecified() {
+		return hTrans.Height(), nil
+	} else if hTrans.IndicesPathSpecified() {
+		blkFirstTrans, err := cac.RetrieveBlockHeightToFirstTrans(blkNum)
+		if err != nil {
+			return -1, err
+		}
+		_, nthTrans := hTrans.IndicesPath()
+		transNum := blkFirstTrans + nthTrans
+		return transNum, nil
+	} else if hTrans.HashSpecified() {
+		sha256, err := hTrans.Hash()
+		if err != nil {
+			return -1, err
+		}
+		transNum, err := cac.RetrieveTransHashToHeight(&sha256)
+		if err != nil {
+			return -1, err
+		}
+		return transNum, nil
+	} else {
+		return -1, errors.New("no way to find transaction height")
 	}
-
-	return transNum, nil
 }
 
 func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainreadinterface.IBlockChain,
@@ -347,38 +381,48 @@ func (cac *concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int6
 	return txoHeight, nil
 }
 
-func (cac *concreteAppendableChain) Close() error {
-	err := cac.blkHashes.Close()
+func (cac *concreteAppendableChain) Close() {
+	cac.blkHashes.Close()
+	cac.trnHashes.Close()
+	cac.blkFirstTrans.Close()
+	cac.trnParentBlock.Close()
+	cac.trnFirstTxi.Close()
+	cac.trnFirstTxo.Close()
+	cac.txiTx.Close()
+	cac.txiVout.Close()
+	cac.txoSats.Close()
+}
+
+func (cac *concreteAppendableChain) GetAsDelegatedTransactionIndexer() transactionindexing.ITransactionIndexer {
+	if !cac.transactionIndexingIsDelegated {
+		panic("This call assumes transaction indexing is delegated")
+	}
+	return cac
+}
+
+// Functions to implement concreteAppendableChain as an IDelegatedTrasactionIndexing
+func (cac *concreteAppendableChain) StoreTransHashToHeight(sha256 *indexedhashes.Sha256, transHeight int64) error {
+	height, err := cac.trnHashes.AppendHash(sha256)
 	if err != nil {
 		return err
 	}
-	err = cac.trnHashes.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.blkFirstTrans.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.trnFirstTxi.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.trnFirstTxo.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.txiTx.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.txiVout.Close()
-	if err != nil {
-		return err
-	}
-	err = cac.txoSats.Close()
-	if err != nil {
-		return err
+	if height != transHeight {
+		return errors.New("cannot append transaction hashes out of sequence")
 	}
 	return nil
+}
+func (cac *concreteAppendableChain) StoreTransHeightToParentBlock(transHeight int64, parentBlockHeight int64) error {
+	return cac.trnParentBlock.WriteWordAt(parentBlockHeight, transHeight)
+}
+func (cac *concreteAppendableChain) StoreBlockHeightToFirstTrans(blockHeight int64, firstTrans int64) error {
+	return cac.blkFirstTrans.WriteWordAt(firstTrans, blockHeight)
+}
+func (cac *concreteAppendableChain) RetrieveTransHashToHeight(sha256 *indexedhashes.Sha256) (int64, error) {
+	return cac.trnHashes.IndexOfHash(sha256)
+}
+func (cac *concreteAppendableChain) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {
+	return cac.trnParentBlock.ReadWordAt(transHeight)
+}
+func (cac *concreteAppendableChain) RetrieveBlockHeightToFirstTrans(blockHeight int64) (int64, error) {
+	return cac.blkFirstTrans.ReadWordAt(blockHeight)
 }

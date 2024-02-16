@@ -5,21 +5,28 @@ import (
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
+	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
 	"time"
 )
 
-func FifteenYearsPrimaries() error {
-	const path = "F:\\Data\\FifteenYears"
-	const lastBlock = int64(824196)
+func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
+	const path = "F:\\Data\\SeveralYears"
+	lastBlock := int64(10000) // Default
+	if years == 1 {
+		lastBlock = 33000
+	} else if years == 2 {
+		lastBlock = 66000
+	} else if years == 15 {
+		lastBlock = 824196
+	}
 
 	err := os.RemoveAll(path)
 	if err != nil {
 		return err
 	}
 
-	var aReader corereader.CoreReader
-	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, path)
+	delegated := transactionIndexingMethod == "delegated"
 
 	acc, err := chainstorage.NewConcreteAppendableChainCreator(path)
 	if err != nil {
@@ -30,10 +37,22 @@ func FifteenYearsPrimaries() error {
 	if err != nil {
 		return err
 	}
-	ac, _, err := acc.Open()
+	ac, cac, err := acc.Open(delegated)
 	if err != nil {
 		return err
 	}
+
+	var transactionIndexer transactionindexing.ITransactionIndexer = nil
+	if transactionIndexingMethod == "delegated" {
+		transactionIndexer = cac.GetAsDelegatedTransactionIndexer()
+	} else if transactionIndexingMethod == "separate files" {
+		transactionIndexer = jsonblock.CreateOpenTransactionIndexerFiles(path)
+	} else {
+		panic("incorrect parameter " + transactionIndexingMethod)
+	}
+
+	var aReader corereader.CoreReader
+	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, transactionIndexer)
 
 	hBlock := aOneBlockChain.GenesisBlock()
 	block, err := aOneBlockChain.BlockInterface(hBlock)
@@ -41,17 +60,21 @@ func FifteenYearsPrimaries() error {
 		return err
 	}
 	height := block.Height()
+	transactions := int64(0)
 	for height <= lastBlock {
 		if height%1000 == 0 {
 			t := time.Now()
 			fmt.Println(t.Format("Mon Jan 2 15:04:05"))
-			fmt.Println("Block ", height)
+			fmt.Println("Block ", height, " Transaction ", transactions)
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
 		if err != nil {
 			ac.Close()
 			return err
 		}
+
+		count, _ := block.TransactionCount()
+		transactions += count
 
 		hBlock, err = aOneBlockChain.NextBlock(hBlock)
 		if err != nil {
@@ -65,10 +88,10 @@ func FifteenYearsPrimaries() error {
 		}
 		height = block.Height()
 	}
-	err = ac.Close()
-	if err != nil {
-		return err
+	ac.Close()
+	if transactionIndexingMethod != "delegated" {
+		transactionIndexer.Close()
 	}
-	println("Done Fifteen Years")
+	println("Done Several Years")
 	return nil
 }

@@ -22,7 +22,7 @@ func TestCopyTinyChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ac, cac, err := acc.Open()
+	ac, cac, err := acc.Open(false)
 	if err != nil {
 		t.Fail()
 	}
@@ -66,10 +66,7 @@ func TestCopyTinyChain(t *testing.T) {
 	hBlock1 := BlockHandle{HashHeight{height: 1, heightSpecified: true, hashSpecified: false}, crc}
 	tinychain.TestHashEquality_helper(&hBlock0, &hBlock00, &hBlock1, t)
 
-	err = ac.Close()
-	if err != nil {
-		t.Fail()
-	}
+	ac.Close()
 }
 
 func TestCopyJsonChain(t *testing.T) {
@@ -77,8 +74,6 @@ func TestCopyJsonChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-
-	aOneBlockChain := jsonblock.CreateOneBlockChain(&jsonblock.HardCodedBlockFetcher{}, "Temp_Testing/JsonBlock")
 
 	acc, err := NewConcreteAppendableChainCreator("Temp_Testing/JsonChain")
 	if err != nil {
@@ -88,10 +83,12 @@ func TestCopyJsonChain(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	ac, _, err := acc.Open()
+	ac, cac, err := acc.Open(true)
 	if err != nil {
 		t.Fail()
 	}
+
+	aOneBlockChain := jsonblock.CreateOneBlockChain(&jsonblock.HardCodedBlockFetcher{}, cac.GetAsDelegatedTransactionIndexer())
 
 	hBlock := aOneBlockChain.GenesisBlock()
 	block, err := aOneBlockChain.BlockInterface(hBlock)
@@ -125,10 +122,7 @@ func TestCopyJsonChain(t *testing.T) {
 	bc := ac.GetAsChainReadInterface()
 	TestCopyOfJsonRealChain_Helper(bc, t)
 
-	err = ac.Close()
-	if err != nil {
-		t.Fail()
-	}
+	ac.Close()
 }
 
 func TestCopyRealChain(t *testing.T) {
@@ -136,9 +130,6 @@ func TestCopyRealChain(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	var aReader corereader.CoreReader
-	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, "Temp_Testing\\RealChain")
 
 	acc, err := NewConcreteAppendableChainCreator("Temp_Testing\\RealChain")
 	if err != nil {
@@ -148,10 +139,13 @@ func TestCopyRealChain(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	ac, _, err := acc.Open()
+	ac, cac, err := acc.Open(true)
 	if err != nil {
 		t.Error(err)
 	}
+
+	var aReader corereader.CoreReader
+	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, cac.GetAsDelegatedTransactionIndexer())
 
 	hBlock := aOneBlockChain.GenesisBlock()
 	block, err := aOneBlockChain.BlockInterface(hBlock)
@@ -192,8 +186,5 @@ func TestCopyRealChain(t *testing.T) {
 	TestTransactionNeiExistance_Helper(bc, "version", false, t)
 	TestTransactionNeiExistance_Helper(bc, "vsize", true, t)
 
-	err = ac.Close()
-	if err != nil {
-		t.Error(err)
-	}
+	ac.Close()
 }

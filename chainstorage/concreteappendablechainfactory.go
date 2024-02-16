@@ -9,20 +9,21 @@ import (
 )
 
 type ConcreteAppendableChainCreator struct {
-	blocksFolder                 string
-	transactionsFolder           string
-	transactionInputsFolder      string
-	transactionOutputsFolder     string
-	blockHashStoreCreator        *indexedhashes.ConcreteHashStoreCreator
-	transactionHashStoreCreator  *indexedhashes.ConcreteHashStoreCreator
-	blkFirstTransWordFileCreator *wordfile.ConcreteWordFileCreator
-	trnFirstTxiWordFileCreator   *wordfile.ConcreteWordFileCreator
-	trnFirstTxoWordFileCreator   *wordfile.ConcreteWordFileCreator
-	txiTxWordFileCreator         *wordfile.ConcreteWordFileCreator
-	txiVoutWordFileCreator       *wordfile.ConcreteWordFileCreator
-	txoSatsWordFileCreator       *wordfile.ConcreteWordFileCreator
-	supportedBlkNeis             map[string]int
-	supportedTrnNeis             map[string]int
+	blocksFolder                  string
+	transactionsFolder            string
+	transactionInputsFolder       string
+	transactionOutputsFolder      string
+	blockHashStoreCreator         *indexedhashes.ConcreteHashStoreCreator
+	transactionHashStoreCreator   *indexedhashes.ConcreteHashStoreCreator
+	blkFirstTransWordFileCreator  *wordfile.ConcreteWordFileCreator
+	trnParentBlockWordFileCreator *wordfile.ConcreteWordFileCreator
+	trnFirstTxiWordFileCreator    *wordfile.ConcreteWordFileCreator
+	trnFirstTxoWordFileCreator    *wordfile.ConcreteWordFileCreator
+	txiTxWordFileCreator          *wordfile.ConcreteWordFileCreator
+	txiVoutWordFileCreator        *wordfile.ConcreteWordFileCreator
+	txoSatsWordFileCreator        *wordfile.ConcreteWordFileCreator
+	supportedBlkNeis              map[string]int
+	supportedTrnNeis              map[string]int
 }
 
 func NewConcreteAppendableChainCreator(
@@ -45,6 +46,7 @@ func NewConcreteAppendableChainCreator(
 		return nil, err
 	}
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, 5)
+	result.trnParentBlockWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblock", result.transactionsFolder, 3)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, 5)
 	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, 5)
 	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, 4)
@@ -89,6 +91,10 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 		return err
 	}
 	err = cacc.blkFirstTransWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.trnParentBlockWordFileCreator.CreateWordFile()
 	if err != nil {
 		return err
 	}
@@ -148,8 +154,11 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 	return nil
 }
 
-func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteAppendableChain, error) {
+func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegated bool) (IAppendableChain,
+	*concreteAppendableChain, error) {
 	result := concreteAppendableChain{}
+	result.transactionIndexingIsDelegated = transactionIndexingToBeDelegated
+
 	var err error
 	result.blkHashes, err = cacc.blockHashStoreCreator.OpenHashStore()
 	if err != nil {
@@ -166,11 +175,19 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.trnHashes.Close()
 		return nil, nil, err
 	}
+	result.trnParentBlock, err = cacc.trnParentBlockWordFileCreator.OpenWordFile()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.blkFirstTrans.Close()
+		return nil, nil, err
+	}
 	result.trnFirstTxi, err = cacc.trnFirstTxiWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
 		return nil, nil, err
 	}
 	result.trnFirstTxo, err = cacc.trnFirstTxoWordFileCreator.OpenWordFile()
@@ -178,6 +195,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		return nil, nil, err
 	}
@@ -186,6 +204,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		return nil, nil, err
@@ -195,6 +214,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -205,6 +225,7 @@ func (cacc *ConcreteAppendableChainCreator) Open() (IAppendableChain, *concreteA
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()

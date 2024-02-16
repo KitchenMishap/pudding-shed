@@ -3,7 +3,7 @@ package main
 import "github.com/KitchenMishap/pudding-shed/jobs"
 
 func main() {
-	err := jobs.FifteenYearsPrimaries()
+	err := jobs.SeveralYearsPrimaries(15, "delegated")
 	if err != nil {
 		println(err.Error())
 		println("There was an error :-O")
