@@ -1,9 +1,21 @@
 package main
 
-import "github.com/KitchenMishap/pudding-shed/artprojectacid"
+import (
+	"github.com/KitchenMishap/pudding-shed/artprojectacid"
+	"os"
+)
 
 func main() {
-	lastBlock := 824196 // 15 Years of blockchain
+	const lastBlock = 824196 // 15 Years of blockchain
+	const dbDir = "F:\\Data\\SeveralYears"
+	const opDir = "artprojectacid\\WorkingDir"
 
-	artprojectacid.GatherBlocksToFile("F:\\Data\\SeveralYears", lastBlock, "F:\\Data\\AcidBlocks.json")
+	if opDir != "" {
+		err := os.MkdirAll(opDir, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	artprojectacid.GatherBlocksToFile(dbDir, lastBlock, opDir+"\\acidblocks.json")
 }
