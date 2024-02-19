@@ -1,12 +1,9 @@
 package main
 
-import "github.com/KitchenMishap/pudding-shed/jobs"
+import "github.com/KitchenMishap/pudding-shed/artprojectacid"
 
 func main() {
-	err := jobs.SeveralYearsPrimaries(15, "delegated")
-	if err != nil {
-		println(err.Error())
-		println("There was an error :-O")
-	}
-	println("End of main()")
+	lastBlock := 824196 // 15 Years of blockchain
+
+	artprojectacid.GatherBlocksToFile("F:\\Data\\SeveralYears", lastBlock, "F:\\Data\\AcidBlocks.json")
 }
