@@ -1,5 +1,5 @@
 {
-	"IdealBlockSpacing": 20.0,
-	"IdealDaySpacing": 50.0,
-	"IdealYearSpacing": 500.0
+	"IdealBlockSpacing": 10.0,
+	"IdealDaySpacing": 100.0,
+	"IdealYearSpacing": 2000.0
 }
