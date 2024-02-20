@@ -1,0 +1,5 @@
+The following files will be copied here, and will be needed by SpiralOpt:
+config.son
+spacings.json
+sums.json
+unsquished.json

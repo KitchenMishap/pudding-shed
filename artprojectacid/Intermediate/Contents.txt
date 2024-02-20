@@ -1,0 +1,5 @@
+The following files will be generated in this folder:
+cuboids.json
+indices.json
+sums.json
+unsquished.json

@@ -1,0 +1,3 @@
+acidblocks.json		- The output of pudding shed. Holds information from the blockchain about each block.
+config.json			- Hand edited. Configuration of the SpiralOpt application.
+spacings.json		- Hand edited. Ideal spacings between adjacent blocks, adjacent days, adjacent years.
