@@ -44,8 +44,6 @@ def MakeSums(inputFileIndices, inputFileUnsquished, outputFile):
         prevBlockNum = prevBlockNum + 1
     sums["ByDay"]["lastBlock"].append(prevBlockNum)
     sums["ByYear"]["lastDay"].append(prevBlockDay)
-    print("Last Block = ", prevBlockNum)
-    print("Last day = ", prevBlockDay)
 
     # sums.ByDay.Md[]
     # sums.ByDay.Hd[] (same as Md! ToDo)
@@ -72,7 +70,6 @@ def MakeSums(inputFileIndices, inputFileUnsquished, outputFile):
         Jy = 0
         SumLd = 0
         for day in range(firstDay, lastDay+1):
-            print("Day=", day)
             Md = 0
             Jd = 0
             Nd = 0
@@ -130,4 +127,4 @@ def MakeSums(inputFileIndices, inputFileUnsquished, outputFile):
     fo = open(outputFile, 'w')
     json.dump(sums,fo,indent=2)
 
-    print("MakeSums: Finished")
+    print("MakeSums:", countDays, "days processed")
