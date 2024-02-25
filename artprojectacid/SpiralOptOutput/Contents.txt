@@ -1,0 +1,3 @@
+The following files will be generated here by SpiralOpt:
+coords.json     - The co-ordinates of each block, in block, day, and year angles. Will need copying to Output/
+radii.json      - The daily, yearly, and century radii.
