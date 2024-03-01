@@ -109,13 +109,34 @@ class Loop:
     def outerRadius(self):
         return self.innerCircumf() / (2*math.pi) + self.maxThickness
 
-    def Length(self):
+    def length(self):
         return self.maxWidth
 
-    def Width(self):
+    def width(self):
         return 2 * self.outerRadius()
 
-    def Thickness(self):
+    def thickness(self):
         # A loop is like a disc/cylinder, so width = thickness
         return 2 * self.outerRadius()
 #endregion
+#region DayLoop
+class DayLoop(Loop):
+    def render(self, renderer, transforms):
+        innerRadius = self.innerRadius()
+        for unit in self.units:
+            position = unit["position"]
+            overallTransforms = []
+            overallTransforms.append(ScaleX(unit["thickness"]))
+            overallTransforms.append(ScaleY(unit["width"]))
+            overallTransforms.append(ScaleZ(unit["length"]))
+            radius = innerRadius + unit["thickness"] / 2
+            overallTransforms.append(TranslateX(radius))
+            dayLength = self.length()
+            shift = position * dayLength - dayLength / 2
+            overallTransforms.append(TranslateY(shift))
+            angle = position * 360
+            overallTransforms.append(RotateY(angle))
+
+            overallTransforms += transforms
+
+            renderer.append( Instance( Cube(0,1,0,1,0), overallTransforms ) )
