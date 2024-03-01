@@ -1,5 +1,14 @@
 import math
 
+def resultOrValue(object, attrName):
+    if type(object) is dict:
+        attr = object[attrName]
+    else:
+        attr = getattr(object, attrName)
+    if callable(attr):
+        return attr()
+    return attr
+
 #region Asset
 # An asset is a drawable object
 # It has a name such as "Cube", and five numbers known as r,g,b,a,h
@@ -53,9 +62,9 @@ def RotateZ(angle):
 #endregion
 #region Instance
 class Instance:
-    def __init__(self, asset, transform):
+    def __init__(self, asset, transforms):
         self.asset = asset
-        self.transform = transform
+        self.transform = transforms
 #endregion
 #region Loop
 class Loop:
@@ -71,27 +80,31 @@ class Loop:
         self.maxWidth = 0
         self.maxThickness = 0
         for unit in self.units:
-            # Prefer length attribute, fall back to Length() call
-            length = getattr(unit, "length", unit.Length())
+            # length can be an value or a function to be called
+            length = resultOrValue(unit, "length" )
             self.unspacedCircumf += length
-            # Prefer width attribute, fall back to Width() call
-            width = getattr(unit, "width", unit.Width())
+
+            width = resultOrValue(unit, "width")
             self.maxWidth = max(self.maxWidth, width)
-            # Prefer thickness attribute, fall back to Thickness() call
-            thickness = getattr(unit, "thickness", unit.Thickness())
-            self.maxThickness = max(self.maxThickness, unit.Thickness())
+
+            thickness = resultOrValue(unit, "thickness")
+            self.maxThickness = max(self.maxThickness, thickness)
+
         # Have to do this in a new loop, to use self.unspacedCircumf
         runningTotal = 0
         for unit in self.units:
-            # Prefer length attribute, fall back to Length() call
-            length = getattr(unit, "length", unit.Length())
+            length = resultOrValue(unit, "length")
+
             # unit.position is a number between 0 an 1
-            unit.position = (runningTotal + length/2) / self.unspacedCircumf
+            unit["position"] = (runningTotal + length/2) / self.unspacedCircumf
             runningTotal += length
         self.spacingRatio = spacingRatio
 
     def innerCircumf(self):
         return self.unspacedCircumf * self.spacingRatio
+
+    def innerRadius(self):
+        return self.innerCircumf() / (2 * math.pi)
 
     def outerRadius(self):
         return self.innerCircumf() / (2*math.pi) + self.maxThickness
