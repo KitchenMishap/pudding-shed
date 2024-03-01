@@ -1,7 +1,7 @@
 import math
 
 def resultOrValue(object, attrName):
-    if type(object) is dict:
+    if isinstance(object, dict):
         attr = object[attrName]
     else:
         attr = getattr(object, attrName)
@@ -28,6 +28,7 @@ def Cube(r,g,b,a,h):
 def Sphere(r,g,b,a,h):
     return Asset("Sphere", r,g,b,a,h)
 #endregion
+
 #region Transform
 # A transform is a list of TransformPrimitives
 # A TransformPrimitive has one of nine names, and an amount
@@ -60,12 +61,19 @@ def RotateY(angle):
 def RotateZ(angle):
     return TransformPrimitive("RotateZ", angle)
 #endregion
+
 #region Instance
-class Instance:
-    def __init__(self, asset, transforms):
-        self.asset = asset
-        self.transform = transforms
+class Instance(dict):
+    def __init__(self, asset, transform):
+        super().__init__()
+        self["asset"] = asset
+        self["transform"] = transform
+
+    def render(self, renderer, transform):
+        self["transform"] = self["transform"] + transform
+        renderer.append(self)
 #endregion
+
 #region Loop
 class Loop:
     def __init__(self):
@@ -119,24 +127,24 @@ class Loop:
         # A loop is like a disc/cylinder, so width = thickness
         return 2 * self.outerRadius()
 #endregion
+
 #region DayLoop
 class DayLoop(Loop):
-    def render(self, renderer, transforms):
+    def render(self, renderer, transform):
         innerRadius = self.innerRadius()
         for unit in self.units:
             position = unit["position"]
-            overallTransforms = []
-            overallTransforms.append(ScaleX(unit["thickness"]))
-            overallTransforms.append(ScaleY(unit["width"]))
-            overallTransforms.append(ScaleZ(unit["length"]))
+            subUnitTransform = []
+            subUnitTransform.append(ScaleX(unit["thickness"]))
+            subUnitTransform.append(ScaleY(unit["width"]))
+            subUnitTransform.append(ScaleZ(unit["length"]))
             radius = innerRadius + unit["thickness"] / 2
-            overallTransforms.append(TranslateX(radius))
+            subUnitTransform.append(TranslateX(radius))
             dayLength = self.length()
             shift = position * dayLength - dayLength / 2
-            overallTransforms.append(TranslateY(shift))
+            subUnitTransform.append(TranslateY(shift))
             angle = position * 360
-            overallTransforms.append(RotateY(angle))
+            subUnitTransform.append(RotateY(angle))
 
-            overallTransforms += transforms
-
-            renderer.append( Instance( Cube(0,1,0,1,0), overallTransforms ) )
+            unit.render(renderer, subUnitTransform + transform)
+#endregion

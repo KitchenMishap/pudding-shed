@@ -7,13 +7,14 @@ fi1.close()
 
 renderer = []
 
-cuboids = []
-for i in range(0,10):
-    cuboids.append({"length": 10, "width": 20, "thickness": 30})
-
 loop = DayLoop()
 for i in range(0,10):
-    loop.append(cuboids[i])
+    cuboid = Instance(Cube(0,1,1,1,0),[])
+    cuboid["length"] = 10
+    cuboid["width"] = 20
+    cuboid["thickness"] = 30
+    loop.append(cuboid)
+
 loop.process(1.0)
 loop.render(renderer, [])
 
