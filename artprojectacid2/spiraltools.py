@@ -1,10 +1,9 @@
 import math
 
 def resultOrValue(object, attrName):
-    if isinstance(object, dict):
+    attr = getattr(object, attrName, None)
+    if attr is None and isinstance(object, dict):
         attr = object[attrName]
-    else:
-        attr = getattr(object, attrName)
     if callable(attr):
         return attr()
     return attr
@@ -75,8 +74,9 @@ class Instance(dict):
 #endregion
 
 #region Loop
-class Loop:
+class Loop(dict):
     def __init__(self):
+        super().__init__()
         self.units = []             # units are Volumes or other Loops
 
     def append(self, unit):
@@ -135,16 +135,34 @@ class DayLoop(Loop):
         for unit in self.units:
             position = unit["position"]
             subUnitTransform = []
-            subUnitTransform.append(ScaleX(unit["thickness"]))
-            subUnitTransform.append(ScaleY(unit["width"]))
-            subUnitTransform.append(ScaleZ(unit["length"]))
-            radius = innerRadius + unit["thickness"] / 2
+            subUnitTransform.append(ScaleX(resultOrValue(unit,"thickness")))
+            subUnitTransform.append(ScaleY(resultOrValue(unit,"width")))
+            subUnitTransform.append(ScaleZ(resultOrValue(unit,"length")))
+            radius = innerRadius + resultOrValue(unit,"thickness") / 2
             subUnitTransform.append(TranslateX(radius))
             dayLength = self.length()
             shift = position * dayLength - dayLength / 2
             subUnitTransform.append(TranslateY(shift))
             angle = position * 360
             subUnitTransform.append(RotateY(angle))
+
+            unit.render(renderer, subUnitTransform + transform)
+#endregion
+
+#region YearLoop
+class YearLoop(Loop):
+    def render(self, renderer, transform):
+        innerRadius = self.innerRadius()
+        for unit in self.units:
+            position = unit["position"]
+            subUnitTransform = []
+            radius = innerRadius + resultOrValue(unit,"thickness") / 2
+            subUnitTransform.append(TranslateX(radius))
+            yearLength = self.length()
+            shift = position * yearLength - yearLength / 2
+            subUnitTransform.append(TranslateZ(shift))
+            angle = position * 360
+            subUnitTransform.append(RotateZ(angle))
 
             unit.render(renderer, subUnitTransform + transform)
 #endregion
