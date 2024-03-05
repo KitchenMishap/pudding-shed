@@ -35,26 +35,34 @@ class Block(dict):
 
 def main():
     fi1 = open("Input\\acidblocks.json")
-    blocks = json.load(fi1)
+    jsonFile = json.load(fi1)
     fi1.close()
 
     renderer = []
 
     wholeThing = Loop()
 
+    blk = 0
     totalLength = 0.0
     for y in range(0,2):
         yearLoop = Loop()
         for d in range(0,365):
             dayLoop = Loop()
-            for b in range(0,145):
-                block = Block(10, 20, 30, 0.0, 1.0, 1.0)
+            for b in range(0,144):
+                blockJson = jsonFile["Blocks"][blk]
+                sizeBytes = blockJson["SizeBytes"]
+                size = math.pow(sizeBytes, 1/3.0)
+                red = blockJson["ColourByte0"] / 255.0
+                green = blockJson["ColourByte1"] / 255.0
+                blue = blockJson["ColourByte2"] / 255.0
+                block = Block(size, size, size, red, green, blue)
 
                 # Transforms introduced at each block
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 dayLoop.append(block)
+                blk = blk + 1
             dayLoop.process(1.5)
 
             # Transforms introduced at each dayLoop
