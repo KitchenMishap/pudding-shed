@@ -59,6 +59,35 @@ def RotateY(angle):
     return TransformPrimitive("RotateY", angle)
 def RotateZ(angle):
     return TransformPrimitive("RotateZ", angle)
+
+class SpreadableTransform:
+    def __init__(self, name, startAmount, endAmount):
+        self.name = name
+        self.start = startAmount
+        self.end = endAmount
+
+    def InterpolateTransform(self, position):
+        amount = self.start + position * (self.end - self.start)
+        return TransformPrimitive(self.name, amount)
+
+    def SpreadInterpolate(self, startPosition, endPosition):
+        startAmount = self.InterpolateTransform(startPosition).amount
+        endAmount = self.InterpolateTransform(endPosition).amount
+        return SpreadableTransform(self.name, startAmount, endAmount)
+
+def SpreadTranslateX(startDistance, endDistance):
+    return SpreadableTransform("TranslateX", startDistance, endDistance)
+def SpreadTranslateY(startDistance, endDistance):
+    return SpreadableTransform("TranslateY", startDistance, endDistance)
+def SpreadTranslateZ(startDistance, endDistance):
+    return SpreadableTransform("TranslateZ", startDistance, endDistance)
+def SpreadRotateX(startAngle, endAngle):
+    return SpreadableTransform("RotateX", startAngle, endAngle)
+def SpreadRotateY(startAngle, endAngle):
+    return SpreadableTransform("RotateY", startAngle, endAngle)
+def SpreadRotateZ(startAngle, endAngle):
+    return SpreadableTransform("RotateZ", startAngle, endAngle)
+
 #endregion
 
 #region Instance
@@ -77,18 +106,19 @@ class Instance(dict):
 class Loop(dict):
     def __init__(self):
         super().__init__()
-        self.units = []             # units are Volumes or other Loops
+        self.units = []                 # units are Volumes or other Loops
+        self.introducedTransforms = []
 
     def append(self, unit):
         self.units.append(unit)
 
     def process(self, spacingRatio):
-        # Calculates various items for self and position for each contained unit
+        # Calculates various items for self, and position/breadth for each contained unit
         self.unspacedCircumf = 0
         self.maxWidth = 0
         self.maxThickness = 0
         for unit in self.units:
-            # length can be an value or a function to be called
+            # length can be a value or a function to be called
             length = resultOrValue(unit, "length" )
             self.unspacedCircumf += length
 
@@ -102,10 +132,12 @@ class Loop(dict):
         runningTotal = 0
         for unit in self.units:
             length = resultOrValue(unit, "length")
-
             # unit.position is a number between 0 an 1
             unit["position"] = (runningTotal + length/2) / self.unspacedCircumf
             runningTotal += length
+            # unit.breadth is also a number between 0 and 1 on the same scale
+            unit["breadth"] = length / self.unspacedCircumf
+
         self.spacingRatio = spacingRatio
 
     def innerCircumf(self):
@@ -126,43 +158,25 @@ class Loop(dict):
     def thickness(self):
         # A loop is like a disc/cylinder, so width = thickness
         return 2 * self.outerRadius()
-#endregion
 
-#region DayLoop
-class DayLoop(Loop):
-    def render(self, renderer, transform):
+    def render(self, renderer, delegatedTransforms):
         innerRadius = self.innerRadius()
         for unit in self.units:
+            subUnitTransforms = []
             position = unit["position"]
-            subUnitTransform = []
-            subUnitTransform.append(ScaleX(resultOrValue(unit,"thickness")))
-            subUnitTransform.append(ScaleY(resultOrValue(unit,"width")))
-            subUnitTransform.append(ScaleZ(resultOrValue(unit,"length")))
-            radius = innerRadius + resultOrValue(unit,"thickness") / 2
-            subUnitTransform.append(TranslateX(radius))
-            dayLength = self.length()
-            shift = position * dayLength - dayLength / 2
-            subUnitTransform.append(TranslateY(shift))
-            angle = position * 360
-            subUnitTransform.append(RotateY(angle))
+            breadth = unit["breadth"]
+            startPosition = position - breadth/2
+            endPosition = position + breadth/2
 
-            unit.render(renderer, subUnitTransform + transform)
-#endregion
+            # Introduce some transforms to sub-units, spreading according to position spread
+            for introduced in self.introducedTransforms:
+                scaledSpreadable = introduced.SpreadInterpolate(startPosition, endPosition)
+                subUnitTransforms.append(scaledSpreadable)
 
-#region YearLoop
-class YearLoop(Loop):
-    def render(self, renderer, transform):
-        innerRadius = self.innerRadius()
-        for unit in self.units:
-            position = unit["position"]
-            subUnitTransform = []
-            radius = innerRadius + resultOrValue(unit,"thickness") / 2
-            subUnitTransform.append(TranslateX(radius))
-            yearLength = self.length()
-            shift = position * yearLength - yearLength / 2
-            subUnitTransform.append(TranslateZ(shift))
-            angle = position * 360
-            subUnitTransform.append(RotateZ(angle))
+            # Apply delegatedTransforms to sub-units, spreading according to position spread
+            for delegated in delegatedTransforms:
+                scaledSpreadable = delegated.SpreadInterpolate(startPosition, endPosition)
+                subUnitTransforms.append(scaledSpreadable)
 
-            unit.render(renderer, subUnitTransform + transform)
+            unit.render(renderer, subUnitTransforms)
 #endregion

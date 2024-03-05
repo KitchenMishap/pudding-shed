@@ -1,0 +1,2 @@
+In here we have the output of main.py, the input to spiralviz2.
+Here we have called it renderspec.json
