@@ -108,6 +108,8 @@ class Loop(dict):
         super().__init__()
         self.units = []                 # units are Volumes or other Loops
         self.introducedTransforms = []
+        self.prevUnit = None
+        self.nextUnit = None
 
     def append(self, unit):
         self.units.append(unit)
@@ -117,6 +119,7 @@ class Loop(dict):
         self.unspacedCircumf = 0
         self.maxWidth = 0
         self.maxThickness = 0
+        prevUnit = None
         for unit in self.units:
             # length can be a value or a function to be called
             length = resultOrValue(unit, "length" )
@@ -127,6 +130,13 @@ class Loop(dict):
 
             thickness = resultOrValue(unit, "thickness")
             self.maxThickness = max(self.maxThickness, thickness)
+
+            unit.nextUnit = None     # For a moment...
+            unit.prevUnit = prevUnit
+            if not (prevUnit is None):
+                prevUnit.nextUnit = unit
+
+            prevUnit = unit
 
         # Have to do this in a new loop, to use self.unspacedCircumf
         runningTotal = 0
@@ -166,17 +176,25 @@ class Loop(dict):
     def rampedAttr(self, attrName, index, prevLoop, nextLoop):
         count = len(self.units)
         currAttr = getattr(self, attrName)
+        val = currAttr
         if index < count / 3 and not (prevLoop is None):
             prevAttr = getattr(prevLoop, attrName)
-            ramp = index / (count / 3)
-            val = (1.0 - ramp) * prevAttr + ramp * currAttr
+            if prevAttr > currAttr:
+                ramp = index / (count / 3)
+                val = (1.0 - ramp) * prevAttr + ramp * currAttr
         elif index > 2 * count / 3 and not (nextLoop is None):
             nextAttr = getattr(nextLoop, attrName)
-            ramp = (index - 2 * count / 3) / (count / 3)
-            val = (1.0 - ramp) * currAttr + ramp * nextAttr
-        else:
-            val = currAttr
+            if nextAttr > currAttr:
+                ramp = (index - 2 * count / 3) / (count / 3)
+                val = (1.0 - ramp) * currAttr + ramp * nextAttr
         return val
+
+    def innerRadiusRamped(self, childIndex):
+        innerCircumfRamped = self.rampedAttr("unspacedCircumf", childIndex, self.prevUnit, self.nextUnit) * self.spacingRatio
+        return innerCircumfRamped / (2.0 * math.pi)
+
+    def maxThicknessRamped(self, childIndex):
+        return self.rampedAttr("maxThickness", childIndex, self.prevUnit, self.nextUnit)
 
     def render(self, renderer, delegatedTransforms):
         innerRadius = self.innerRadius()
