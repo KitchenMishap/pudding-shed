@@ -34,6 +34,7 @@ class Block(dict):
         renderer.append(positionedCuboid)
 
 def main():
+    # First pass: populate and measure()
     fi1 = open("Input\\acidblocks.json")
     jsonFile = json.load(fi1)
     fi1.close()
@@ -57,21 +58,30 @@ def main():
                 blue = blockJson["ColourByte2"] / 255.0
                 block = Block(size, size, size, red, green, blue)
 
+                dayLoop.append(block)
+                blk = blk + 1
+
+            dayLoop.measure(1.5)
+            yearLoop.append(dayLoop)
+
+        yearLoop.measure(2.0)
+        wholeThing.append(yearLoop)
+
+    wholeThing.measure(1.3)
+
+    # Second pass: introduce transforms
+    for y, yearLoop in enumerate(wholeThing.units):
+        for d, dayLoop in enumerate(yearLoop.units):
+            for b, block in enumerate(dayLoop.units):
+
                 # Transforms introduced at each block
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
-
-                dayLoop.append(block)
-                blk = blk + 1
-            dayLoop.measure(1.5)
 
             # Transforms introduced at each dayLoop
             dayInnerRadius = dayLoop.innerRadius()
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
-
-            yearLoop.append(dayLoop)
-        yearLoop.measure(2.0)
 
         # Transforms introduced at each yearLoop
         yearInnerRadius = yearLoop.innerRadius()
@@ -80,9 +90,6 @@ def main():
         yearLoop.introducedTransforms.append(SpreadTranslateX(yearRadius, yearRadius))
         yearLoop.introducedTransforms.append(SpreadRotateZ(0,360))
         totalLength += yearLoop.length()
-
-        wholeThing.append(yearLoop)
-    wholeThing.measure(1.3)
 
     # Transforms introduced at the wholeThing
     wholeThing.introducedTransforms.append(SpreadTranslateZ(0, totalLength * 1.3))
