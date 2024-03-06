@@ -50,12 +50,25 @@ def main():
             dayLoop = Loop()
             for b in range(0,144):
                 blockJson = jsonFile["Blocks"][blk]
+
                 sizeBytes = blockJson["SizeBytes"]
-                size = math.pow(sizeBytes, 1/3.0)
+                if sizeBytes >= 16 * 16 * 16:
+                    length = math.pow(sizeBytes, 1/3.0)
+                    width = math.pow(sizeBytes, 1/3.0)
+                    thickness = math.pow(sizeBytes, 1/3.0)
+                elif sizeBytes > 16 * 16:
+                    width = 16
+                    thickness = 16
+                    length = sizeBytes / (16 * 16)
+                else:
+                    length = 1
+                    width = 16
+                    thickness = sizeBytes / 16
+
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
-                block = Block(size, size, size, red, green, blue)
+                block = Block(length, width, thickness, red, green, blue)
 
                 dayLoop.append(block)
                 blk = blk + 1
