@@ -63,7 +63,7 @@ def main():
 
                 dayLoop.append(block)
                 blk = blk + 1
-            dayLoop.process(1.5)
+            dayLoop.measure(1.5)
 
             # Transforms introduced at each dayLoop
             dayInnerRadius = dayLoop.innerRadius()
@@ -71,7 +71,7 @@ def main():
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
 
             yearLoop.append(dayLoop)
-        yearLoop.process(2.0)
+        yearLoop.measure(2.0)
 
         # Transforms introduced at each yearLoop
         yearInnerRadius = yearLoop.innerRadius()
@@ -82,7 +82,7 @@ def main():
         totalLength += yearLoop.length()
 
         wholeThing.append(yearLoop)
-    wholeThing.process(1.3)
+    wholeThing.measure(1.3)
 
     # Transforms introduced at the wholeThing
     wholeThing.introducedTransforms.append(SpreadTranslateZ(0, totalLength * 1.3))

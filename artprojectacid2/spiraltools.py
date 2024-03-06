@@ -112,7 +112,7 @@ class Loop(dict):
     def append(self, unit):
         self.units.append(unit)
 
-    def process(self, spacingRatio):
+    def measure(self, spacingRatio):
         # Calculates various items for self, and position/breadth for each contained unit
         self.unspacedCircumf = 0
         self.maxWidth = 0
@@ -158,6 +158,25 @@ class Loop(dict):
     def thickness(self):
         # A loop is like a disc/cylinder, so width = thickness
         return 2 * self.outerRadius()
+
+    # A ramped version of an attribute is guaranteed to be greater than the attribute itself,
+    # and is continuous (no sudden jumps). If the attribute is greater in the previous loop,
+    # the first third ramps down from that value. If the attribute is greater in the next loop,
+    # the last third ramps up to that value.
+    def rampedAttr(self, attrName, index, prevLoop, nextLoop):
+        count = len(self.units)
+        currAttr = getattr(self, attrName)
+        if index < count / 3 and not (prevLoop is None):
+            prevAttr = getattr(prevLoop, attrName)
+            ramp = index / (count / 3)
+            val = (1.0 - ramp) * prevAttr + ramp * currAttr
+        elif index > 2 * count / 3 and not (nextLoop is None):
+            nextAttr = getattr(nextLoop, attrName)
+            ramp = (index - 2 * count / 3) / (count / 3)
+            val = (1.0 - ramp) * currAttr + ramp * nextAttr
+        else:
+            val = currAttr
+        return val
 
     def render(self, renderer, delegatedTransforms):
         innerRadius = self.innerRadius()
