@@ -77,9 +77,11 @@ def main():
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
+                # Transforms introduced at each block based on parent's ramped attributes
+                dayInnerRadiusAtBlock = dayLoop.innerRadiusRamped(b)
+                block.introducedTransforms.append(SpreadTranslateX(dayInnerRadiusAtBlock, dayInnerRadiusAtBlock))
+
             # Transforms introduced at each dayLoop based on this dayLoop
-            dayInnerRadius = dayLoop.innerRadius()
-            dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
 
             # Transforms introduced at each dayLoop based on parent's ramped attributes
