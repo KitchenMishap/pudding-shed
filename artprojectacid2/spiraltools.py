@@ -174,18 +174,24 @@ class Loop(dict):
     # the first third ramps down from that value. If the attribute is greater in the next loop,
     # the last third ramps up to that value.
     def rampedAttr(self, attrName, index, prevLoop, nextLoop):
-        count = len(self.units)
+        circumf = self.unspacedCircumf
+        partial = 0.0
+        for i in range(0,index):
+            length = resultOrValue(self.units[i], "length")
+            partial = partial + length
+        indexRatio = partial / circumf
+
         currAttr = getattr(self, attrName)
         val = currAttr
-        if index < count / 3 and not (prevLoop is None):
+        if indexRatio < 0.5 and not (prevLoop is None):
             prevAttr = getattr(prevLoop, attrName)
             if prevAttr > currAttr:
-                ramp = index / (count / 3)
+                ramp = indexRatio * 2.0
                 val = (1.0 - ramp) * prevAttr + ramp * currAttr
-        elif index > 2 * count / 3 and not (nextLoop is None):
+        elif indexRatio > 0.5 and not (nextLoop is None):
             nextAttr = getattr(nextLoop, attrName)
             if nextAttr > currAttr:
-                ramp = (index - 2 * count / 3) / (count / 3)
+                ramp = (indexRatio - 0.5) * 2.0
                 val = (1.0 - ramp) * currAttr + ramp * nextAttr
         return val
 
