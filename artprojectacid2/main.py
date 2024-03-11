@@ -45,7 +45,7 @@ def main():
     jsonFile = json.load(fi1)
     fi1.close()
 
-    print( "First pass, populate and measure...")
+    print( "First pass: populate, and measure to percolate up...")
     wholeThing = Loop()
     blk = 0
     for y in range(0,2):
@@ -77,6 +77,14 @@ def main():
                 dayLoop.append(block)
                 blk = blk + 1
 
+            # These measure calls set the following for each loop:
+            # minInnerCircumf
+            # minLength
+            # subUnitsMaxThickness
+            # Initially the following are set to these minima for now:
+            # innerCircumf
+            # length
+            # The gist is that sizes of individual blocks will "percolate up" to all the higher level loops
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
 
@@ -85,40 +93,47 @@ def main():
 
     wholeThing.measure(wholeSpacingRatio)
 
-    print("Second pass, enlarge innerCircumf, length based on ramped attributes, measure & measure positions")
-    # We overwrite things that are based on intended rendering
+    print("Second pass: Ramped high level measurements percolate down and up...")
+    # Enlarge innerCircumf, length based on ramped attributes, measure again
     for y, yearLoop in enumerate(wholeThing.units):
         for d, dayLoop in enumerate(yearLoop.units):
+            # Taking account of a "ramped" measurement in yearLoop means it is now potentially bigger than before
+            # Here we are "percolating down" this increased measurement to a lower level loops
             dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
             dayInnerCircumf = dayRadius * 2.0 * math.pi
             dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
 
+            # Because the low level measurements have changed as a result, we need to measure again to "percolate"
+            # back up to all the higher levels
             dayLoop.measure(daySpacingRatio)
-            dayLoop.measurePositions()
-
         yearLoop.measure(yearSpacingRatio)
-        yearLoop.measurePositions()
-
     wholeThing.measure(wholeSpacingRatio)
-    wholeThing.measurePositions()
 
-    print("Third pass, introduce transforms...")
+    print("Third pass: Measure the positions...")
     for y, yearLoop in enumerate(wholeThing.units):
         for d, dayLoop in enumerate(yearLoop.units):
-            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
+            dayLoop.measurePositions()
+        yearLoop.measurePositions()
+    wholeThing.measurePositions()
+
+    print("Fourth pass, introduce transforms...")
+    for y, yearLoop in enumerate(wholeThing.units):
+        for d, dayLoop in enumerate(yearLoop.units):
+            dayRadius = dayLoop.innerCircumf / (2.0 * math.pi)
             for b, block in enumerate(dayLoop.units):
 
                 # Transforms introduced at each block
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
-                # Transforms introduced at each block based on parent's ramped attributes
+                # Transforms introduced at each block based on parent's radius for day
                 block.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))
 
             # Transforms introduced at each dayLoop based on this dayLoop
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
 
             # Transforms introduced at each dayLoop based on parent's ramped attributes
+            # NOT TOO SURE ABOUT THIS BIT
             yearMaxThicknessAtDay = yearLoop.maxThicknessRamped(d)
             yearRadiusAtDay = yearMaxThicknessAtDay / 2.0
             dayLoop.introducedTransforms.append(SpreadTranslateX(yearRadiusAtDay, yearRadiusAtDay))

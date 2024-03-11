@@ -123,7 +123,7 @@ class Loop(dict):
         # Calculates various accumulated minimum measurements (based on totals and maximums over subunits) for self
         self.minInnerCircumf = 0.0
         self.minLength = 0.0
-        self.minWidthThickness = 0.0
+        self.subUnitsMaxThickness = 0.0
         prevUnit = None
         for unit in self.units:
             # length can be a value or a function to be called
