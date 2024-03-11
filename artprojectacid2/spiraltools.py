@@ -110,26 +110,31 @@ class Loop(dict):
         self.introducedTransforms = []
         self.prevUnit = None
         self.nextUnit = None
+        self.minInnerCircumf = 0.0
+        self.minLength = 0.0
+        self.subUnitsMaxThickness = 0.0
+        self.innerCircumf = 0.0
+        self.length = 0.0
 
     def append(self, unit):
         self.units.append(unit)
 
     def measure(self, spacingRatio):
-        # Calculates various items for self, and position/breadth for each contained unit
-        self.unspacedCircumf = 0
-        self.maxWidth = 0
-        self.maxThickness = 0
+        # Calculates various accumulated minimum measurements (based on totals and maximums over subunits) for self
+        self.minInnerCircumf = 0.0
+        self.minLength = 0.0
+        self.minWidthThickness = 0.0
         prevUnit = None
         for unit in self.units:
             # length can be a value or a function to be called
             length = resultOrValue(unit, "length" )
-            self.unspacedCircumf += length
+            self.minInnerCircumf += length
 
             width = resultOrValue(unit, "width")
-            self.maxWidth = max(self.maxWidth, width)
+            self.minLength = max(self.minLength, width)
 
             thickness = resultOrValue(unit, "thickness")
-            self.maxThickness = max(self.maxThickness, thickness)
+            self.subUnitsMaxThickness = max(self.subUnitsMaxThickness, thickness)
 
             unit.nextUnit = None     # For a moment...
             unit.prevUnit = prevUnit
@@ -138,72 +143,66 @@ class Loop(dict):
 
             prevUnit = unit
 
-        # Have to do this in a new loop, to use self.unspacedCircumf
-        runningTotal = 0
+        self.minInnerCircumf *= spacingRatio
+
+        # Increase defaults if necessary, until parent decides to increase
+        self.innerCircumf = max(self.innerCircumf, self.minInnerCircumf)
+        self.length = max(self.length, self.minLength)
+
+    def measurePositions(self):
+        # Calculates position and breadth for each subunit
+        # "space" is distributed equally to each subunit regardless of its length
+        totalSpace = self.innerCircumf - self.minInnerCircumf
+        unitCount = len(self.units)
+        spacePerUnit = totalSpace / unitCount
+        runningTotal = 0.0
         for unit in self.units:
-            length = resultOrValue(unit, "length")
+            minLength = resultOrValue(unit, "minLength")
             # unit.position is a number between 0 an 1
-            unit["position"] = (runningTotal + length/2) / self.unspacedCircumf
-            runningTotal += length
+            unit["position"] = (runningTotal + minLength/2) / self.innerCircumf
+            runningTotal = runningTotal + minLength + spacePerUnit
             # unit.breadth is also a number between 0 and 1 on the same scale
-            unit["breadth"] = length / self.unspacedCircumf
-
-        self.spacingRatio = spacingRatio
-
-    def innerCircumf(self):
-        return self.unspacedCircumf * self.spacingRatio
-
-    def innerRadius(self):
-        return self.innerCircumf() / (2 * math.pi)
-
-    def outerRadius(self):
-        return self.innerCircumf() / (2*math.pi) + self.maxThickness
-
-    def length(self):
-        return self.maxWidth
+            unit["breadth"] = (minLength + spacePerUnit) / self.innerCircumf
 
     def width(self):
-        return 2 * self.outerRadius()
+        return self.innerCircumf / math.pi + self.subUnitsMaxThickness
 
     def thickness(self):
         # A loop is like a disc/cylinder, so width = thickness
-        return 2 * self.outerRadius()
+        return self.innerCircumf / math.pi + self.subUnitsMaxThickness
 
-    # A ramped version of an attribute is guaranteed to be greater than the attribute itself,
+    # A "ramped" version of an attribute is guaranteed to be greater than the attribute itself,
     # and is continuous (no sudden jumps). If the attribute is greater in the previous loop,
-    # the first third ramps down from that value. If the attribute is greater in the next loop,
-    # the last third ramps up to that value.
+    # the first half ramps down from that value. If the attribute is greater in the next loop,
+    # the last half ramps up to that value.
     def rampedAttr(self, attrName, index, prevLoop, nextLoop):
-        circumf = self.unspacedCircumf
         partial = 0.0
         for i in range(0,index):
             length = resultOrValue(self.units[i], "length")
             partial = partial + length
-        indexRatio = partial / circumf
+        indexRatio = partial / self.innerCircumf
 
         currAttr = getattr(self, attrName)
         val = currAttr
         if indexRatio < 0.5 and not (prevLoop is None):
             prevAttr = getattr(prevLoop, attrName)
             if prevAttr > currAttr:
-                ramp = indexRatio * 2.0
+                ramp = indexRatio * 2.0             # So that 0.0 represents 0.0 and 0.5 represents 1.0
                 val = (1.0 - ramp) * prevAttr + ramp * currAttr
         elif indexRatio > 0.5 and not (nextLoop is None):
             nextAttr = getattr(nextLoop, attrName)
             if nextAttr > currAttr:
-                ramp = (indexRatio - 0.5) * 2.0
+                ramp = (indexRatio - 0.5) * 2.0     # So that 0.5 represents 0.0 and 1.0 represents 1.0
                 val = (1.0 - ramp) * currAttr + ramp * nextAttr
         return val
 
-    def innerRadiusRamped(self, childIndex):
-        innerCircumfRamped = self.rampedAttr("unspacedCircumf", childIndex, self.prevUnit, self.nextUnit) * self.spacingRatio
-        return innerCircumfRamped / (2.0 * math.pi)
+    def maxThicknessRamped(self, index):
+        return self.rampedAttr("subUnitsMaxThickness", index, self.prevUnit, self.nextUnit)
 
-    def maxThicknessRamped(self, childIndex):
-        return self.rampedAttr("maxThickness", childIndex, self.prevUnit, self.nextUnit)
+    def innerCircumfRamped(self, index):
+        return self.rampedAttr("innerCircumf", index, self.prevUnit, self.nextUnit)
 
     def render(self, renderer, delegatedTransforms):
-        innerRadius = self.innerRadius()
         for unit in self.units:
             subUnitTransforms = []
             position = unit["position"]

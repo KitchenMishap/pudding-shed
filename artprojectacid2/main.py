@@ -5,6 +5,7 @@ import json
 class Block(dict):
     def __init__(self, l, w, t, r, g, b):
         self.length = l
+        self.minLength = l
         self.width = w
         self.thickness = t
         self.red = r
@@ -35,6 +36,10 @@ class Block(dict):
 
 def main():
 
+    daySpacingRatio = 1.0
+    yearSpacingRatio = 1.0
+    wholeSpacingRatio = 1.0
+
     print( "Opening source data file...")
     fi1 = open("Input\\acidblocks.json")
     jsonFile = json.load(fi1)
@@ -43,7 +48,6 @@ def main():
     print( "First pass, populate and measure...")
     wholeThing = Loop()
     blk = 0
-    totalLength = 0.0
     for y in range(0,2):
         yearLoop = Loop()
         for d in range(0,365):
@@ -73,17 +77,35 @@ def main():
                 dayLoop.append(block)
                 blk = blk + 1
 
-            dayLoop.measure(1.0)
+            dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
 
-        yearLoop.measure(1.0)
+        yearLoop.measure(yearSpacingRatio)
         wholeThing.append(yearLoop)
 
-    wholeThing.measure(1.0)
+    wholeThing.measure(wholeSpacingRatio)
 
-    print( "Second pass, introduce transforms...")
+    print("Second pass, enlarge innerCircumf, length based on ramped attributes, measure & measure positions")
+    # We overwrite things that are based on intended rendering
     for y, yearLoop in enumerate(wholeThing.units):
         for d, dayLoop in enumerate(yearLoop.units):
+            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
+            dayInnerCircumf = dayRadius * 2.0 * math.pi
+            dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
+
+            dayLoop.measure(daySpacingRatio)
+            dayLoop.measurePositions()
+
+        yearLoop.measure(yearSpacingRatio)
+        yearLoop.measurePositions()
+
+    wholeThing.measure(wholeSpacingRatio)
+    wholeThing.measurePositions()
+
+    print("Third pass, introduce transforms...")
+    for y, yearLoop in enumerate(wholeThing.units):
+        for d, dayLoop in enumerate(yearLoop.units):
+            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
             for b, block in enumerate(dayLoop.units):
 
                 # Transforms introduced at each block
@@ -91,24 +113,22 @@ def main():
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 # Transforms introduced at each block based on parent's ramped attributes
-                dayInnerRadiusAtBlock = dayLoop.innerRadiusRamped(b)
-                block.introducedTransforms.append(SpreadTranslateX(dayInnerRadiusAtBlock, dayInnerRadiusAtBlock))
+                block.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))
 
             # Transforms introduced at each dayLoop based on this dayLoop
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
 
             # Transforms introduced at each dayLoop based on parent's ramped attributes
-            yearInnerRadiusAtDay = yearLoop.innerRadiusRamped(d)
             yearMaxThicknessAtDay = yearLoop.maxThicknessRamped(d)
-            yearRadiusAtDay = yearInnerRadiusAtDay + yearMaxThicknessAtDay / 2
+            yearRadiusAtDay = yearMaxThicknessAtDay / 2.0
             dayLoop.introducedTransforms.append(SpreadTranslateX(yearRadiusAtDay, yearRadiusAtDay))
 
         # Transforms introduced at each yearLoop
         yearLoop.introducedTransforms.append(SpreadRotateZ(0,360))
-        totalLength += yearLoop.length()
 
     # Transforms introduced at the wholeThing
-    wholeThing.introducedTransforms.append(SpreadTranslateZ(0, totalLength * 1.3))
+    totalLength = wholeThing.innerCircumf
+    wholeThing.introducedTransforms.append(SpreadTranslateZ(0, totalLength))
 
     print( "Render..." )
     renderer = []
