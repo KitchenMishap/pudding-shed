@@ -47,14 +47,17 @@ def main():
 
     print( "First pass: populate, and measure to percolate up...")
     wholeThing = Loop()
-    blk = 0
-    for y in range(0,2):
+    blk = 1
+    blockJson = jsonFile["Blocks"][blk]
+    y = 0
+    prevY = 0
+    d = 5
+    prevD = 5
+    while y<2:                  # For each year
         yearLoop = Loop()
-        for d in range(0,365):
+        while y == prevY:          # For each day in year
             dayLoop = Loop()
-            for b in range(0,144):
-                blockJson = jsonFile["Blocks"][blk]
-
+            while d == prevD:           # For each block in day
                 sizeBytes = blockJson["SizeBytes"]
                 if sizeBytes >= 16 * 16 * 16:
                     length = math.pow(sizeBytes, 1/3.0)
@@ -68,15 +71,23 @@ def main():
                     length = 1
                     width = 16
                     thickness = sizeBytes / 16
-
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
                 block = Block(length, width, thickness, red, green, blue)
-
                 dayLoop.append(block)
                 blk = blk + 1
+                blockJson = jsonFile["Blocks"][blk]
+                seconds1970 = blockJson["MedianTime"]
+                secondsGenesis = seconds1970 - 1231006505
+                daysGenesis = math.floor(secondsGenesis / (24 * 60 * 60))
+                yearsGenesis = math.floor(daysGenesis / 365)
+                prevY = y
+                y = yearsGenesis
+                prevD = d
+                d = daysGenesis
 
+            prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
             # minLength
@@ -87,10 +98,9 @@ def main():
             # The gist is that sizes of individual blocks will "percolate up" to all the higher level loops
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
-
+        prevY = y
         yearLoop.measure(yearSpacingRatio)
         wholeThing.append(yearLoop)
-
     wholeThing.measure(wholeSpacingRatio)
 
     print("Second pass: Ramped high level measurements percolate down and up...")
