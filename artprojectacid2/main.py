@@ -131,12 +131,11 @@ def main():
 
             # Transforms introduced at each dayLoop based on this dayLoop
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
+            dayLoop.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))     # Yes another dayRadius
 
             # Transforms introduced at each dayLoop based on parent's ramped attributes
-            # NOT TOO SURE ABOUT THIS BIT
-            yearMaxThicknessAtDay = yearLoop.maxThicknessRamped(d)
-            yearRadiusAtDay = yearMaxThicknessAtDay / 2.0
-            dayLoop.introducedTransforms.append(SpreadTranslateX(yearRadiusAtDay, yearRadiusAtDay))
+            yearInnerRadiusRamped = yearLoop.innerCircumfRamped(d) / (2.0 * math.pi)
+            dayLoop.introducedTransforms.append(SpreadTranslateX(yearInnerRadiusRamped, yearInnerRadiusRamped))
 
         # Transforms introduced at each yearLoop
         yearLoop.introducedTransforms.append(SpreadRotateZ(0,360))
