@@ -167,7 +167,7 @@ def galaxyMain():
     daySpacingRatio = 1.0
     armSpacingRatio = 1.0
     wholeSpacingRatio = 1.0
-    armRatio = 2.0
+    armRatio = 1.0
 
     print( "Opening source data file...")
     fi1 = open("Input\\acidblocks.json")
@@ -175,6 +175,7 @@ def galaxyMain():
     fi1.close()
 
     print( "First pass: populate, and measure to percolate up...")
+    # No spiralling at this stage
     wholeThing = Loop()
     blk = 1
     blockJson = jsonFile["Blocks"][blk]
@@ -183,6 +184,7 @@ def galaxyMain():
     prevArm = 0
     d = 5
     prevD = 5
+    yearsGenesis = 0
     while blk < blkCount - 1:                  # For each arm loop
         armLoop = Loop()
         while arm == prevArm and blk < blkCount - 1:          # For each day in arm loop
@@ -204,6 +206,16 @@ def galaxyMain():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
+                if yearsGenesis & 1 == 0:
+                    # Orange
+                    red = 0.5 + red / 2
+                    green = 0.25 + 3 * green / 4
+                    blue = blue / 2
+                else:
+                    # White
+                    red = 0.25 + 3 * red / 4
+                    green = 0.25 + 3 * green / 4
+                    blue = 0.25 + 3 * blue / 4
                 block = Block(length, width, thickness, red, green, blue)
                 dayLoop.append(block)
                 blk = blk + 1
@@ -211,9 +223,11 @@ def galaxyMain():
                 seconds1970 = blockJson["MedianTime"]
                 secondsGenesis = seconds1970 - 1231006505
                 daysGenesis = math.floor(secondsGenesis / (24 * 60 * 60))
+                yearsGenesis = math.floor(daysGenesis / 365.2422)
                 prevD = d
                 d = daysGenesis
 
+            dayLoop.complete = True
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
@@ -233,8 +247,9 @@ def galaxyMain():
                 prevArmInnerRadius = prevArmLoop.innerCircumf / (2.0 * math.pi)
                 targetInnerRadius = prevArmInnerRadius + prevArmLoop.subUnitsMaxThickness
             targetInnerCircumf = 2.0 * math.pi * targetInnerRadius
-            armLoop.innerCircumf = targetInnerCircumf
             if armLoop.minInnerCircumf >= targetInnerCircumf:
+                # Arm loop filled, move on to the next one
+                armLoop.complete = True
                 arm = arm + 1
 
         prevArm = arm
@@ -242,14 +257,16 @@ def galaxyMain():
         armLoop.measure(armSpacingRatio)
         wholeThing.append(armLoop)
     wholeThing.measure(wholeSpacingRatio)
+    wholeThing.complete = True
+    wholeThing.loopFraction = 1.0
 
     print("Second pass: Ramped high level measurements percolate down and up...")
     # Enlarge innerCircumf, length based on ramped attributes, measure again
     for a, armLoop in enumerate(wholeThing.units):
         for d, dayLoop in enumerate(armLoop.units):
             # Taking account of a "ramped" measurement in armLoop means it is now potentially bigger than before
-            # Here we are "percolating down" this increased measurement to a lower level loops
-            dayRadius = armLoop.maxThicknessRamped(d) / 2.0
+            # Here we are "percolating down" this increased measurement to a lower level loop
+            dayRadius = armLoop.maxThicknessRamped(d) / 2.0 - dayLoop.subUnitsMaxThickness
             dayInnerCircumf = dayRadius * 2.0 * math.pi
             dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
 
@@ -267,28 +284,52 @@ def galaxyMain():
     wholeThing.measurePositions()
 
     print("Fourth pass, introduce transforms...")
+    print( len(wholeThing.units), " arms...")
+    startArmRadius = wholeThing.units[0].startAttr("innerCircumf", False) / (2.0 * math.pi)
+    wholeThingRadial = wholeThing.innerCircumf
+    ultimateThickness = wholeThing.units[len(wholeThing.units) - 1].endAttr("length", False)
     for a, armLoop in enumerate(wholeThing.units):
+        startThickness = armLoop.startAttr("length", False)
+        endThickness = armLoop.endAttr("length", False)
+        startAxial = (ultimateThickness - startThickness) / 2.0
+        endAxial = (ultimateThickness - endThickness) / 2.0
+        armRadialStart = armLoop["position"] * wholeThingRadial
+        if armLoop.nextUnit is None:
+            # Extrapolate
+            oneBefore = armLoop.prevUnit
+            diff = armLoop["position"] - oneBefore["position"]
+            extrapolatedPosition = oneBefore["position"] + (1.0 + armLoop.loopFraction) * diff
+            armRadialEnd = extrapolatedPosition * wholeThingRadial
+        else:
+            armRadialEnd = armLoop.nextUnit["position"] * wholeThingRadial
+
+        startDayDiameter = armLoop.startAttr("length", False)
+        endDayDiameter = armLoop.endAttr("length", False)
+        startDayInnerRadius = (startDayDiameter - 2.0 * armLoop.startAttr("subUnitsMaxThickness", False)) / 2.0
+        endDayInnerRadius = (endDayDiameter - 2.0 * armLoop.endAttr("subUnitsMaxThickness", False)) / 2.0
         for d, dayLoop in enumerate(armLoop.units):
-            dayRadius = dayLoop.innerCircumf / (2.0 * math.pi)
+            dayInnerRadius = startDayInnerRadius + dayLoop["position"] * (endDayInnerRadius - startDayInnerRadius)
             for b, block in enumerate(dayLoop.units):
 
-                # Transforms introduced at each block
+                # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
-                # Transforms introduced at each block based on parent's radius for day
-                block.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))
+            # Give dayLoop a radius
+            dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
 
-            # Transforms introduced at each dayLoop based on this dayLoop
-            dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
-            dayLoop.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))     # Yes another dayRadius
+            # Rotation for elements of dayLoop
+            dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
 
-            # Transforms introduced at each dayLoop based on parent's ramped attributes
-            armInnerRadiusRamped = armLoop.innerCircumfRamped(d) / (2.0 * math.pi)
-            dayLoop.introducedTransforms.append(SpreadTranslateX(armInnerRadiusRamped, armInnerRadiusRamped))
+        # Expand galaxy based on length of arms
+        # So arm radii is driven by wholeThing measurement; we just add the initial radius
+        armLoop.introducedTransforms.append(SpreadTranslateX(startArmRadius + armRadialStart, startArmRadius + armRadialEnd))
 
-        # Transforms introduced at each armLoop
-        armLoop.introducedTransforms.append(SpreadRotateZ(0,360))
+        # Shift vertically to flatten the top of the spiral
+        armLoop.introducedTransforms.append(SpreadTranslateZ(startAxial, endAxial))
+
+        # Rotation for elements of armLoop
+        armLoop.introducedTransforms.append(SpreadRotateZ(0, armLoop.loopFraction * 360.0))
 
     # Transforms introduced at the wholeThing
 

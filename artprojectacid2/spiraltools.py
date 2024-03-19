@@ -115,6 +115,8 @@ class Loop(dict):
         self.subUnitsMaxThickness = 0.0
         self.innerCircumf = 0.0
         self.length = 0.0
+        self.complete = False
+        self.loopFraction = 0.0
 
     def append(self, unit):
         self.units.append(unit)
@@ -140,7 +142,9 @@ class Loop(dict):
             unit.prevUnit = prevUnit
             if not (prevUnit is None):
                 prevUnit.nextUnit = unit
-
+                subUnitsAttr = getattr(unit, "units", None)
+                if subUnitsAttr is not None and not unit.complete:
+                    unit.loopFraction = len(unit.units) / len(prevUnit.units)   # Just an estimate
             prevUnit = unit
 
         self.minInnerCircumf *= spacingRatio
@@ -149,12 +153,15 @@ class Loop(dict):
         self.innerCircumf = max(self.innerCircumf, self.minInnerCircumf)
         self.length = max(self.length, self.minLength)
 
+        if self.complete:
+            self.loopFraction = 1.0
+
     def measurePositions(self):
         # Calculates position and breadth for each subunit
         # "space" is distributed equally to each subunit regardless of its length
         totalSpace = self.innerCircumf - self.minInnerCircumf
-        unitCount = len(self.units)
-        spacePerUnit = totalSpace / unitCount
+        wholeLoopUnitCount = len(self.units) / self.loopFraction
+        spacePerUnit = totalSpace / wholeLoopUnitCount
         runningTotal = 0.0
         for unit in self.units:
             minLength = resultOrValue(unit, "minLength")
@@ -165,11 +172,11 @@ class Loop(dict):
             unit["breadth"] = (minLength + spacePerUnit) / self.innerCircumf
 
     def width(self):
-        return self.innerCircumf / math.pi + self.subUnitsMaxThickness
+        return self.innerCircumf / math.pi + 2.0 * self.subUnitsMaxThickness
 
     def thickness(self):
         # A loop is like a disc/cylinder, so width = thickness
-        return self.innerCircumf / math.pi + self.subUnitsMaxThickness
+        return self.innerCircumf / math.pi + 2.0 * self.subUnitsMaxThickness
 
     # A "ramped" version of an attribute is guaranteed to be greater than the attribute itself,
     # and is continuous (no sudden jumps). If the attribute is greater in the previous loop,
@@ -201,6 +208,34 @@ class Loop(dict):
 
     def innerCircumfRamped(self, index):
         return self.rampedAttr("innerCircumf", index, self.prevUnit, self.nextUnit)
+
+    # A startAttr is a named attribute, interpolated or extrapolated based on neighbours.
+    def startAttr(self, attrName, scalePartial):
+        currAttr = resultOrValue(self, attrName)
+        if scalePartial:
+            currAttr = currAttr / self.loopFraction
+        if self.prevUnit is not None:
+            prevAttr = resultOrValue(self.prevUnit, attrName)
+            return (currAttr + prevAttr) / 2.0
+        else:
+            nextAttr = resultOrValue(self.nextUnit, attrName)
+            if scalePartial:
+                nextAttr = nextAttr / self.nextUnit.loopFraction
+            return currAttr - (nextAttr - currAttr) / 2.0
+
+    # An endAttr is a named attribute, interpolated or extrapolated based on neighbours.
+    def endAttr(self, attrName, scalePartial):
+        currAttr = resultOrValue(self, attrName)
+        if scalePartial:
+            currAttr = currAttr / self.loopFraction
+        if self.nextUnit is not None:
+            nextAttr = resultOrValue(self.nextUnit, attrName)
+            if scalePartial:
+                nextAttr = nextAttr / self.nextUnit.loopFraction
+            return (currAttr + nextAttr) / 2.0
+        else:
+            prevAttr = resultOrValue(self.prevUnit, attrName)
+            return currAttr + (currAttr - prevAttr) / 2.0
 
     def render(self, renderer, delegatedTransforms):
         for unit in self.units:
