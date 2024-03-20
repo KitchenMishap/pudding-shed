@@ -3,7 +3,7 @@ import json
 
 
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b):
+    def __init__(self, l, w, t, r, g, b, baseR, baseG, baseB):
         self.length = l
         self.minLength = l
         self.width = w
@@ -11,9 +11,15 @@ class Block(dict):
         self.red = r
         self.green = g
         self.blue = b
+        self.baseR = baseR
+        self.baseG = baseG
+        self.baseB = baseB
+        self.baseLength = 0.0
+        self.baseWidth = 0.0
         self.introducedTransforms = []
 
     def render(self, renderer, delegatedTransforms):
+        # Firstly, a cube
         instanceTransform = []
         instanceTransform.append(ScaleX(self.thickness))
         instanceTransform.append(ScaleY(self.width))
@@ -33,6 +39,30 @@ class Block(dict):
             instanceTransform.append(TransformPrimitive(name, amount))
         positionedCuboid = Instance(colouredCube, instanceTransform)
         renderer.append(positionedCuboid)
+
+        # Secondly, a slab
+        slabTransform = []
+        slabTransform.append(ScaleX(1))     # Much Thinner
+        slabTransform.append(ScaleY(math.fabs(self.baseWidth)))
+        slabTransform.append(ScaleZ(math.fabs(self.baseLength)))
+        colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0)     # Orange
+
+        # Apply an extra transform to base of slab
+        slabTransform.append(TranslateX(self.thickness * 0.505))
+        # Apply all the introduced transforms
+        for introduced in self.introducedTransforms:
+            name = introduced.name
+            # A block is not distributed over sub-units, so we use the middle
+            amount = (introduced.start + introduced.end) / 2
+            slabTransform.append(TransformPrimitive(name, amount))
+        # Apply all the delegated transforms
+        for delegated in delegatedTransforms:
+            name = delegated.name
+            # A block is not distributed over sub-units, so we use the middle
+            amount = (delegated.start + delegated.end) / 2
+            slabTransform.append(TransformPrimitive(name, amount))
+        positionedSlab = Instance(colouredSlab, slabTransform)
+        renderer.append(positionedSlab)
 
 def main():
 
@@ -137,7 +167,10 @@ def main():
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 # Transforms introduced at each block based on parent's radius for day
-                block.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))
+                block.introducedTransforms.append(SpreadTranslateX(-dayRadius, -dayRadius))
+
+                # Store some measurements of a "Base" so that block can render a base slab
+                block.baseLength = dayRadius * 2.0 * math.pi * block["breadth"]
 
             # Transforms introduced at each dayLoop based on this dayLoop
             dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
@@ -207,16 +240,15 @@ def galaxyMain():
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
                 if yearsGenesis & 1 == 0:
-                    # Orange
-                    red = 0.5 + red / 2
-                    green = 0.25 + 3 * green / 4
-                    blue = blue / 2
+                    # Bitcoin orange
+                    baseR = 255.0 / 256.0
+                    baseG = 153.0 / 255.0
+                    baseB = 0.0
                 else:
-                    # White
-                    red = 0.25 + 3 * red / 4
-                    green = 0.25 + 3 * green / 4
-                    blue = 0.25 + 3 * blue / 4
-                block = Block(length, width, thickness, red, green, blue)
+                    baseR = 255.0 / 256.0
+                    baseG = 255.0 / 256.0
+                    baseB = 255.0 / 256.0
+                block = Block(length, width, thickness, red, green, blue, baseR, baseG, baseB)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -309,11 +341,16 @@ def galaxyMain():
         endDayInnerRadius = (endDayDiameter - 2.0 * armLoop.endAttr("subUnitsMaxThickness", False)) / 2.0
         for d, dayLoop in enumerate(armLoop.units):
             dayInnerRadius = startDayInnerRadius + dayLoop["position"] * (endDayInnerRadius - startDayInnerRadius)
+            armRadiusAtDay = startArmRadius + armRadialStart + dayLoop["position"] * (armRadialEnd - armRadialStart)
             for b, block in enumerate(dayLoop.units):
 
                 # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
-                block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
+                block.introducedTransforms.append(SpreadTranslateX(-halfThickness, -halfThickness))
+
+                # Store some measurements of a "Base" so that block can render a base slab
+                block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.1
+                block.baseWidth = armRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.8
 
             # Give dayLoop a radius
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
