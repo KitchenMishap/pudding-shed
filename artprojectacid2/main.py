@@ -197,9 +197,9 @@ def main():
 
 def galaxyMain():
 
-    daySpacingRatio = 1.0
-    armSpacingRatio = 1.0
-    wholeSpacingRatio = 1.0
+    daySpacingRatio = 1.01
+    armSpacingRatio = 1.02
+    wholeSpacingRatio = 1.03
     armRatio = 1.0
 
     print( "Opening source data file...")

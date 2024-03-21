@@ -147,10 +147,8 @@ class Loop(dict):
                     unit.loopFraction = len(unit.units) / len(prevUnit.units)   # Just an estimate
             prevUnit = unit
 
-        self.minInnerCircumf *= spacingRatio
-
         # Increase defaults if necessary, until parent decides to increase
-        self.innerCircumf = max(self.innerCircumf, self.minInnerCircumf)
+        self.innerCircumf = max(self.innerCircumf, self.minInnerCircumf * spacingRatio)
         self.length = max(self.length, self.minLength)
 
         if self.complete:
