@@ -164,30 +164,42 @@ def towerMain():
 
     print("Fourth pass, introduce transforms...")
     for y, yearLoop in enumerate(wholeThing.units):
+        startDayDiameter = yearLoop.startAttr("length", False)
+        endDayDiameter = yearLoop.endAttr("length", False)
+        startDayInnerRadius = (startDayDiameter - 2.0 * yearLoop.startAttr("subUnitsMaxThickness", False)) / 2.0
+        endDayInnerRadius = (endDayDiameter - 2.0 * yearLoop.endAttr("subUnitsMaxThickness", False)) / 2.0
+        startYearRadius = yearLoop.startAttr("innerCircumf", False) / (2.0 * math.pi)
+        endYearRadius = yearLoop.endAttr("innerCircumf", False) / (2.0 * math.pi)
         for d, dayLoop in enumerate(yearLoop.units):
+            dayInnerRadius = startDayInnerRadius + dayLoop["position"] * (endDayInnerRadius - startDayInnerRadius)
+            yearRadiusAtDay = startYearRadius + dayLoop["position"] * (endYearRadius - startYearRadius)
             dayRadius = dayLoop.innerCircumf / (2.0 * math.pi)
             for b, block in enumerate(dayLoop.units):
 
-                # Transforms introduced at each block
+                # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
-                block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
-
-                # Transforms introduced at each block based on parent's radius for day
-                block.introducedTransforms.append(SpreadTranslateX(-dayRadius, -dayRadius))
+                block.introducedTransforms.append(SpreadTranslateX(-halfThickness, -halfThickness))
 
                 # Store some measurements of a "Base" so that block can render a base slab
-                block.baseLength = dayRadius * 2.0 * math.pi * block["breadth"]
+                block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.1
+                block.baseWidth = yearRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.8
+
+            # Give dayLoop a radius
+            dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
+
+            # Rotation for elements of dayLoop
+            dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
+
 
             # Transforms introduced at each dayLoop based on this dayLoop
-            dayLoop.introducedTransforms.append(SpreadRotateY(0,360))
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))     # Yes another dayRadius
 
             # Transforms introduced at each dayLoop based on parent's ramped attributes
             yearInnerRadiusRamped = yearLoop.innerCircumfRamped(d) / (2.0 * math.pi)
             dayLoop.introducedTransforms.append(SpreadTranslateX(yearInnerRadiusRamped, yearInnerRadiusRamped))
 
-        # Transforms introduced at each yearLoop
-        yearLoop.introducedTransforms.append(SpreadRotateZ(0,360))
+        # Rotation for elements of yearLoop
+        yearLoop.introducedTransforms.append(SpreadRotateZ(0, yearLoop.loopFraction * 360.0))
 
     # Transforms introduced at the wholeThing
     totalLength = wholeThing.innerCircumf
