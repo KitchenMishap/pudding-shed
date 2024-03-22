@@ -1,9 +1,8 @@
 from spiraltools import *
 import json
 
-
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b, baseR, baseG, baseB):
+    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
         self.length = l
         self.minLength = l
         self.width = w
@@ -11,6 +10,7 @@ class Block(dict):
         self.red = r
         self.green = g
         self.blue = b
+        self.includeBase = includeBase
         self.baseR = baseR
         self.baseG = baseG
         self.baseB = baseB
@@ -41,30 +41,30 @@ class Block(dict):
         renderer.append(positionedCuboid)
 
         # Secondly, a slab
-        slabTransform = []
-        slabTransform.append(ScaleX(1))     # Much Thinner
-        slabTransform.append(ScaleY(math.fabs(self.baseWidth)))
-        slabTransform.append(ScaleZ(math.fabs(self.baseLength)))
-        colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0)     # Orange
+        if self.includeBase:
+            slabTransform = []
+            slabTransform.append(ScaleX(1))     # Much Thinner
+            slabTransform.append(ScaleY(math.fabs(self.baseWidth)))
+            slabTransform.append(ScaleZ(math.fabs(self.baseLength)))
+            colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0)     # Orange
+            # Apply an extra transform to base of slab
+            slabTransform.append(TranslateX(self.thickness * 0.505))
+            # Apply all the introduced transforms
+            for introduced in self.introducedTransforms:
+                name = introduced.name
+                # A block is not distributed over sub-units, so we use the middle
+                amount = (introduced.start + introduced.end) / 2
+                slabTransform.append(TransformPrimitive(name, amount))
+            # Apply all the delegated transforms
+            for delegated in delegatedTransforms:
+                name = delegated.name
+                # A block is not distributed over sub-units, so we use the middle
+                amount = (delegated.start + delegated.end) / 2
+                slabTransform.append(TransformPrimitive(name, amount))
+            positionedSlab = Instance(colouredSlab, slabTransform)
+            renderer.append(positionedSlab)
 
-        # Apply an extra transform to base of slab
-        slabTransform.append(TranslateX(self.thickness * 0.505))
-        # Apply all the introduced transforms
-        for introduced in self.introducedTransforms:
-            name = introduced.name
-            # A block is not distributed over sub-units, so we use the middle
-            amount = (introduced.start + introduced.end) / 2
-            slabTransform.append(TransformPrimitive(name, amount))
-        # Apply all the delegated transforms
-        for delegated in delegatedTransforms:
-            name = delegated.name
-            # A block is not distributed over sub-units, so we use the middle
-            amount = (delegated.start + delegated.end) / 2
-            slabTransform.append(TransformPrimitive(name, amount))
-        positionedSlab = Instance(colouredSlab, slabTransform)
-        renderer.append(positionedSlab)
-
-def main():
+def towerMain():
 
     daySpacingRatio = 1.0
     yearSpacingRatio = 1.0
@@ -104,7 +104,7 @@ def main():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
-                block = Block(length, width, thickness, red, green, blue)
+                block = Block(length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -117,6 +117,7 @@ def main():
                 prevD = d
                 d = daysGenesis
 
+            dayLoop.complete = True
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
@@ -128,10 +129,15 @@ def main():
             # The gist is that sizes of individual blocks will "percolate up" to all the higher level loops
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
+
+        yearLoop.complete = True
+        yearLoop.loopFraction = 1.0
         prevY = y
         yearLoop.measure(yearSpacingRatio)
         wholeThing.append(yearLoop)
     wholeThing.measure(wholeSpacingRatio)
+    wholeThing.complete = True
+    wholeThing.loopFraction = 1.0
 
     print("Second pass: Ramped high level measurements percolate down and up...")
     # Enlarge innerCircumf, length based on ramped attributes, measure again
@@ -378,4 +384,4 @@ def galaxyMain():
     fo = open("Output\\renderspec.json", 'w')
     json.dump(renderer, fo, default=vars, indent=2)
 
-galaxyMain()
+towerMain()
