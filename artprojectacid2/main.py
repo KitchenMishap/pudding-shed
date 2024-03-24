@@ -68,7 +68,7 @@ def towerMain():
 
     daySpacingRatio = 1.0
     yearSpacingRatio = 1.0
-    wholeSpacingRatio = 1.0
+    centurySpacingRatio = 1.0
 
     print( "Opening source data file...")
     fi1 = open("Input\\acidblocks.json")
@@ -76,7 +76,7 @@ def towerMain():
     fi1.close()
 
     print( "First pass: populate, and measure to percolate up...")
-    wholeThing = Loop()
+    centuryLoop = Loop()
     blk = 1
     blockJson = jsonFile["Blocks"][blk]
     y = 0
@@ -117,7 +117,6 @@ def towerMain():
                 prevD = d
                 d = daysGenesis
 
-            dayLoop.complete = True
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
@@ -127,53 +126,48 @@ def towerMain():
             # innerCircumf
             # length
             # The gist is that sizes of individual blocks will "percolate up" to all the higher level loops
+            dayLoop.complete = True
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
 
-        yearLoop.complete = True
-        yearLoop.loopFraction = 1.0
         prevY = y
+        yearLoop.complete = True
         yearLoop.measure(yearSpacingRatio)
-        wholeThing.append(yearLoop)
-    wholeThing.measure(wholeSpacingRatio)
-    wholeThing.complete = True
-    wholeThing.loopFraction = 1.0
+        centuryLoop.append(yearLoop)
+    centuryLoop.measure(centurySpacingRatio)
 
-    print("Second pass: Ramped high level measurements percolate down and up...")
-    # Enlarge innerCircumf, length based on ramped attributes, measure again
-    for y, yearLoop in enumerate(wholeThing.units):
-        for d, dayLoop in enumerate(yearLoop.units):
-            # Taking account of a "ramped" measurement in yearLoop means it is now potentially bigger than before
-            # Here we are "percolating down" this increased measurement to a lower level loops
-            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
-            dayInnerCircumf = dayRadius * 2.0 * math.pi
-            dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
+    arcInnerCircumf = centuryLoop.innerCircumf
+    yearsUnaccounted = 100 - len(centuryLoop.units)
+    bigEndArcCircumfPerYear = centuryLoop.units[len(centuryLoop.units) - 1].length
+    restOfCentury = yearsUnaccounted * bigEndArcCircumfPerYear
+    centuryLoop.loopFraction = arcInnerCircumf / (arcInnerCircumf + restOfCentury)
 
-            # Because the low level measurements have changed as a result, we need to measure again to "percolate"
-            # back up to all the higher levels
-            dayLoop.measure(daySpacingRatio)
-        yearLoop.measure(yearSpacingRatio)
-    wholeThing.measure(wholeSpacingRatio)
+#    print("Second pass: Ramped high level measurements percolate down and up...")
+#    # Enlarge innerCircumf, length based on ramped attributes, measure again
+#    for y, yearLoop in enumerate(wholeThing.units):
+#        for d, dayLoop in enumerate(yearLoop.units):
+#            # Taking account of a "ramped" measurement in yearLoop means it is now potentially bigger than before
+#            # Here we are "percolating down" this increased measurement to a lower level loops
+#            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
+#            dayInnerCircumf = dayRadius * 2.0 * math.pi
+#            dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
+#
+#            # Because the low level measurements have changed as a result, we need to measure again to "percolate"
+#            # back up to all the higher levels
+#            dayLoop.measure(daySpacingRatio)
+#        yearLoop.measure(yearSpacingRatio)
+#    wholeThing.measure(wholeSpacingRatio)
 
     print("Third pass: Measure the positions...")
-    for y, yearLoop in enumerate(wholeThing.units):
+    for y, yearLoop in enumerate(centuryLoop.units):
         for d, dayLoop in enumerate(yearLoop.units):
             dayLoop.measurePositions()
         yearLoop.measurePositions()
-    wholeThing.measurePositions()
+    centuryLoop.measurePositions()
 
     print("Fourth pass, introduce transforms...")
-    for y, yearLoop in enumerate(wholeThing.units):
-        startDayDiameter = yearLoop.startAttr("length", False)
-        endDayDiameter = yearLoop.endAttr("length", False)
-        startDayInnerRadius = (startDayDiameter - 2.0 * yearLoop.startAttr("subUnitsMaxThickness", False)) / 2.0
-        endDayInnerRadius = (endDayDiameter - 2.0 * yearLoop.endAttr("subUnitsMaxThickness", False)) / 2.0
-        startYearRadius = yearLoop.startAttr("innerCircumf", False) / (2.0 * math.pi)
-        endYearRadius = yearLoop.endAttr("innerCircumf", False) / (2.0 * math.pi)
+    for y, yearLoop in enumerate(centuryLoop.units):
         for d, dayLoop in enumerate(yearLoop.units):
-            dayInnerRadius = startDayInnerRadius + dayLoop["position"] * (endDayInnerRadius - startDayInnerRadius)
-            yearRadiusAtDay = startYearRadius + dayLoop["position"] * (endYearRadius - startYearRadius)
-            dayRadius = dayLoop.innerCircumf / (2.0 * math.pi)
             for b, block in enumerate(dayLoop.units):
 
                 # Half block thickness so inside cylinder of dayLoop is smooth
@@ -181,33 +175,39 @@ def towerMain():
                 block.introducedTransforms.append(SpreadTranslateX(-halfThickness, -halfThickness))
 
                 # Store some measurements of a "Base" so that block can render a base slab
-                block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.1
-                block.baseWidth = yearRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.8
+                #block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.01
+                #block.baseWidth = yearRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.01
 
             # Give dayLoop a radius
-            dayLoop.introducedTransforms.append(SpreadTranslateX(dayInnerRadius, dayInnerRadius))
+            dayStartInnerRadius = dayLoop.startAttr("innerCircumf", True) /  (2.0 * math.pi)
+            dayEndInnerRadius = dayLoop.endAttr("innerCircumf", True) / (2.0 * math.pi)
+            dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
             # Rotation for elements of dayLoop
             dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
 
-
-            # Transforms introduced at each dayLoop based on this dayLoop
-            dayLoop.introducedTransforms.append(SpreadTranslateX(dayRadius, dayRadius))     # Yes another dayRadius
-
-            # Transforms introduced at each dayLoop based on parent's ramped attributes
-            yearInnerRadiusRamped = yearLoop.innerCircumfRamped(d) / (2.0 * math.pi)
-            dayLoop.introducedTransforms.append(SpreadTranslateX(yearInnerRadiusRamped, yearInnerRadiusRamped))
+        # Give yearLoop a radius
+        maxDayLoopRadius = yearLoop.subUnitsMaxThickness / 2
+        yearStartRadius = yearLoop.startAttr("innerCircumf", True) / (2.0 * math.pi) + maxDayLoopRadius
+        yearEndRadius = yearLoop.endAttr("innerCircumf", True) / (2.0 * math.pi) + maxDayLoopRadius
+        yearLoop.introducedTransforms.append(SpreadTranslateX(yearStartRadius, yearEndRadius))
 
         # Rotation for elements of yearLoop
         yearLoop.introducedTransforms.append(SpreadRotateZ(0, yearLoop.loopFraction * 360.0))
 
-    # Transforms introduced at the wholeThing
-    totalLength = wholeThing.innerCircumf
-    wholeThing.introducedTransforms.append(SpreadTranslateZ(0, totalLength))
+    # Transforms introduced at centuryLoop
+    arcInnerCircumf = centuryLoop.innerCircumf
+    yearsUnaccounted = 100 - len(centuryLoop.units)
+    bigEndArcCircumfPerYear = centuryLoop.units[len(centuryLoop.units) - 1].length
+    restOfCentury = yearsUnaccounted * bigEndArcCircumfPerYear
+    wholeCenturyRadius = (arcInnerCircumf + restOfCentury) / (2.0 * math.pi)
+    centuryLoop.introducedTransforms.append(SpreadTranslateX(-wholeCenturyRadius, -wholeCenturyRadius))
+    centuryLoop.introducedTransforms.append(SpreadRotateY(0, 360.0 * centuryLoop.loopFraction))
+    centuryLoop.introducedTransforms.append(SpreadTranslateX(wholeCenturyRadius, wholeCenturyRadius))
 
     print( "Render..." )
     renderer = []
-    wholeThing.render(renderer, [])
+    centuryLoop.render(renderer, [])
 
     print( "Save..." )
     fo = open("Output\\renderspec.json", 'w')
