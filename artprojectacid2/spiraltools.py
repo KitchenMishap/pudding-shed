@@ -156,18 +156,18 @@ class Loop(dict):
 
     def measurePositions(self):
         # Calculates position and breadth for each subunit
-        # "space" is distributed equally to each subunit regardless of its length
-        totalSpace = self.innerCircumf - self.minInnerCircumf
-        wholeLoopUnitCount = len(self.units) / self.loopFraction
-        spacePerUnit = totalSpace / wholeLoopUnitCount
-        runningTotal = 0.0
+        # "Space" is now computed in main.py
+        totalLength = 0.0
         for unit in self.units:
-            minLength = resultOrValue(unit, "minLength")
+            totalLength += resultOrValue(unit, "length")
+        runningTotalLength = 0.0
+        for u, unit in enumerate(self.units):
+            length = resultOrValue(unit, "length")
             # unit.position is a number between 0 an 1
-            unit["position"] = (runningTotal + minLength/2) / self.innerCircumf
-            runningTotal = runningTotal + minLength + spacePerUnit
+            unit["position"] = (runningTotalLength + length/2.0) / totalLength
+            runningTotalLength += length
             # unit.breadth is also a number between 0 and 1 on the same scale
-            unit["breadth"] = (minLength + spacePerUnit) / self.innerCircumf
+            unit["breadth"] = length / totalLength
 
     def width(self):
         return self.innerCircumf / math.pi + 2.0 * self.subUnitsMaxThickness

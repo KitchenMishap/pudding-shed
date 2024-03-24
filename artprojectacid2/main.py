@@ -142,21 +142,26 @@ def towerMain():
     restOfCentury = yearsUnaccounted * bigEndArcCircumfPerYear
     centuryLoop.loopFraction = arcInnerCircumf / (arcInnerCircumf + restOfCentury)
 
-#    print("Second pass: Ramped high level measurements percolate down and up...")
-#    # Enlarge innerCircumf, length based on ramped attributes, measure again
-#    for y, yearLoop in enumerate(wholeThing.units):
-#        for d, dayLoop in enumerate(yearLoop.units):
-#            # Taking account of a "ramped" measurement in yearLoop means it is now potentially bigger than before
-#            # Here we are "percolating down" this increased measurement to a lower level loops
-#            dayRadius = yearLoop.maxThicknessRamped(d) / 2.0
-#            dayInnerCircumf = dayRadius * 2.0 * math.pi
-#            dayLoop.innerCircumf = max(dayLoop.innerCircumf, dayInnerCircumf)
-#
-#            # Because the low level measurements have changed as a result, we need to measure again to "percolate"
-#            # back up to all the higher levels
-#            dayLoop.measure(daySpacingRatio)
-#        yearLoop.measure(yearSpacingRatio)
-#    wholeThing.measure(wholeSpacingRatio)
+    print("Pass Two Point One: Ramped high level measurements percolate down...")
+    for y, yearLoop in enumerate(centuryLoop.units):
+        for d, dayLoop in enumerate(yearLoop.units):
+            avDayInnerCircumfRamped = 0.0
+            for b, block in enumerate(dayLoop.units):
+                avDayInnerCircumfRamped += dayLoop.innerCircumfRamped(b)
+            avDayInnerCircumfRamped /= len(dayLoop.units)
+            spacingPerBlock = avDayInnerCircumfRamped / len(dayLoop.units)
+            for b, block in enumerate(dayLoop.units):
+                # Block length takes account of "ramped" circumf measurement of dayLoop at a particular block index
+                # Here we are "percolating down" ramped day circumf to block length
+                blockLength = resultOrValue(block, "minLength") + spacingPerBlock
+                block.length = max(block.length, blockLength)
+
+    print("Pass Two Point Two: New low level measurements percolate up...")
+    for y, yearLoop in enumerate(centuryLoop.units):
+        for d, dayLoop in enumerate(yearLoop.units):
+            dayLoop.measure(daySpacingRatio)
+        yearLoop.measure(yearSpacingRatio)
+    centuryLoop.measure(centurySpacingRatio)
 
     print("Third pass: Measure the positions...")
     for y, yearLoop in enumerate(centuryLoop.units):
@@ -172,14 +177,14 @@ def towerMain():
 
                 # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
-                block.introducedTransforms.append(SpreadTranslateX(-halfThickness, -halfThickness))
+                block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 # Store some measurements of a "Base" so that block can render a base slab
                 #block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.01
                 #block.baseWidth = yearRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.01
 
             # Give dayLoop a radius
-            dayStartInnerRadius = dayLoop.startAttr("innerCircumf", True) /  (2.0 * math.pi)
+            dayStartInnerRadius = dayLoop.startAttr("innerCircumf", True) / (2.0 * math.pi)
             dayEndInnerRadius = dayLoop.endAttr("innerCircumf", True) / (2.0 * math.pi)
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
