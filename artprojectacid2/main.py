@@ -48,7 +48,7 @@ class Block(dict):
             slabTransform.append(ScaleZ(math.fabs(self.baseLength)))
             colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0)     # Orange
             # Apply an extra transform to base of slab
-            slabTransform.append(TranslateX(self.thickness * 0.505))
+            slabTransform.append(TranslateX(-self.thickness * 0.505))
             # Apply all the introduced transforms
             for introduced in self.introducedTransforms:
                 name = introduced.name
@@ -104,7 +104,11 @@ def towerMain():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
-                block = Block(length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
+                # Bitcoin orange
+                baseR = 255.0 / 256.0
+                baseG = 153.0 / 255.0
+                baseB = 0.0
+                block = Block(length, width, thickness, red, green, blue, True,baseR, baseG, baseB)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -202,8 +206,8 @@ def towerMain():
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 # Store some measurements of a "Base" so that block can render a base slab
-                #block.baseLength = dayInnerRadius * 2.0 * math.pi * block["breadth"] * 1.01
-                #block.baseWidth = yearRadiusAtDay * 2.0 * math.pi * dayLoop["breadth"] * 1.01
+                block.baseLength = block.length * 1.01
+                block.baseWidth = dayLoop.length * 1.01
 
             # Give dayLoop a radius
             dayStartInnerRadius = dayLoop.startAttr("innerCircumf", True) / (2.0 * math.pi)
