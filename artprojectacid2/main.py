@@ -67,7 +67,7 @@ class Block(dict):
 def towerMain():
 
     daySpacingRatio = 1.1
-    yearSpacingRatio = 1.0
+    yearSpacingRatio = 1.3
     centurySpacingRatio = 1.0
 
     print( "Opening source data file...")
