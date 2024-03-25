@@ -149,6 +149,7 @@ def towerMain():
             for b, block in enumerate(dayLoop.units):
                 avDayInnerCircumfRamped += dayLoop.innerCircumfRamped(b)
             avDayInnerCircumfRamped /= len(dayLoop.units)
+
             spacingPerBlock = avDayInnerCircumfRamped / len(dayLoop.units)
             for b, block in enumerate(dayLoop.units):
                 # Block length takes account of "ramped" circumf measurement of dayLoop at a particular block index
@@ -160,6 +161,27 @@ def towerMain():
     for y, yearLoop in enumerate(centuryLoop.units):
         for d, dayLoop in enumerate(yearLoop.units):
             dayLoop.measure(daySpacingRatio)
+        yearLoop.measure(yearSpacingRatio)
+    centuryLoop.measure(centurySpacingRatio)
+
+    print("Pass Two Point Three: Ramped high level measurements percolate down...")
+    for y, yearLoop in enumerate(centuryLoop.units):
+        avYearInnerCircumfRamped = 0.0
+        for d, dayLoop in enumerate(yearLoop.units):
+            avYearInnerCircumfRamped += yearLoop.innerCircumfRamped(d)
+        avYearInnerCircumfRamped /= len(yearLoop.units)
+        spacingPerBlock = avYearInnerCircumfRamped / len(yearLoop.units)
+
+        for d, dayLoop in enumerate(yearLoop.units):
+            # Block length takes account of "ramped" circumf measurement of yearLoop at a particular day index
+            # Here we are "percolating down" ramped year circumf to day length
+            dayLength = resultOrValue(dayLoop, "length") + spacingPerBlock
+            dayLoop.length = max(dayLoop.length, dayLength)
+
+    print("Pass Two Point Four: Further low level measurements percolate up...")
+    for y, yearLoop in enumerate(centuryLoop.units):
+        # We've already percolated up the block level measurements.
+        # To re-measure dayLoops would overwrite this. So we don't measure dayLoops this time around.
         yearLoop.measure(yearSpacingRatio)
     centuryLoop.measure(centurySpacingRatio)
 
@@ -192,9 +214,8 @@ def towerMain():
             dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
 
         # Give yearLoop a radius
-        maxDayLoopRadius = yearLoop.subUnitsMaxThickness / 2
-        yearStartRadius = yearLoop.startAttr("innerCircumf", True) / (2.0 * math.pi) + maxDayLoopRadius
-        yearEndRadius = yearLoop.endAttr("innerCircumf", True) / (2.0 * math.pi) + maxDayLoopRadius
+        yearStartRadius = yearLoop.startAttr("innerCircumf", True) / (2.0 * math.pi)
+        yearEndRadius = yearLoop.endAttr("innerCircumf", True) / (2.0 * math.pi)
         yearLoop.introducedTransforms.append(SpreadTranslateX(yearStartRadius, yearEndRadius))
 
         # Rotation for elements of yearLoop
