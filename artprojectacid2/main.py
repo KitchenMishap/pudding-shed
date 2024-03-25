@@ -23,7 +23,7 @@ class Block(dict):
         instanceTransform = []
         instanceTransform.append(ScaleX(self.thickness))
         instanceTransform.append(ScaleY(self.width))
-        instanceTransform.append(ScaleZ(self.length))
+        instanceTransform.append(ScaleZ(self.minLength))
         colouredCube = Cube(self.red, self.green, self.blue, 1,0)
         # Apply all the introduced transforms
         for introduced in self.introducedTransforms:
@@ -66,7 +66,7 @@ class Block(dict):
 
 def towerMain():
 
-    daySpacingRatio = 1.0
+    daySpacingRatio = 1.1
     yearSpacingRatio = 1.0
     centurySpacingRatio = 1.0
 
