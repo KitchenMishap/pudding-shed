@@ -110,8 +110,9 @@ def towerMain():
                 baseR = 255.0 / 256.0
                 baseG = 153.0 / 255.0
                 baseB = 0.0
+                includeBase = False
                 # Assume not last of day and year until we find otherwise
-                block = Block(length, width, thickness, red, green, blue, True, baseR, baseG, baseB, False, False)
+                block = Block(length, width, thickness, red, green, blue, includeBase, baseR, baseG, baseB, False, False)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
