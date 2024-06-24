@@ -249,6 +249,16 @@ def towerMain():
     fo = open("Output\\renderspeclod.json", 'w')
     json.dump(renderer, fo, default=vars, indent=2)
 
+    print( "Save Subset...")
+    # Throw away all except first 100000 blocks
+    subrenderer = []
+    for b, block in enumerate(renderer):
+        if b < 100000:
+            subrenderer.append(block)
+
+    fo = open("Output\\renderspecsub.json", 'w')
+    json.dump(subrenderer, fo, default=vars, indent=2)
+
 def galaxyMain():
 
     daySpacingRatio = 1.01
