@@ -2,7 +2,7 @@ from spiraltools import *
 import json
 
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
+    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB, lod, loy):
         self.length = l
         self.minLength = l
         self.width = w
@@ -17,6 +17,8 @@ class Block(dict):
         self.baseLength = 0.0
         self.baseWidth = 0.0
         self.introducedTransforms = []
+        self.lastOfDay = lod
+        self.lastOfYear = loy
 
     def render(self, renderer, delegatedTransforms):
         # Firstly, a cube
@@ -24,7 +26,7 @@ class Block(dict):
         instanceTransform.append(ScaleX(self.thickness))
         instanceTransform.append(ScaleY(self.width))
         instanceTransform.append(ScaleZ(self.minLength))
-        colouredCube = Cube(self.red, self.green, self.blue, 1,0)
+        colouredCube = Cube(self.red, self.green, self.blue, 1,0, self.lastOfDay, self.lastOfYear)
         # Apply all the introduced transforms
         for introduced in self.introducedTransforms:
             name = introduced.name
@@ -46,7 +48,7 @@ class Block(dict):
             slabTransform.append(ScaleX(1))     # Much Thinner
             slabTransform.append(ScaleY(math.fabs(self.baseWidth)))
             slabTransform.append(ScaleZ(math.fabs(self.baseLength)))
-            colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0)     # Orange
+            colouredSlab = Cube(self.baseR, self.baseG, self.baseB, 1,0, False, False)     # Orange
             # Apply an extra transform to base of slab
             slabTransform.append(TranslateX(-self.thickness * 0.505))
             # Apply all the introduced transforms
@@ -108,7 +110,8 @@ def towerMain():
                 baseR = 255.0 / 256.0
                 baseG = 153.0 / 255.0
                 baseB = 0.0
-                block = Block(length, width, thickness, red, green, blue, True,baseR, baseG, baseB)
+                # Assume not last of day and year until we find otherwise
+                block = Block(length, width, thickness, red, green, blue, True, baseR, baseG, baseB, False, False)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -121,6 +124,7 @@ def towerMain():
                 prevD = d
                 d = daysGenesis
 
+            block.lastOfDay = True
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
@@ -134,6 +138,7 @@ def towerMain():
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
 
+        block.lastOfYear = True
         prevY = y
         yearLoop.complete = True
         yearLoop.measure(yearSpacingRatio)
@@ -240,7 +245,7 @@ def towerMain():
     centuryLoop.render(renderer, [])
 
     print( "Save..." )
-    fo = open("Output\\renderspec.json", 'w')
+    fo = open("Output\\renderspeclod.json", 'w')
     json.dump(renderer, fo, default=vars, indent=2)
 
 def galaxyMain():
