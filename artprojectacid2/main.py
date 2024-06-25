@@ -253,7 +253,7 @@ def towerMain():
     # Throw away all except first 100000 blocks
     subrenderer = []
     for b, block in enumerate(renderer):
-        if b < 100000:
+        if b < 300000:
             subrenderer.append(block)
 
     fo = open("Output\\renderspecsub.json", 'w')
