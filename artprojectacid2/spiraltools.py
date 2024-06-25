@@ -1,4 +1,6 @@
 import math
+from pyquaternion import Quaternion
+import numpy
 
 def resultOrValue(object, attrName):
     attr = getattr(object, attrName, None)
@@ -92,6 +94,71 @@ def SpreadRotateZ(startAngle, endAngle):
 
 #endregion
 
+#region Composite Transform
+class CompositeTransform(dict):
+    # for identity, just pass in empty list
+    def __init__(self, primArray):
+        self["pos"] = [0,0,0]
+        self["quat"] = [1,0,0,0]
+        self["scale"] = [1,1,1]
+        for p in primArray:
+            self.ApplyPrimitive(p)
+
+    def ApplyPrimitive(self, prim):
+        if prim.name=="ScaleX":
+            self["scale"][0] *= prim.amount
+        if prim.name=="ScaleY":
+            self["scale"][1] *= prim.amount
+        if prim.name=="ScaleZ":
+            self["scale"][2] *= prim.amount
+        if prim.name=="TranslateX":
+            self["pos"][0] += prim.amount
+        if prim.name=="TranslateY":
+            self["pos"][1] += prim.amount
+        if prim.name=="TranslateZ":
+            self["pos"][2] += prim.amount
+        if prim.name=="RotateX":
+            q = Quaternion(axis=[1,0,0], degrees=prim.amount)
+            v = numpy.array([self["pos"][0],self["pos"][1],self["pos"][2]])
+            v_prime = q.rotate(v)
+            self["pos"][0] = v_prime[0]
+            self["pos"][1] = v_prime[1]
+            self["pos"][2] = v_prime[2]
+            quat = Quaternion(self["quat"])
+            quat_prime = quat * q  # quat then q
+            self["quat"][0] = quat_prime.elements[0]
+            self["quat"][1] = quat_prime.elements[1]
+            self["quat"][2] = quat_prime.elements[2]
+            self["quat"][3] = quat_prime.elements[3]
+        if prim.name=="RotateY":
+            q = Quaternion(axis=[0,1,0], degrees=prim.amount)
+            v = numpy.array([self["pos"][0],self["pos"][1],self["pos"][2]])
+            v_prime = q.rotate(v)
+            self["pos"][0] = v_prime[0]
+            self["pos"][1] = v_prime[1]
+            self["pos"][2] = v_prime[2]
+            quat = Quaternion(self["quat"])
+            quat_prime = quat * q
+            self["quat"][0] = quat_prime.elements[0]
+            self["quat"][1] = quat_prime.elements[1]
+            self["quat"][2] = quat_prime.elements[2]
+            self["quat"][3] = quat_prime.elements[3]
+        if prim.name=="RotateZ":
+            q = Quaternion(axis=[0,0,1], degrees=prim.amount)
+            v = numpy.array([self["pos"][0],self["pos"][1],self["pos"][2]])
+            v_prime = q.rotate(v)
+            self["pos"][0] = v_prime[0]
+            self["pos"][1] = v_prime[1]
+            self["pos"][2] = v_prime[2]
+            quat = Quaternion(self["quat"])
+            quat_prime = quat * q
+            self["quat"][0] = quat_prime.elements[0]
+            self["quat"][1] = quat_prime.elements[1]
+            self["quat"][2] = quat_prime.elements[2]
+            self["quat"][3] = quat_prime.elements[3]
+
+#endregion
+
 #region Instance
 class Instance(dict):
     def __init__(self, asset, transform):
@@ -100,8 +167,16 @@ class Instance(dict):
         self["transform"] = transform
 
     def render(self, renderer, transform):
-        self["transform"] = self["transform"] + transform
+        self["transform"] = self["transform"] + transform   # List concatenation?
         renderer.append(self)
+
+    def composeTransform(self):
+        composite = CompositeTransform([])    # Identity
+        for prim in self["transform"]:
+            composite.ApplyPrimitive(prim)
+        self["compositeTransform"] = composite
+        self.pop("transform")
+
 #endregion
 
 #region Loop

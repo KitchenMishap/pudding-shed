@@ -245,6 +245,10 @@ def towerMain():
     renderer = []
     centuryLoop.render(renderer, [])
 
+    print( "Compose transforms..." )
+    for instance in renderer:
+        instance.composeTransform()
+
     print( "Save..." )
     fo = open("Output\\renderspeclod.json", 'w')
     json.dump(renderer, fo, default=vars, indent=2)
