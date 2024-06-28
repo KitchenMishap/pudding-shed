@@ -112,7 +112,7 @@ class CompositeTransform(dict):
         if prim.name=="ScaleZ":
             self["scale"][2] *= prim.amount
         if prim.name=="TranslateX":
-            self["pos"][0] += prim.amount
+            self["pos"][0] -= prim.amount   # Minus to cope with RH/LH co-ordinates
         if prim.name=="TranslateY":
             self["pos"][1] += prim.amount
         if prim.name=="TranslateZ":
