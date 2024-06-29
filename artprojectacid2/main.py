@@ -110,6 +110,7 @@ def towerMain():
             dayLoop = Loop()
             while d == prevD:           # For each block in day
                 sizeBytes = blockJson["SizeBytes"]
+                # Length (circumferential) is the shortest measurement for small blocks
                 if sizeBytes >= 16 * 16 * 16:
                     length = math.pow(sizeBytes, 1/3.0)
                     width = math.pow(sizeBytes, 1/3.0)
@@ -228,6 +229,11 @@ def towerMain():
 
                 # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
+                # THIS IS THE FIRST POINT IN THE CODE WHERE WE CARE ABOUT ORIENTATION
+                # OF X,Y,Z AXES AND CLOCKWISE/COUNTERCLOCKWISE
+                # By Decree:
+                # X is a "floor" axis going from the centre of day 0's day loop towards
+                # the outside of the day loop.
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
 
                 # Store some measurements of a "Base" so that block can render a base slab
@@ -240,6 +246,10 @@ def towerMain():
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
             # Rotation for elements of dayLoop
+            # By decree:
+            # Y is a "floor" axis that is the axis through the centre of day 0's day loop.
+            # Positive rotations around Y, when looking in a +ve Y direction, are COUNTER-CLOCKWISE
+            # (as per Left Handed System)
             dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
 
         # Give yearLoop a radius
@@ -248,6 +258,10 @@ def towerMain():
         yearLoop.introducedTransforms.append(SpreadTranslateX(yearStartRadius, yearEndRadius))
 
         # Rotation for elements of yearLoop
+        # By decree:
+        # The z axis is vertical (positive up), and is the axis for year loops
+        # Positive rotations, when looking towards the +ve end of the rotation axis,
+        # are COUNTER-CLOCKWISE, as per left handed system
         yearLoop.introducedTransforms.append(SpreadRotateZ(0, yearLoop.loopFraction * 360.0))
 
     # Transforms introduced at centuryLoop

@@ -32,7 +32,22 @@ def right_handed_test():
     # THEREFORE, these quaternions are NOT compatible with Unreal!
     # WE WILL NEED TO INVERT THE X AXIS BEFORE WE USE THESE QUATERNIONS
 
+def quat_chain_order_test():
+    numpyx = numpy.array([1.,0.,0.])
+    numpyy = numpy.array([0.,1.,0.])
+    numpyz = numpy.array([0.,0.,1.])
+    rotx = Quaternion(axis=numpyx, angle=math.pi/2.)
+    roty = Quaternion(axis=numpyy, angle=math.pi/2.)
+    rotz = Quaternion(axis=numpyz, angle=math.pi/2.)
+    ythenx = rotx * roty
+    result = ythenx.rotate(numpyx)
+    # X axis, rotated by y then x axes, should give y axis
+    assert(math.fabs(result[0]) < 0.0001)
+    assert(math.fabs(result[1] - 1.) < 0.0001)
+    assert(math.fabs(result[2]) < 0.0001)
+
 print("Running tests...")
 real_first_test()
 right_handed_test()
+quat_chain_order_test()
 print("Tests have been run")

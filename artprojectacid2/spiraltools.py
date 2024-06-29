@@ -99,7 +99,7 @@ class CompositeTransform(dict):
     # for identity, just pass in empty list
     def __init__(self, primArray):
         self["pos"] = [0,0,0]
-        self["quat"] = [1,0,0,0]
+        self["quat"] = [1,0,0,0]    # Identity, the first element is the real element
         self["scale"] = [1,1,1]
         for p in primArray:
             self.ApplyPrimitive(p)
@@ -112,11 +112,13 @@ class CompositeTransform(dict):
         if prim.name=="ScaleZ":
             self["scale"][2] *= prim.amount
         if prim.name=="TranslateX":
-            self["pos"][0] -= prim.amount   # Minus to cope with RH/LH co-ordinates
+            self["pos"][0] += prim.amount
         if prim.name=="TranslateY":
             self["pos"][1] += prim.amount
         if prim.name=="TranslateZ":
             self["pos"][2] += prim.amount
+        # Rotations by a +ve angle, when you look towards the +ve end of a rotation
+        # axis, are COUNTER_CLOCKWISE for our Left-Handed co-ordinate system
         if prim.name=="RotateX":
             q = Quaternion(axis=[1,0,0], degrees=prim.amount)
             v = numpy.array([self["pos"][0],self["pos"][1],self["pos"][2]])
@@ -125,7 +127,7 @@ class CompositeTransform(dict):
             self["pos"][1] = v_prime[1]
             self["pos"][2] = v_prime[2]
             quat = Quaternion(self["quat"])
-            quat_prime = quat * q  # quat then q
+            quat_prime = q * quat  # quat followed by q, as confirmed by quat_chain_order_test()
             self["quat"][0] = quat_prime.elements[0]
             self["quat"][1] = quat_prime.elements[1]
             self["quat"][2] = quat_prime.elements[2]
@@ -138,7 +140,7 @@ class CompositeTransform(dict):
             self["pos"][1] = v_prime[1]
             self["pos"][2] = v_prime[2]
             quat = Quaternion(self["quat"])
-            quat_prime = quat * q
+            quat_prime = q * quat
             self["quat"][0] = quat_prime.elements[0]
             self["quat"][1] = quat_prime.elements[1]
             self["quat"][2] = quat_prime.elements[2]
@@ -151,7 +153,7 @@ class CompositeTransform(dict):
             self["pos"][1] = v_prime[1]
             self["pos"][2] = v_prime[2]
             quat = Quaternion(self["quat"])
-            quat_prime = quat * q
+            quat_prime = q * quat
             self["quat"][0] = quat_prime.elements[0]
             self["quat"][1] = quat_prime.elements[1]
             self["quat"][2] = quat_prime.elements[2]
