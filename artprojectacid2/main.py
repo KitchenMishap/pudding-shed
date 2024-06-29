@@ -121,9 +121,9 @@ def towerMain():
                     length = 1
                     width = 16
                     thickness = sizeBytes / 16
-                red = blockJson["ColourByte0"] / 255.0
-                green = blockJson["ColourByte1"] / 255.0
-                blue = blockJson["ColourByte2"] / 255.0
+                red = blockJson["ColourByte0"]
+                green = blockJson["ColourByte1"]
+                blue = blockJson["ColourByte2"]
                 # Bitcoin orange
                 baseR = 255.0 / 256.0
                 baseG = 153.0 / 255.0
@@ -333,9 +333,9 @@ def galaxyMain():
                     length = 1
                     width = 16
                     thickness = sizeBytes / 16
-                red = blockJson["ColourByte0"] / 255.0
-                green = blockJson["ColourByte1"] / 255.0
-                blue = blockJson["ColourByte2"] / 255.0
+                red = blockJson["ColourByte0"]
+                green = blockJson["ColourByte1"]
+                blue = blockJson["ColourByte2"]
                 if yearsGenesis & 1 == 0:
                     # Bitcoin orange
                     baseR = 255.0 / 256.0
