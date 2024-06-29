@@ -277,6 +277,7 @@ def towerMain():
     print( "Compose transforms..." )
     for instance in renderer:
         instance.composeTransform()
+        instance.compact()
 
     print( "Save..." )
     fo = open("Output\\renderspecb64.json", 'w')

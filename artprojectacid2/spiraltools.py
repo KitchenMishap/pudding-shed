@@ -186,6 +186,14 @@ class Instance(dict):
         self["trans"] = CompositeTransformCompact(composite)
         self.pop("transform")
 
+    def compact(self):
+        rgba = self["asset"].r * 65536 * 256 + self["asset"].g * 65536 + self["asset"].b * 256 + self["asset"].a
+        delattr(self["asset"], "r")
+        delattr(self["asset"], "g")
+        delattr(self["asset"], "b")
+        delattr(self["asset"], "a")
+        self["asset"].rgba = rgba
+
 #endregion
 
 #region Loop
