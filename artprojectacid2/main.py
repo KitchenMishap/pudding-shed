@@ -279,7 +279,7 @@ def towerMain():
         instance.composeTransform()
 
     print( "Save..." )
-    fo = open("Output\\renderspecquat.json", 'w')
+    fo = open("Output\\renderspecb64.json", 'w')
     json.dump(renderer, fo, default=vars, indent=2)
 
     print( "Save Subset...")

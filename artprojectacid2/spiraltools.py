@@ -1,6 +1,7 @@
 import math
 from pyquaternion import Quaternion
 import numpy
+from transporttools import floatArrayToString
 
 def resultOrValue(object, attrName):
     attr = getattr(object, attrName, None)
@@ -157,7 +158,15 @@ class CompositeTransform(dict):
             self["quat"][2] = quat_prime.elements[2]
             self["quat"][3] = quat_prime.elements[3]
 
+class CompositeTransformCompact(dict):
+    def __init__(self, composite):
+        self["p"] = floatArrayToString(composite["pos"])
+        self["q"] = floatArrayToString(composite["quat"])
+        self["s"] = floatArrayToString(composite["scale"])
+
 #endregion
+
+
 
 #region Instance
 class Instance(dict):
@@ -174,7 +183,7 @@ class Instance(dict):
         composite = CompositeTransform([])    # Identity
         for prim in self["transform"]:
             composite.ApplyPrimitive(prim)
-        self["compositeTransform"] = composite
+        self["trans"] = CompositeTransformCompact(composite)
         self.pop("transform")
 
 #endregion

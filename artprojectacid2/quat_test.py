@@ -1,6 +1,7 @@
 import math
 from pyquaternion import Quaternion
 import numpy
+from transporttools import *
 
 def real_first_test():
     print("real_first_test")
@@ -46,8 +47,13 @@ def quat_chain_order_test():
     assert(math.fabs(result[1] - 1.) < 0.0001)
     assert(math.fabs(result[2]) < 0.0001)
 
+def twos_test():
+    twos = [2.,2.,2.]
+    assert(floatArrayToString(twos)=="AAAAQAAAAEAAAABA")
+
 print("Running tests...")
 real_first_test()
 right_handed_test()
 quat_chain_order_test()
+twos_test()
 print("Tests have been run")
