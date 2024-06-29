@@ -21,7 +21,7 @@ import json
 # This is therefore a LEFT-HANDED system, with rotations COUNTER-CLOCKWISE looking +ve down the axis of rotation.
 
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB, lod, loy):
+    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
         self.length = l
         self.minLength = l
         self.width = w
@@ -36,8 +36,6 @@ class Block(dict):
         self.baseLength = 0.0
         self.baseWidth = 0.0
         self.introducedTransforms = []
-        self.lastOfDay = lod
-        self.lastOfYear = loy
 
     def render(self, renderer, delegatedTransforms):
         # Firstly, a cube
@@ -45,7 +43,7 @@ class Block(dict):
         instanceTransform.append(ScaleX(self.thickness))
         instanceTransform.append(ScaleY(self.width))
         instanceTransform.append(ScaleZ(self.minLength))
-        colouredCube = Cube(self.red, self.green, self.blue, 1,0, self.lastOfDay, self.lastOfYear)
+        colouredCube = Cube(self.red, self.green, self.blue, 1,0)
         # Apply all the introduced transforms
         for introduced in self.introducedTransforms:
             name = introduced.name
@@ -132,7 +130,7 @@ def towerMain():
                 baseB = 0.0
                 includeBase = False
                 # Assume not last of day and year until we find otherwise
-                block = Block(length, width, thickness, red, green, blue, includeBase, baseR, baseG, baseB, False, False)
+                block = Block(length, width, thickness, red, green, blue, includeBase, baseR, baseG, baseB)
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -145,7 +143,6 @@ def towerMain():
                 prevD = d
                 d = daysGenesis
 
-            block.lastOfDay = True
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
@@ -159,7 +156,6 @@ def towerMain():
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
 
-        block.lastOfYear = True
         prevY = y
         yearLoop.complete = True
         yearLoop.measure(yearSpacingRatio)

@@ -15,21 +15,19 @@ def resultOrValue(object, attrName):
 # It has a name such as "Cube", and five numbers known as r,g,b,a,h
 
 class Asset:
-    def __init__(self, name, r,g,b,a,h, lod,loy):
+    def __init__(self, name, r,g,b,a,h):
         self.name = name
         self.r = r
         self.g = g
         self.b = b
         self.a = a
         self.h = h
-        self.lastofday = lod
-        self.lastofyear = loy
 
-def Cube(r,g,b,a,h,lod,loy):
-    return Asset("Cube", r,g,b,a,h,lod,loy)
+def Cube(r,g,b,a,h):
+    return Asset("Cube", r,g,b,a,h)
 
 def Sphere(r,g,b,a,h):
-    return Asset("Sphere", r,g,b,a,h,False,False)
+    return Asset("Sphere", r,g,b,a,h)
 #endregion
 
 #region Transform
