@@ -1,6 +1,25 @@
 from spiraltools import *
 import json
 
+# HANDEDNESS
+# This python code produces files for two target render platforms: Unreal Engine and Three.js.
+# Three.js is a web platform and so needs a compact file to be served - hence quaternions
+# are favoured for export.
+# We use a python quaternion library which presumably has a handedness we should be aware of.
+# The python code here will have a handedness to match this quaternion library.
+# A python test shows that in the quaternion library, (1,0,0) rotated 90' around (0,1,0)
+# gives (0,0,-1). This is compatible with
+# The following diagrams disagree with what I consider to be a clockwise rotation
+# (They seem to mean clockwise when looking down the NEGATIVE axis. Doh!)
+# https://www.evl.uic.edu/ralph/508S98/coordinates.html
+# The above test is compatible with the diagram's Left handed system,
+# with rotation being COUNTER-CLOCKWISE when looking towards the +ve end of the rotation axis.
+# The above test is ALSO compatible with the diagram's Right handed system,
+# with rotation being CLOCKWISE when looking towards the +ve end of the rotation axis!
+# For compatibility with the original concept (Unreal Engine based), we consider the
+# "floor" to be the x-y plane. X is line of sight and Y to the right, with Z up.
+# This is therefore a LEFT-HANDED system, with rotations COUNTER-CLOCKWISE looking +ve down the axis of rotation.
+
 class Block(dict):
     def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB, lod, loy):
         self.length = l
