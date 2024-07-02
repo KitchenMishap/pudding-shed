@@ -21,7 +21,7 @@ import json
 # This is therefore a LEFT-HANDED system, with rotations COUNTER-CLOCKWISE looking +ve down the axis of rotation.
 
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
+    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB, firstOfDay):
         self.length = l
         self.minLength = l
         self.width = w
@@ -36,6 +36,7 @@ class Block(dict):
         self.baseLength = 0.0
         self.baseWidth = 0.0
         self.introducedTransforms = []
+        self.firstOfDay = firstOfDay
 
     def render(self, renderer, delegatedTransforms):
         # Firstly, a cube
@@ -56,7 +57,7 @@ class Block(dict):
             # A block is not distributed over sub-units, so we use the middle
             amount = (delegated.start + delegated.end) / 2
             instanceTransform.append(TransformPrimitive(name, amount))
-        positionedCuboid = Instance(colouredCube, instanceTransform)
+        positionedCuboid = Instance(colouredCube, instanceTransform, self.firstOfDay)
         renderer.append(positionedCuboid)
 
         # Secondly, a slab
@@ -80,7 +81,7 @@ class Block(dict):
                 # A block is not distributed over sub-units, so we use the middle
                 amount = (delegated.start + delegated.end) / 2
                 slabTransform.append(TransformPrimitive(name, amount))
-            positionedSlab = Instance(colouredSlab, slabTransform)
+            positionedSlab = Instance(colouredSlab, slabTransform, False)
             renderer.append(positionedSlab)
 
 def towerMain():
@@ -102,6 +103,7 @@ def towerMain():
     prevY = 0
     d = 5
     prevD = 5
+    firstOfDay = True
     while y<15:                  # For each year
         yearLoop = Loop()
         while y == prevY:          # For each day in year
@@ -129,8 +131,8 @@ def towerMain():
                 baseG = 153.0 / 255.0
                 baseB = 0.0
                 includeBase = False
-                # Assume not last of day and year until we find otherwise
-                block = Block(length, width, thickness, red, green, blue, includeBase, baseR, baseG, baseB)
+                block = Block(length, width, thickness, red, green, blue, includeBase, baseR, baseG, baseB, firstOfDay)
+                firstOfDay = False
                 dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
@@ -144,6 +146,7 @@ def towerMain():
                 d = daysGenesis
 
             prevD = d
+            firstOfDay = True
             # These measure calls set the following for each loop:
             # minInnerCircumf
             # minLength

@@ -170,10 +170,12 @@ class CompositeTransformCompact(dict):
 
 #region Instance
 class Instance(dict):
-    def __init__(self, asset, transform):
+    def __init__(self, asset, transform, firstOfDay):
         super().__init__()
         self["asset"] = asset
         self["transform"] = transform
+        if firstOfDay==True:
+            self["fod"] = True;
 
     def render(self, renderer, transform):
         self["transform"] = self["transform"] + transform   # List concatenation?
