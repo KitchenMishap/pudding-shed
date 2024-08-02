@@ -27,6 +27,8 @@ type IEntity interface {
 	IdentityRepresentations() []string
 	PrevEntities() map[string]IEntityHandle
 	NextEntities() map[string]IEntityHandle
-	ParentEntities() map[string][]IEntityHandle
-	ChildEntities() map[string][]IEntityHandle
+	ParentEntityCounts() map[string]int64
+	ParentEntity(parentName string, index int64) IEntityHandle
+	ChildEntityCounts() map[string]int64
+	ChildEntity(childName string, index int64) IEntityHandle
 }
