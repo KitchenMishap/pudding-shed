@@ -6,6 +6,8 @@ import (
 )
 
 type IntArrayMapStore struct {
+	folder               string
+	name                 string
 	numberedFolders      numberedfolders.NumberedFolders
 	arrayCountPerFile    int64
 	elementByteSize      int64
@@ -13,14 +15,20 @@ type IntArrayMapStore struct {
 	currentIntArrayArray IntArrayArray
 }
 
-func filePath(folders string, filename string) string {
-	return folders + string(os.PathSeparator) + filename + ".iaa"
+func (ms *IntArrayMapStore) folderPath(folders string) string {
+	sep := string(os.PathSeparator)
+	return ms.folder + sep + ms.name + sep + folders
+}
+
+func (ms *IntArrayMapStore) filePath(folders string, filename string) string {
+	sep := string(os.PathSeparator)
+	return ms.folderPath(folders) + sep + filename + ".iaa"
 }
 
 func (ms *IntArrayMapStore) GetArray(arrayKey int64) []int64 {
 	// Find the folder and filename
 	folders, filename := ms.numberedFolders.NumberToFoldersAndFile(arrayKey)
-	filepath := filePath(folders, filename)
+	filepath := ms.filePath(folders, filename)
 	// Load in the file (don't use currentIntArrayArray for reads
 	// because we're not so likely to use the same file twice in a row for reads)
 	intArrayArray := NewIntArrayArray(ms.arrayCountPerFile, ms.elementByteSize)
@@ -32,7 +40,8 @@ func (ms *IntArrayMapStore) GetArray(arrayKey int64) []int64 {
 func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) {
 	// Find the folder and filename
 	folders, filename := ms.numberedFolders.NumberToFoldersAndFile(arrayKey)
-	filepath := filePath(folders, filename)
+	folderpath := ms.folderPath(folders)
+	filepath := ms.filePath(folders, filename)
 	// Is it already loaded?
 	if ms.currentFilepath != filepath {
 		// Save the existing one
@@ -41,7 +50,7 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) {
 		}
 
 		// Create the folder if necessary
-		os.MkdirAll(folders, 0755)
+		os.MkdirAll(folderpath, 0755)
 
 		// Load in the file
 		ms.currentFilepath = filepath

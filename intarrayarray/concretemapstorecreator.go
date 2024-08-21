@@ -33,6 +33,8 @@ func (c *ConcreteMapStoreCreator) CreateMap() {
 
 func (c *ConcreteMapStoreCreator) OpenMap() IntArrayMapStoreReadWrite {
 	result := IntArrayMapStore{}
+	result.folder = c.folder
+	result.name = c.name
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
@@ -41,6 +43,8 @@ func (c *ConcreteMapStoreCreator) OpenMap() IntArrayMapStoreReadWrite {
 
 func (c *ConcreteMapStoreCreator) OpenMapReadOnly() IntArrayMapStoreReadOnly {
 	result := IntArrayMapStore{}
+	result.folder = c.folder
+	result.name = c.name
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
