@@ -44,9 +44,9 @@ func (iaa *IntArrayArray) SaveFile(filepath string) error {
 	// First write to a byte array
 	bufferSize := int64(0)
 	// Room for the elements
-	bufferSize += iaa.elementTally * iaa.elementByteSize
+	bufferSize += iaa.elementTally * int64(iaa.elementByteSize)
 	// Room for the arrayCounts (assume for now they take 9 bytes each, the biggest possible varint)
-	bufferSize += iaa.arrayCount * 9
+	bufferSize += int64(iaa.arrayCount) * int64(9)
 
 	buffer := make([]byte, 0, bufferSize) // Zero sized slice of bytes with capacity for more
 
