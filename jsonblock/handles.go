@@ -1,6 +1,7 @@
 package jsonblock
 
 import (
+	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
@@ -77,3 +78,24 @@ func (th *TxoHandle) IndicesPath() (int64, int64, int64) {
 func (th *TxoHandle) ParentSpecified() bool      { return true }
 func (th *TxoHandle) TxoHeightSpecified() bool   { return false }
 func (th *TxoHandle) IndicesPathSpecified() bool { return true }
+
+// jsonblock.AddressHandle implements chainreadinterface.IAddressHandle
+var _ chainreadinterface.IAddressHandle = (*AddressHandle)(nil) // Check that implements
+type AddressHandle struct {
+	hash indexedhashes.Sha256
+}
+
+// Functions in jsonblock.AddressHandle to implement chainreadinterface.IAddressHandle
+func (ah *AddressHandle) Hash() indexedhashes.Sha256 { return ah.hash }
+func (ah *AddressHandle) Height() int64              { return -1 }
+func (ah *AddressHandle) HashSpecified() bool        { return true }
+func (ah *AddressHandle) HeightSpecified() bool      { return false }
+
+// Sneakily, jsonblock.AddressHandle also implements chainreadinterface.IAddress, with limited functionality
+var _ chainreadinterface.IAddress = (*AddressHandle)(nil) // Check that implements
+func (ah *AddressHandle) TxoCount() (int64, error) {
+	return -1, errors.New("jsonblock.AddressHandle.TxoCount(): not supported")
+}
+func (ah *AddressHandle) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) {
+	return nil, errors.New("jsonblock.AddressHandle.NthTxo(): not supported")
+}

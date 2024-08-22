@@ -41,3 +41,10 @@ type ITxoHandle interface {
 	TxoHeightSpecified() bool
 	IndicesPathSpecified() bool
 }
+
+type IAddressHandle interface {
+	Height() int64
+	Hash() indexedhashes.Sha256
+	HeightSpecified() bool
+	HashSpecified() bool
+}

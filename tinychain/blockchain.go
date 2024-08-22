@@ -1,6 +1,9 @@
 package tinychain
 
-import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
+import (
+	"errors"
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+)
 
 // Blockchain implements IBlockchain (and so implicitly IBlockTree)
 type Blockchain struct {
@@ -116,6 +119,10 @@ func (bc *Blockchain) TxiInterface(txi chainreadinterface.ITxiHandle) (chainread
 	parentIndex := txi.ParentIndex()
 	txiObject := parentTransObject.txis[parentIndex]
 	return &txiObject, nil
+}
+
+func (bc *Blockchain) AddressInterface(addr chainreadinterface.IAddressHandle) (chainreadinterface.IAddress, error) {
+	return nil, errors.New("tinychain.Blockchain.AddressInterface(): TinyChain does not support addresses")
 }
 
 // Implement the rest of IBlockChain

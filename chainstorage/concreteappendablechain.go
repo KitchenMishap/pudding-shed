@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/intarrayarray"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
@@ -15,8 +16,12 @@ type concreteAppendableChain struct {
 	txiTx               wordfile.ReadWriteAtWordCounter
 	txiVout             wordfile.ReadWriteAtWordCounter
 	txoSats             wordfile.ReadWriteAtWordCounter
+	txoAddress          wordfile.ReadWriteAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
+	addrHashes          indexedhashes.HashReadWriter
+	addrFirstTxo        wordfile.ReadWriteAtWordCounter
+	addrAdditionalTxos  intarrayarray.IntArrayMapStoreReadWrite
 
 	transactionIndexingIsDelegated bool
 	// The following must only be written to by this class if the above is false
@@ -28,14 +33,18 @@ type concreteAppendableChain struct {
 
 func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
 	result := concreteReadableChain{
-		blkFirstTrans: cac.blkFirstTrans,
-		blkHashes:     cac.blkHashes,
-		trnHashes:     cac.trnHashes,
-		trnFirstTxi:   cac.trnFirstTxi,
-		trnFirstTxo:   cac.trnFirstTxo,
-		txiTx:         cac.txiTx,
-		txiVout:       cac.txiVout,
-		txoSats:       cac.txoSats,
+		blkFirstTrans:      cac.blkFirstTrans,
+		blkHashes:          cac.blkHashes,
+		trnHashes:          cac.trnHashes,
+		addrHashes:         cac.addrHashes,
+		trnFirstTxi:        cac.trnFirstTxi,
+		trnFirstTxo:        cac.trnFirstTxo,
+		txiTx:              cac.txiTx,
+		txiVout:            cac.txiVout,
+		txoSats:            cac.txoSats,
+		txoAddress:         cac.txoAddress,
+		addrFirstTxo:       cac.addrFirstTxo,
+		addrAdditionalTxos: cac.addrAdditionalTxos,
 	}
 	result.blkNonEssentialInts = make(map[string]wordfile.ReadAtWordCounter)
 	result.trnNonEssentialInts = make(map[string]wordfile.ReadAtWordCounter)
@@ -280,7 +289,7 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		if err != nil {
 			return -1, err
 		}
-		txoHeight, err := cac.appendTxo(txo)
+		txoHeight, err := cac.appendTxo(blockChain, txo)
 		if err != nil {
 			return -1, err
 		}
@@ -361,11 +370,8 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	return txiHeight, nil
 }
 
-func (cac *concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int64, error) {
-	sats, err := txo.Satoshis()
-	if err != nil {
-		return -1, err
-	}
+func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlockChain, txo chainreadinterface.ITxo) (int64, error) {
+	// Check we are storing txos in sequence
 	txoHeight, err := cac.txoSats.CountWords()
 	if err != nil {
 		return -1, err
@@ -373,7 +379,47 @@ func (cac *concreteAppendableChain) appendTxo(txo chainreadinterface.ITxo) (int6
 	if txo.TxoHeightSpecified() && txo.TxoHeight() != txoHeight {
 		panic("cannot append a txo out of sequence")
 	}
+
+	// Store the sats
+	sats, err := txo.Satoshis()
+	if err != nil {
+		return -1, err
+	}
 	err = cac.txoSats.WriteWordAt(sats, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	txoAddressHandle, err := txo.Address()
+	if err != nil {
+		return -1, err
+	}
+	txoAddress, err := blockChain.AddressInterface(txoAddressHandle)
+	if err != nil {
+		return -1, err
+	}
+	txoAddressHash := txoAddress.Hash()
+
+	// Have we seen this address before?
+	txoAddressHeight, err := cac.addrHashes.IndexOfHash(&txoAddressHash)
+	if err != nil {
+		return -1, err
+	}
+	if txoAddressHeight == -1 {
+		// Store the new address hash
+		txoAddressHeight, err = cac.addrHashes.AppendHash(&txoAddressHash)
+		if err != nil {
+			return -1, err
+		}
+		// This txo is the first txo to use this address, store it in the address
+		cac.addrFirstTxo.WriteWordAt(txoHeight, txoAddressHeight)
+	} else {
+		// We've seen this address before. Add this txo to the address's list of additional txos
+		cac.addrAdditionalTxos.AppendToArray(txoAddressHeight, txoHeight)
+	}
+
+	// This txo needs to reference the address height
+	err = cac.txoAddress.WriteWordAt(txoAddressHeight, txoHeight)
 	if err != nil {
 		return -1, err
 	}

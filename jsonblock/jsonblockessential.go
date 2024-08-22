@@ -57,10 +57,17 @@ type jsonTxiEssential struct {
 }
 
 type jsonTxoEssential struct {
-	J_value      float64     `json:"value"`
-	satoshis     int64       `json:"-"` // Does not appear in json. Calculated after parsing of whole block
-	parentTrans  TransHandle `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
-	parentVIndex int64       `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+	J_value        float64                   `json:"value"`
+	J_scriptPubKey jsonScriptPubKeyEssential `json:"scriptPubKey"`
+	satoshis       int64                     `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	parentTrans    TransHandle               `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+	parentVIndex   int64                     `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
+}
+
+type jsonScriptPubKeyEssential struct {
+	J_hex     string `json:"hex"`
+	J_address string `json:"address"`
+	J_type    string `json:"type"`
 }
 
 func parseJsonBlock(jsonBytes []byte) (*JsonBlockEssential, error) {

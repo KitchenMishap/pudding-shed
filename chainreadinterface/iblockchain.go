@@ -12,6 +12,7 @@ type IBlockTree interface {
 	TransInterface(ITransHandle) (ITransaction, error)
 	TxiInterface(ITxiHandle) (ITxi, error)
 	TxoInterface(ITxoHandle) (ITxo, error)
+	AddressInterface(IAddressHandle) (IAddress, error)
 }
 
 type IBlockChain interface {

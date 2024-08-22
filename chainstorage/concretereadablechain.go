@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/intarrayarray"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
@@ -10,13 +11,17 @@ type concreteReadableChain struct {
 	blkFirstTrans       wordfile.ReadAtWordCounter
 	blkHashes           indexedhashes.HashReader
 	trnHashes           indexedhashes.HashReader
+	addrHashes          indexedhashes.HashReader
 	trnFirstTxi         wordfile.ReadAtWordCounter
 	trnFirstTxo         wordfile.ReadAtWordCounter
 	txiTx               wordfile.ReadAtWordCounter
 	txiVout             wordfile.ReadAtWordCounter
 	txoSats             wordfile.ReadAtWordCounter
+	txoAddress          wordfile.ReadAtWordCounter
+	addrFirstTxo        wordfile.ReadAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadAtWordCounter
+	addrAdditionalTxos  intarrayarray.IntArrayMapStoreReadOnly
 }
 
 // Functions to implement IBlockTree as part of IBlockChain
@@ -127,6 +132,24 @@ func (crc *concreteReadableChain) TxoInterface(hTxo chainreadinterface.ITxoHandl
 	} else {
 		panic("hTxo specifies neither txoHeight nor parent")
 	}
+}
+
+func (crc *concreteReadableChain) AddressInterface(hAddress chainreadinterface.IAddressHandle) (chainreadinterface.IAddress, error) {
+	result := Address{}
+
+	result.hashSpecified = hAddress.HashSpecified()
+	if result.hashSpecified {
+		result.hash = hAddress.Hash()
+	}
+	result.heightSpecified = hAddress.HeightSpecified()
+	if result.heightSpecified {
+		result.height = hAddress.Height()
+	}
+
+	result.data = crc
+	result.populated = false
+
+	return &result, nil
 }
 
 // Functions to implement IBlockChain

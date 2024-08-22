@@ -164,3 +164,24 @@ func (txo *TxoHandle) TxoHeightSpecified() bool {
 }
 func (txo *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
 func (txo *TxoHandle) IndicesPathSpecified() bool         { return false }
+
+// AddressHandle implements IAddressHandle
+type AddressHandle struct {
+	HashHeight
+}
+
+// Check that implements
+var _ chainreadinterface.IAddressHandle = (*AddressHandle)(nil)
+
+func (ah *AddressHandle) Hash() indexedhashes.Sha256 {
+	return ah.hash
+}
+func (ah *AddressHandle) HashSpecified() bool {
+	return ah.hashSpecified
+}
+func (ah *AddressHandle) Height() int64 {
+	return ah.height
+}
+func (ah *AddressHandle) HeightSpecified() bool {
+	return ah.heightSpecified
+}

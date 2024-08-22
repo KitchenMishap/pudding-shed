@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/intarrayarray"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"path"
 	"slices"
@@ -13,8 +14,10 @@ type ConcreteAppendableChainCreator struct {
 	transactionsFolder            string
 	transactionInputsFolder       string
 	transactionOutputsFolder      string
+	addressesFolder               string
 	blockHashStoreCreator         *indexedhashes.ConcreteHashStoreCreator
 	transactionHashStoreCreator   *indexedhashes.ConcreteHashStoreCreator
+	addressHashStoreCreator       *indexedhashes.ConcreteHashStoreCreator
 	blkFirstTransWordFileCreator  *wordfile.ConcreteWordFileCreator
 	trnParentBlockWordFileCreator *wordfile.ConcreteWordFileCreator
 	trnFirstTxiWordFileCreator    *wordfile.ConcreteWordFileCreator
@@ -22,8 +25,12 @@ type ConcreteAppendableChainCreator struct {
 	txiTxWordFileCreator          *wordfile.ConcreteWordFileCreator
 	txiVoutWordFileCreator        *wordfile.ConcreteWordFileCreator
 	txoSatsWordFileCreator        *wordfile.ConcreteWordFileCreator
-	supportedBlkNeis              map[string]int
-	supportedTrnNeis              map[string]int
+	txoAddressWordFileCreator     *wordfile.ConcreteWordFileCreator
+	addrFirstTxoWordFileCreator   *wordfile.ConcreteWordFileCreator
+	addrAdditionalTxosIaaCreator  *intarrayarray.ConcreteMapStoreCreator
+
+	supportedBlkNeis map[string]int
+	supportedTrnNeis map[string]int
 }
 
 func NewConcreteAppendableChainCreator(
@@ -34,6 +41,7 @@ func NewConcreteAppendableChainCreator(
 	result.transactionsFolder = path.Join(folder, "Transactions")
 	result.transactionInputsFolder = path.Join(folder, "TransactionInputs")
 	result.transactionOutputsFolder = path.Join(folder, "TransactionOutputs")
+	result.addressesFolder = path.Join(folder, "Addresses")
 	var err error
 	result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
 		"Blocks", result.blocksFolder, 30, 3, 3)
@@ -45,6 +53,8 @@ func NewConcreteAppendableChainCreator(
 	if err != nil {
 		return nil, err
 	}
+	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
+		"Addresses", result.addressesFolder, 30, 4, 3) // ToDo [  ] Calculate these parameters!
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, 5)
 	result.trnParentBlockWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblock", result.transactionsFolder, 3)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, 5)
@@ -52,7 +62,9 @@ func NewConcreteAppendableChainCreator(
 	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, 4)
 	result.txiVoutWordFileCreator = wordfile.NewConcreteWordFileCreator("vout", result.transactionInputsFolder, 4)
 	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, 8)
-
+	result.txoAddressWordFileCreator = wordfile.NewConcreteWordFileCreator("address", result.transactionOutputsFolder, 5)
+	result.addrFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.addressesFolder, 5)
+	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 3, 3, 5)
 	result.supportedBlkNeis = map[string]int{
 		"version":      4,
 		"time":         4,

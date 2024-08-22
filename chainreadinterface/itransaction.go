@@ -20,4 +20,5 @@ type ITxi interface {
 type ITxo interface {
 	ITxoHandle
 	Satoshis() (int64, error)
+	Address() (IAddressHandle, error)
 }

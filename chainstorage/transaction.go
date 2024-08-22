@@ -227,3 +227,15 @@ func (txo *Txo) Satoshis() (int64, error) {
 	}
 	return sats, nil
 }
+
+func (txo *Txo) Address() (chainreadinterface.IAddressHandle, error) {
+	handle := AddressHandle{}
+	addressHeight, err := txo.data.txoAddress.ReadWordAt(txo.height)
+	if err != nil {
+		return nil, err
+	}
+	handle.height = addressHeight
+	handle.heightSpecified = true
+	handle.hashSpecified = false
+	return &handle, nil
+}

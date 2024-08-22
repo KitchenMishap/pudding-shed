@@ -427,6 +427,18 @@ func (obc *OneBlockChain) TxoInterface(handle chainreadinterface.ITxoHandle) (ch
 	return txo, nil
 }
 
+func (obc *OneBlockChain) AddressInterface(handle chainreadinterface.IAddressHandle) (chainreadinterface.IAddress, error) {
+	// jsonblock.AddressHandle sneakily supports chainreadinterface.IAddress with limited functionality, so
+	// we use one of those
+	if handle.HashSpecified() {
+		result := AddressHandle{}
+		result.hash = handle.Hash()
+		return &result, nil
+	} else {
+		return nil, errors.New("jsonblock.OneBlockChain.AddressInterface(): This code depends on the address handle specifying a hash")
+	}
+}
+
 // Functions in jsonblock.OneBlockChain to implement chainreadinterface.IBlockChain
 
 func (obc *OneBlockChain) LatestBlock() (chainreadinterface.IBlockHandle, error) {

@@ -27,26 +27,27 @@ func (c *ConcreteMapStoreCreator) MapExists() bool {
 	return true // ToDo [  ]
 }
 
-func (c *ConcreteMapStoreCreator) CreateMap() {
+func (c *ConcreteMapStoreCreator) CreateMap() error {
 	// ToDo [  ]
+	return nil
 }
 
-func (c *ConcreteMapStoreCreator) OpenMap() IntArrayMapStoreReadWrite {
+func (c *ConcreteMapStoreCreator) OpenMap() (IntArrayMapStoreReadWrite, error) {
 	result := IntArrayMapStore{}
 	result.folder = c.folder
 	result.name = c.name
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
-	return &result
+	return &result, nil
 }
 
-func (c *ConcreteMapStoreCreator) OpenMapReadOnly() IntArrayMapStoreReadOnly {
+func (c *ConcreteMapStoreCreator) OpenMapReadOnly() (IntArrayMapStoreReadOnly, error) {
 	result := IntArrayMapStore{}
 	result.folder = c.folder
 	result.name = c.name
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
-	return &result
+	return &result, nil
 }
