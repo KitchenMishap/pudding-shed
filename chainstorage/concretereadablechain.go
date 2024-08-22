@@ -18,6 +18,7 @@ type concreteReadableChain struct {
 	txiVout             wordfile.ReadAtWordCounter
 	txoSats             wordfile.ReadAtWordCounter
 	txoAddress          wordfile.ReadAtWordCounter
+	txoSpentTxi         wordfile.ReadAtWordCounter
 	addrFirstTxo        wordfile.ReadAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadAtWordCounter

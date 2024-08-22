@@ -17,6 +17,7 @@ type concreteAppendableChain struct {
 	txiVout             wordfile.ReadWriteAtWordCounter
 	txoSats             wordfile.ReadWriteAtWordCounter
 	txoAddress          wordfile.ReadWriteAtWordCounter
+	txoSpentTxi         wordfile.ReadWriteAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadWriteAtWordCounter
 	addrHashes          indexedhashes.HashReadWriter
@@ -43,6 +44,7 @@ func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadab
 		txiVout:            cac.txiVout,
 		txoSats:            cac.txoSats,
 		txoAddress:         cac.txoAddress,
+		txoSpentTxi:        cac.txoSpentTxi,
 		addrFirstTxo:       cac.addrFirstTxo,
 		addrAdditionalTxos: cac.addrAdditionalTxos,
 	}
@@ -367,6 +369,20 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 		return -1, err
 	}
 
+	// This is a txi, so a txo has been spent to it
+	// We need to tell the txo
+	// First, find the txo
+	firstTxoOfTrans, err := cac.trnFirstTxo.ReadWordAt(sourceTransHeight)
+	if err != nil {
+		return -1, err
+	}
+	txoHeight := firstTxoOfTrans + sourceIndex
+	// Then write to the txo
+	err = cac.txoSpentTxi.WriteWordAt(txiHeight, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
 	return txiHeight, nil
 }
 
@@ -420,6 +436,12 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 
 	// This txo needs to reference the address height
 	err = cac.txoAddress.WriteWordAt(txoAddressHeight, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	// This txo is so far unspent
+	err = cac.txoSpentTxi.WriteWordAt(0, txoHeight)
 	if err != nil {
 		return -1, err
 	}
