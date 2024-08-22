@@ -54,7 +54,7 @@ func NewConcreteAppendableChainCreator(
 		return nil, err
 	}
 	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Addresses", result.addressesFolder, 30, 4, 3) // ToDo [  ] Calculate these parameters!
+		"Addresses", result.addressesFolder, 32, 5, 3) // ToDo [  ] Calculate these parameters!
 	if err != nil {
 		return nil, err
 	}
