@@ -55,6 +55,9 @@ func NewConcreteAppendableChainCreator(
 	}
 	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
 		"Addresses", result.addressesFolder, 30, 4, 3) // ToDo [  ] Calculate these parameters!
+	if err != nil {
+		return nil, err
+	}
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, 5)
 	result.trnParentBlockWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblock", result.transactionsFolder, 3)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, 5)
@@ -102,6 +105,10 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 	if err != nil {
 		return err
 	}
+	err = cacc.addressHashStoreCreator.CreateHashStore()
+	if err != nil {
+		return err
+	}
 	err = cacc.blkFirstTransWordFileCreator.CreateWordFile()
 	if err != nil {
 		return err
@@ -127,6 +134,18 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 		return err
 	}
 	err = cacc.txoSatsWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.txoAddressWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.addrFirstTxoWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.addrAdditionalTxosIaaCreator.CreateMap()
 	if err != nil {
 		return err
 	}
@@ -181,16 +200,24 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.blkHashes.Close()
 		return nil, nil, err
 	}
+	result.addrHashes, err = cacc.addressHashStoreCreator.OpenHashStore()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		return nil, nil, err
+	}
 	result.blkFirstTrans, err = cacc.blkFirstTransWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		return nil, nil, err
 	}
 	result.trnParentBlock, err = cacc.trnParentBlockWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		return nil, nil, err
 	}
@@ -198,6 +225,7 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnParentBlock.Close()
 		return nil, nil, err
@@ -206,6 +234,7 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
@@ -215,6 +244,7 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
@@ -225,6 +255,7 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
@@ -236,12 +267,59 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
+		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
 		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
 		result.txiVout.Close()
+		return nil, nil, err
+	}
+	result.txoAddress, err = cacc.txoAddressWordFileCreator.OpenWordFile()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		return nil, nil, err
+	}
+	result.addrFirstTxo, err = cacc.addrFirstTxoWordFileCreator.OpenWordFile()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		result.txoAddress.Close()
+		return nil, nil, err
+	}
+
+	result.addrAdditionalTxos, err = cacc.addrAdditionalTxosIaaCreator.OpenMap()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnParentBlock.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		result.txoAddress.Close()
+		result.addrFirstTxo.Close()
 		return nil, nil, err
 	}
 
