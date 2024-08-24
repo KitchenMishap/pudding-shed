@@ -11,7 +11,7 @@ import (
 )
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
-	const path = "D:\\Data\\SeveralYears"
+	const path = "F:\\Data\\858000AddressesCswParents"
 	lastBlock := int64(10000) // Default
 	if years == 1 {
 		lastBlock = 33000
@@ -20,7 +20,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	} else if years == 15 {
 		lastBlock = 824196
 	} else if years == 16 {
-		lastBlock = 854840 // 31 Jul 2024
+		lastBlock = 858000 // 23 Aug 2024
 	}
 
 	err := os.RemoveAll(path)

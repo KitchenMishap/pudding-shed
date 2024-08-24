@@ -10,25 +10,28 @@ import (
 )
 
 type ConcreteAppendableChainCreator struct {
-	blocksFolder                  string
-	transactionsFolder            string
-	transactionInputsFolder       string
-	transactionOutputsFolder      string
-	addressesFolder               string
-	blockHashStoreCreator         *indexedhashes.ConcreteHashStoreCreator
-	transactionHashStoreCreator   *indexedhashes.ConcreteHashStoreCreator
-	addressHashStoreCreator       *indexedhashes.ConcreteHashStoreCreator
-	blkFirstTransWordFileCreator  *wordfile.ConcreteWordFileCreator
-	trnParentBlockWordFileCreator *wordfile.ConcreteWordFileCreator
-	trnFirstTxiWordFileCreator    *wordfile.ConcreteWordFileCreator
-	trnFirstTxoWordFileCreator    *wordfile.ConcreteWordFileCreator
-	txiTxWordFileCreator          *wordfile.ConcreteWordFileCreator
-	txiVoutWordFileCreator        *wordfile.ConcreteWordFileCreator
-	txoSatsWordFileCreator        *wordfile.ConcreteWordFileCreator
-	txoAddressWordFileCreator     *wordfile.ConcreteWordFileCreator
-	txoSpentTxiWordFileCreator    *wordfile.ConcreteWordFileCreator
-	addrFirstTxoWordFileCreator   *wordfile.ConcreteWordFileCreator
-	addrAdditionalTxosIaaCreator  *intarrayarray.ConcreteMapStoreCreator
+	blocksFolder                      string
+	transactionsFolder                string
+	transactionInputsFolder           string
+	transactionOutputsFolder          string
+	addressesFolder                   string
+	parentsFolder                     string
+	blockHashStoreCreator             *indexedhashes.ConcreteHashStoreCreator
+	transactionHashStoreCreator       *indexedhashes.ConcreteHashStoreCreator
+	addressHashStoreCreator           *indexedhashes.ConcreteHashStoreCreator
+	blkFirstTransWordFileCreator      *wordfile.ConcreteWordFileCreator
+	trnFirstTxiWordFileCreator        *wordfile.ConcreteWordFileCreator
+	trnFirstTxoWordFileCreator        *wordfile.ConcreteWordFileCreator
+	txiTxWordFileCreator              *wordfile.ConcreteWordFileCreator
+	txiVoutWordFileCreator            *wordfile.ConcreteWordFileCreator
+	txoSatsWordFileCreator            *wordfile.ConcreteWordFileCreator
+	txoAddressWordFileCreator         *wordfile.ConcreteWordFileCreator
+	txoSpentTxiWordFileCreator        *wordfile.ConcreteWordFileCreator
+	addrFirstTxoWordFileCreator       *wordfile.ConcreteWordFileCreator
+	parentBlockOfTransWordFileCreator *wordfile.ConcreteWordFileCreator
+	parentTransOfTxiWordFileCreator   *wordfile.ConcreteWordFileCreator
+	parentTransOfTxoWordFileCreator   *wordfile.ConcreteWordFileCreator
+	addrAdditionalTxosIaaCreator      *intarrayarray.ConcreteMapStoreCreator
 
 	supportedBlkNeis map[string]int
 	supportedTrnNeis map[string]int
@@ -43,33 +46,44 @@ func NewConcreteAppendableChainCreator(
 	result.transactionInputsFolder = path.Join(folder, "TransactionInputs")
 	result.transactionOutputsFolder = path.Join(folder, "TransactionOutputs")
 	result.addressesFolder = path.Join(folder, "Addresses")
+	result.parentsFolder = path.Join(folder, "Parents")
+
+	//																			Count at 15 years:
+	roomFor16milBlocks := int64(3) // 256^3 = 16,777,216 blocks					There were 824,197 blocks
+	roomFor4bilTrans := int64(4)   // 256^4 = 4,294,967,296 transactions		There were 947,337,057 transactions
+	roomFor1trilTxxs := int64(5)   // 256^5 = 1,099,511,627,776 txos or txis	There were 2,652,374,369 txos (including spent)
+	roomFor1trilAddrs := int64(5)  //	,,			,,			 addresses		There must be fewer addresses than txos
+	roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
+
 	var err error
 	result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Blocks", result.blocksFolder, 30, 3, 3)
+		"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3)
 	if err != nil {
 		return nil, err
 	}
 	result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Transactions", result.transactionsFolder, 30, 4, 3)
+		"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3)
 	if err != nil {
 		return nil, err
 	}
 	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Addresses", result.addressesFolder, 32, 5, 3) // ToDo [  ] Calculate these parameters!
+		"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3) // ToDo [  ] Calculate these parameters!
 	if err != nil {
 		return nil, err
 	}
-	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, 5)
-	result.trnParentBlockWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblock", result.transactionsFolder, 3)
-	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, 5)
-	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, 5)
-	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, 4)
+	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans)
+	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs)
+	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, roomFor1trilTxxs)
+	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, roomFor4bilTrans)
 	result.txiVoutWordFileCreator = wordfile.NewConcreteWordFileCreator("vout", result.transactionInputsFolder, 4)
-	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, 8)
-	result.txoAddressWordFileCreator = wordfile.NewConcreteWordFileCreator("address", result.transactionOutputsFolder, 5)
-	result.txoSpentTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("spenttotxi", result.transactionOutputsFolder, 5)
-	result.addrFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.addressesFolder, 5)
-	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 3, 3, 5)
+	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, roomForAllSatoshis)
+	result.txoAddressWordFileCreator = wordfile.NewConcreteWordFileCreator("address", result.transactionOutputsFolder, roomFor1trilAddrs)
+	result.txoSpentTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("spenttotxi", result.transactionOutputsFolder, roomFor1trilTxxs)
+	result.addrFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.addressesFolder, roomFor1trilTxxs)
+	result.parentBlockOfTransWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblockoftrans", result.parentsFolder, roomFor4bilTrans)
+	result.parentTransOfTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxi", result.parentsFolder, roomFor1trilTxxs)
+	result.parentTransOfTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxo", result.parentsFolder, roomFor1trilTxxs)
+	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 3, 3, roomFor1trilTxxs)
 	result.supportedBlkNeis = map[string]int{
 		"version":      4,
 		"time":         4,
@@ -115,10 +129,6 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 	if err != nil {
 		return err
 	}
-	err = cacc.trnParentBlockWordFileCreator.CreateWordFile()
-	if err != nil {
-		return err
-	}
 	err = cacc.trnFirstTxiWordFileCreator.CreateWordFile()
 	if err != nil {
 		return err
@@ -148,6 +158,18 @@ func (cacc *ConcreteAppendableChainCreator) Create(blkNeiNames []string, trnNeiN
 		return err
 	}
 	err = cacc.addrFirstTxoWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.parentBlockOfTransWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.parentTransOfTxiWordFileCreator.CreateWordFile()
+	if err != nil {
+		return err
+	}
+	err = cacc.parentTransOfTxoWordFileCreator.CreateWordFile()
 	if err != nil {
 		return err
 	}
@@ -219,21 +241,12 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.addrHashes.Close()
 		return nil, nil, err
 	}
-	result.trnParentBlock, err = cacc.trnParentBlockWordFileCreator.OpenWordFile()
-	if err != nil {
-		result.blkHashes.Close()
-		result.trnHashes.Close()
-		result.addrHashes.Close()
-		result.blkFirstTrans.Close()
-		return nil, nil, err
-	}
 	result.trnFirstTxi, err = cacc.trnFirstTxiWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		return nil, nil, err
 	}
 	result.trnFirstTxo, err = cacc.trnFirstTxoWordFileCreator.OpenWordFile()
@@ -242,7 +255,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		return nil, nil, err
 	}
@@ -252,7 +264,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		return nil, nil, err
@@ -263,7 +274,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -275,7 +285,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -288,7 +297,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -302,7 +310,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -317,7 +324,6 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -328,13 +334,12 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		return nil, nil, err
 	}
 
-	result.addrAdditionalTxos, err = cacc.addrAdditionalTxosIaaCreator.OpenMap()
+	result.parentBlockOfTrans, err = cacc.parentBlockOfTransWordFileCreator.OpenWordFile()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		result.blkFirstTrans.Close()
-		result.trnParentBlock.Close()
 		result.trnFirstTxi.Close()
 		result.trnFirstTxo.Close()
 		result.txiTx.Close()
@@ -343,6 +348,61 @@ func (cacc *ConcreteAppendableChainCreator) Open(transactionIndexingToBeDelegate
 		result.txoAddress.Close()
 		result.txoSpentTxi.Close()
 		result.addrFirstTxo.Close()
+		return nil, nil, err
+	}
+	result.parentTransOfTxi, err = cacc.parentTransOfTxiWordFileCreator.OpenWordFile()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		result.txoAddress.Close()
+		result.txoSpentTxi.Close()
+		result.addrFirstTxo.Close()
+		result.parentBlockOfTrans.Close()
+		return nil, nil, err
+	}
+	result.parentTransOfTxo, err = cacc.parentTransOfTxoWordFileCreator.OpenWordFile()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		result.txoAddress.Close()
+		result.txoSpentTxi.Close()
+		result.addrFirstTxo.Close()
+		result.parentBlockOfTrans.Close()
+		result.parentTransOfTxi.Close()
+		return nil, nil, err
+	}
+
+	result.addrAdditionalTxos, err = cacc.addrAdditionalTxosIaaCreator.OpenMap()
+	if err != nil {
+		result.blkHashes.Close()
+		result.trnHashes.Close()
+		result.addrHashes.Close()
+		result.blkFirstTrans.Close()
+		result.trnFirstTxi.Close()
+		result.trnFirstTxo.Close()
+		result.txiTx.Close()
+		result.txiVout.Close()
+		result.txoSats.Close()
+		result.txoAddress.Close()
+		result.txoSpentTxi.Close()
+		result.addrFirstTxo.Close()
+		result.parentBlockOfTrans.Close()
+		result.parentTransOfTxi.Close()
+		result.parentTransOfTxo.Close()
 		return nil, nil, err
 	}
 

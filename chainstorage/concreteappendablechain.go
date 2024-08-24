@@ -23,13 +23,15 @@ type concreteAppendableChain struct {
 	addrHashes          indexedhashes.HashReadWriter
 	addrFirstTxo        wordfile.ReadWriteAtWordCounter
 	addrAdditionalTxos  intarrayarray.IntArrayMapStoreReadWrite
+	parentTransOfTxi    wordfile.ReadWriteAtWordCounter
+	parentTransOfTxo    wordfile.ReadWriteAtWordCounter
 
 	transactionIndexingIsDelegated bool
 	// The following must only be written to by this class if the above is false
 	// (if true, they are written to by an external actor via IDelegatedTransactionIndexing)
-	blkFirstTrans  wordfile.ReadWriteAtWordCounter
-	trnHashes      indexedhashes.HashReadWriter
-	trnParentBlock wordfile.ReadWriteAtWordCounter
+	blkFirstTrans      wordfile.ReadWriteAtWordCounter
+	trnHashes          indexedhashes.HashReadWriter
+	parentBlockOfTrans wordfile.ReadWriteAtWordCounter
 }
 
 func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
@@ -170,7 +172,7 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 		if trans.HeightSpecified() && trans.Height() != transNum {
 			panic("cannot append a transaction out of sequence")
 		}
-		err = cac.trnParentBlock.WriteWordAt(blkNum, transNum)
+		err = cac.parentBlockOfTrans.WriteWordAt(blkNum, transNum)
 		if err != nil {
 			return -1, err
 		}
@@ -260,7 +262,7 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		if err != nil {
 			return -1, err
 		}
-		txiHeight, err := cac.appendTxi(txi)
+		txiHeight, err := cac.appendTxi(txi, transHeight)
 		if err != nil {
 			return -1, err
 		}
@@ -291,7 +293,7 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		if err != nil {
 			return -1, err
 		}
-		txoHeight, err := cac.appendTxo(blockChain, txo)
+		txoHeight, err := cac.appendTxo(blockChain, txo, transHeight)
 		if err != nil {
 			return -1, err
 		}
@@ -303,7 +305,7 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 	return transHeight, nil
 }
 
-func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int64, error) {
+func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi, transIndex int64) (int64, error) {
 	// Note that we have no concept of a "coinbase txi". Instead we of course have coinbase transactions,
 	// but these are DEFINED as having no txis. This is in contrast to Bitcoin Core's JSON format.
 
@@ -368,6 +370,10 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	if err != nil {
 		return -1, err
 	}
+	err = cac.parentTransOfTxi.WriteWordAt(transIndex, txiHeight)
+	if err != nil {
+		return -1, err
+	}
 
 	// This is a txi, so a txo has been spent to it
 	// We need to tell the txo
@@ -386,7 +392,7 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi) (int6
 	return txiHeight, nil
 }
 
-func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlockChain, txo chainreadinterface.ITxo) (int64, error) {
+func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlockChain, txo chainreadinterface.ITxo, transIndex int64) (int64, error) {
 	// Check we are storing txos in sequence
 	txoHeight, err := cac.txoSats.CountWords()
 	if err != nil {
@@ -402,6 +408,10 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 		return -1, err
 	}
 	err = cac.txoSats.WriteWordAt(sats, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+	err = cac.parentTransOfTxo.WriteWordAt(transIndex, txoHeight)
 	if err != nil {
 		return -1, err
 	}
@@ -452,13 +462,20 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 func (cac *concreteAppendableChain) Close() {
 	cac.blkHashes.Close()
 	cac.trnHashes.Close()
+	cac.addrHashes.Close()
 	cac.blkFirstTrans.Close()
-	cac.trnParentBlock.Close()
 	cac.trnFirstTxi.Close()
 	cac.trnFirstTxo.Close()
 	cac.txiTx.Close()
 	cac.txiVout.Close()
 	cac.txoSats.Close()
+	cac.txoSpentTxi.Close()
+	cac.txoAddress.Close()
+	cac.addrFirstTxo.Close()
+	cac.addrAdditionalTxos.FlushFile()
+	cac.parentBlockOfTrans.Close()
+	cac.parentTransOfTxi.Close()
+	cac.parentTransOfTxo.Close()
 }
 
 func (cac *concreteAppendableChain) GetAsDelegatedTransactionIndexer() transactionindexing.ITransactionIndexer {
@@ -480,7 +497,7 @@ func (cac *concreteAppendableChain) StoreTransHashToHeight(sha256 *indexedhashes
 	return nil
 }
 func (cac *concreteAppendableChain) StoreTransHeightToParentBlock(transHeight int64, parentBlockHeight int64) error {
-	return cac.trnParentBlock.WriteWordAt(parentBlockHeight, transHeight)
+	return cac.parentBlockOfTrans.WriteWordAt(parentBlockHeight, transHeight)
 }
 func (cac *concreteAppendableChain) StoreBlockHeightToFirstTrans(blockHeight int64, firstTrans int64) error {
 	return cac.blkFirstTrans.WriteWordAt(firstTrans, blockHeight)
@@ -489,7 +506,7 @@ func (cac *concreteAppendableChain) RetrieveTransHashToHeight(sha256 *indexedhas
 	return cac.trnHashes.IndexOfHash(sha256)
 }
 func (cac *concreteAppendableChain) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {
-	return cac.trnParentBlock.ReadWordAt(transHeight)
+	return cac.parentBlockOfTrans.ReadWordAt(transHeight)
 }
 func (cac *concreteAppendableChain) RetrieveBlockHeightToFirstTrans(blockHeight int64) (int64, error) {
 	return cac.blkFirstTrans.ReadWordAt(blockHeight)
