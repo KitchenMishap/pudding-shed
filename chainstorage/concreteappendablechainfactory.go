@@ -55,19 +55,23 @@ func NewConcreteAppendableChainCreator(
 	roomFor1trilAddrs := int64(5)  //	,,			,,			 addresses		There must be fewer addresses than txos
 	roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
 
+	// WARNING true will cost you 50GB memory!
+	// And trash your SSD if you don't have it
+	useMemFileForHashes := false
+
 	var err error
 	result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3)
+		"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3, useMemFileForHashes)
 	if err != nil {
 		return nil, err
 	}
 	result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3)
+		"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3, useMemFileForHashes)
 	if err != nil {
 		return nil, err
 	}
 	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3) // ToDo [  ] Calculate these parameters!
+		"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3, useMemFileForHashes) // ToDo [  ] Calculate these parameters!
 	if err != nil {
 		return nil, err
 	}

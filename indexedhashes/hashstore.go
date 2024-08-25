@@ -19,7 +19,7 @@ type HashStore struct {
 
 func NewHashStore(partialHashBitCount int64, entryByteCount int64, collisionsPerChunk int64,
 	hashesFile *BasicHashStore,
-	lookupsFile *os.File, collisionsFile *os.File) *HashStore {
+	lookupsFile memfile.SparseLookupFile, collisionsFile *os.File) *HashStore {
 	result := HashStore{}
 	result.partialHashBitCount = partialHashBitCount
 	result.entryByteCount = entryByteCount

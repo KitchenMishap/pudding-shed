@@ -48,7 +48,7 @@ func CreateOpenTransactionIndexerFiles(folderName string) transactionindexing.IT
 	obj := transactionIndexerFiles{}
 
 	hashStoreCreator, err := indexedhashes.NewConcreteHashStoreCreator(
-		"Transactions", folderName, 30, 4, 3)
+		"Transactions", folderName, 30, 4, 3, false)
 	if err != nil {
 		panic(err)
 	}

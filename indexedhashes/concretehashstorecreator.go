@@ -2,6 +2,7 @@ package indexedhashes
 
 import (
 	"errors"
+	"github.com/KitchenMishap/pudding-shed/memfile"
 	"os"
 	"path/filepath"
 )
@@ -12,10 +13,11 @@ type ConcreteHashStoreCreator struct {
 	partialHashBitCount int64
 	entryByteCount      int64
 	collisionsPerChunk  int64
+	useMemFileForLookup bool
 }
 
 func NewConcreteHashStoreCreator(name string, folder string,
-	partialHashBitCount int64, entryByteCount int64, collisionsPerChunk int64) (*ConcreteHashStoreCreator, error) {
+	partialHashBitCount int64, entryByteCount int64, collisionsPerChunk int64, useMemFileForLookup bool) (*ConcreteHashStoreCreator, error) {
 	if entryByteCount > ZEROBUF {
 		err := errors.New("hard coded ZEROBUF not big enough")
 		return nil, err
@@ -27,6 +29,7 @@ func NewConcreteHashStoreCreator(name string, folder string,
 	result.partialHashBitCount = partialHashBitCount
 	result.entryByteCount = entryByteCount
 	result.collisionsPerChunk = collisionsPerChunk
+	result.useMemFileForLookup = useMemFileForLookup
 	return &result, nil
 }
 
@@ -88,13 +91,20 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Open the lookup file
+	var lookupFile memfile.SparseLookupFile
 	fullName = filepath.Join(hsc.folder, hsc.name+".lkp")
-	lookupFile, err := os.OpenFile(fullName, os.O_RDWR, 0)
+	if hsc.useMemFileForLookup {
+		lookupFile, err = memfile.NewFixedSizeMemFile(fullName, 0)
+	} else {
+		lookupFile, err = os.OpenFile(fullName, os.O_RDWR, 0)
+	}
 	if err != nil {
 		hashesFile.Close()
 		return nil, err
 	}
+
 	// Open the collisions file
 	fullName = filepath.Join(hsc.folder, hsc.name+".cls")
 	collisionsFile, err := os.OpenFile(fullName, os.O_RDWR, 0)
