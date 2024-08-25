@@ -3,16 +3,16 @@ package wordfile
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/KitchenMishap/pudding-shed/memfile"
 	"log"
-	"os"
 )
 
 type WordFile struct {
-	file     *os.File
+	file     memfile.AppendableLookupFile
 	wordSize int64
 }
 
-func NewWordFile(file *os.File, wordSize int64) *WordFile {
+func NewWordFile(file memfile.AppendableLookupFile, wordSize int64) *WordFile {
 	p := new(WordFile)
 	p.file = file
 	p.wordSize = wordSize
