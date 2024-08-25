@@ -3,6 +3,7 @@ package indexedhashes
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/KitchenMishap/pudding-shed/memfile"
 	"log"
 	"os"
 )
@@ -12,7 +13,7 @@ type HashStore struct {
 	entryByteCount      int64
 	collisionsPerChunk  int64
 	hashesFile          *BasicHashStore
-	lookupsFile         *os.File // wordfile.ReadWriteAtWordCounter someday?
+	lookupsFile         memfile.SparseLookupFile
 	collisionsFile      *os.File // wordfile.ReadWriteAtWordCounter someday?
 }
 
