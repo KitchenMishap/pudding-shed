@@ -19,19 +19,14 @@ func NewWordFile(file memfile.AppendableLookupFile, wordSize int64) *WordFile {
 	return p
 }
 
-func (wf *WordFile) ReadWordAt(off int64) (word int64, err error) {
-	word = 0
-	err = nil
+func (wf *WordFile) ReadWordAt(off int64) (int64, error) {
 	var intBytes [8]byte
-	_, err = wf.file.ReadAt(intBytes[0:wf.wordSize], off*wf.wordSize)
+	_, err := wf.file.ReadAt(intBytes[0:wf.wordSize], off*wf.wordSize)
 	if err != nil {
-		log.Println(err)
-		log.Println("ReadWordAt(): Couldn't ReadAt() ", off)
-		word = 0
-		return
+		return -1, err
 	}
-	word = int64(binary.LittleEndian.Uint64(intBytes[0:8]))
-	return
+	word := int64(binary.LittleEndian.Uint64(intBytes[0:8]))
+	return word, nil
 }
 
 func (wf *WordFile) WriteWordAt(val int64, off int64) error {
@@ -67,4 +62,8 @@ func (wf *WordFile) Close() error {
 		log.Println("Close(): Could not call Close()")
 	}
 	return err
+}
+
+func (wf *WordFile) Sync() error {
+	return wf.file.Sync()
 }

@@ -8,6 +8,7 @@ type IAppendableChain interface {
 	AppendBlock(chainreadinterface.IBlockChain, chainreadinterface.IBlockHandle) error
 	Close()
 	GetAsChainReadInterface() chainreadinterface.IBlockChain
+	Sync() error
 }
 
 // See also ITransactionIndexer,

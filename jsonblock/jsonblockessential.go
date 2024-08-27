@@ -65,9 +65,12 @@ type jsonTxoEssential struct {
 }
 
 type jsonScriptPubKeyEssential struct {
-	J_hex     string `json:"hex"`
-	J_address string `json:"address"`
-	J_type    string `json:"type"`
+	J_hex       string               `json:"hex"`
+	J_address   string               `json:"address"`
+	J_type      string               `json:"type"`
+	puddingHash indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	// "pudding" because peculiar to pudding-shed
+	// (This hash is not in use by bitcoiners generally)
 }
 
 func parseJsonBlock(jsonBytes []byte) (*JsonBlockEssential, error) {

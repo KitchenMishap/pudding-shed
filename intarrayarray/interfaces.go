@@ -9,7 +9,8 @@ type IntArrayMapStoreReadOnly interface {
 type IntArrayMapStoreReadWrite interface {
 	IntArrayMapStoreReadOnly
 	AppendToArray(arrayKey int64, value int64)
-	FlushFile()
+	FlushFile() error
+	Sync() error
 }
 
 type IntArrayMapStoreCreator interface {

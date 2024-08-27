@@ -3,7 +3,6 @@ package jsonblock
 import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
-	"strings"
 )
 
 // jsonblock.jsonTransEssential implements chainreadinterface.ITransaction
@@ -78,21 +77,9 @@ func (txo *jsonTxoEssential) IndicesPathSpecified() bool { return true }
 
 func (txo *jsonTxoEssential) Satoshis() (int64, error) { return txo.satoshis, nil }
 func (txo *jsonTxoEssential) Address() (chainreadinterface.IAddressHandle, error) {
-	address := txo.J_scriptPubKey.J_address // Remember some types of address are case sensitive
-	hex := strings.ToLower(txo.J_scriptPubKey.J_hex)
-
-	// The hash we use to identify an address is as follows: (this hash is peculiar to pudding-shed)
-	// If address is more than 10 characters, we assume it's a human-readable ASCII address, we use the hash of that.
-	// Otherwise, we use the hash hex expressed as ASCII
-	hash := indexedhashes.Sha256{}
-	if len(address) > 10 { // So addresses of "unknown", "", etc aren't hashed
-		hash = HashOfString(address)
-	} else {
-		hash = HashOfString(hex)
-	}
-
+	puddingHash := txo.J_scriptPubKey.puddingHash
 	result := AddressHandle{}
-	result.hash = hash
+	result.hash = puddingHash
 	return &result, nil
 }
 func (t *jsonTransEssential) NonEssentialInts() (*map[string]int64, error) {

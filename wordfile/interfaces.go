@@ -20,6 +20,7 @@ type ReadWriteAtWordCounter interface {
 	ReaderAtWord
 	WriterAtWord
 	WordCounter
+	Sync() error
 }
 
 type ReadAtWordCounter interface {

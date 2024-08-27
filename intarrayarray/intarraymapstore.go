@@ -61,9 +61,17 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) {
 	ms.currentIntArrayArray.AppendToArray(arrayKey%ms.arrayCountPerFile, value)
 }
 
-func (ms *IntArrayMapStore) FlushFile() {
+func (ms *IntArrayMapStore) FlushFile() error {
 	if ms.currentFilepath != "" {
-		ms.currentIntArrayArray.SaveFile(ms.currentFilepath)
+		err := ms.currentIntArrayArray.SaveFile(ms.currentFilepath)
+		if err != nil {
+			return err
+		}
 		ms.currentFilepath = ""
 	}
+	return nil
+}
+
+func (ms *IntArrayMapStore) Sync() error {
+	return ms.FlushFile()
 }

@@ -48,7 +48,7 @@ func CreateOpenTransactionIndexerFiles(folderName string) transactionindexing.IT
 	obj := transactionIndexerFiles{}
 
 	hashStoreCreator, err := indexedhashes.NewConcreteHashStoreCreator(
-		"Transactions", folderName, 30, 4, 3, false)
+		"Transactions", folderName, 30, 4, 3, true, true)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func CreateOpenTransactionIndexerFiles(folderName string) transactionindexing.IT
 	}
 	obj.transHashStore = hashStore
 
-	wordFileCreator := wordfile.NewConcreteWordFileCreator("transParentBlock", folderName, 3)
+	wordFileCreator := wordfile.NewConcreteWordFileCreator("transParentBlock", folderName, 3, true)
 	err = wordFileCreator.CreateWordFile()
 	if err != nil {
 		panic(err)
@@ -73,7 +73,7 @@ func CreateOpenTransactionIndexerFiles(folderName string) transactionindexing.IT
 	}
 	obj.transParentBlock = wordFile
 
-	wordFileCreator2 := wordfile.NewConcreteWordFileCreator("blkFirstTran", folderName, 5)
+	wordFileCreator2 := wordfile.NewConcreteWordFileCreator("blkFirstTran", folderName, 5, true)
 	err = wordFileCreator2.CreateWordFile()
 	if err != nil {
 		panic(err)

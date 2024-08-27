@@ -1,22 +1,25 @@
 package wordfile
 
 import (
+	"github.com/KitchenMishap/pudding-shed/memfile"
 	"log"
 	"os"
 	"path/filepath"
 )
 
 type ConcreteWordFileCreator struct {
-	name     string
-	folder   string
-	wordSize int64
+	name           string
+	folder         string
+	wordSize       int64
+	appendOptimize bool
 }
 
-func NewConcreteWordFileCreator(name string, folder string, wordSize int64) *ConcreteWordFileCreator {
+func NewConcreteWordFileCreator(name string, folder string, wordSize int64, appendOptimize bool) *ConcreteWordFileCreator {
 	result := ConcreteWordFileCreator{}
 	result.name = name
 	result.folder = folder
 	result.wordSize = wordSize
+	result.appendOptimize = appendOptimize
 	return &result
 }
 
@@ -61,7 +64,13 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 		return nil, err
 	}
 
-	result := NewWordFile(file, wfc.wordSize)
+	var result ReadWriteAtWordCounter
+	if wfc.appendOptimize {
+		appendOptimizedFile := memfile.NewAppendOptimizedFile(file)
+		result = NewWordFile(appendOptimizedFile, wfc.wordSize)
+	} else {
+		result = NewWordFile(file, wfc.wordSize)
+	}
 	return result, nil
 }
 func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, error) {

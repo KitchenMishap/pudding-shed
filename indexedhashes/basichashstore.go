@@ -1,7 +1,7 @@
 package indexedhashes
 
 import (
-	"encoding/binary"
+	"github.com/KitchenMishap/pudding-shed/memfile"
 	"io"
 	"log"
 )
@@ -12,63 +12,58 @@ type ReadWriteSeekCloser interface {
 }
 
 type BasicHashStore struct {
-	file ReadWriteSeekCloser
+	file memfile.LookupFileWithSize
 }
 
-func NewBasicHashStore(file ReadWriteSeekCloser) *BasicHashStore {
+func NewBasicHashStore(file memfile.LookupFileWithSize) *BasicHashStore {
 	result := BasicHashStore{}
 	result.file = file
 	return &result
 }
 
 func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
-	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
+	fi, err := bhs.file.Stat()
 	if err != nil {
-		log.Println(err)
-		log.Println("AppendHash(): Could not call file.Seek()")
 		return -1, err
 	}
-	_, err = bhs.file.Write(hash[0:32])
+	bytecount := fi.Size()
+	_, err = bhs.file.WriteAt(hash[0:32], bytecount)
 	if err != nil {
 		log.Println(err)
-		log.Println("AppendHash(): Could not call file.Write()")
+		log.Println("AppendHash(): Could not call file.WriteAt()")
 		return -1, err
 	}
 	return bytecount / 32, nil
 }
 
+/*
 // IndexOfHash This is a very slow naive implementation, and should only be used for testing
-func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
-	_, err := bhs.file.Seek(0, io.SeekStart)
-	if err != nil {
-		log.Println(err)
-		log.Println("IndexOfHash(): Could not call file.Seek()")
-		return -1, err
-	}
-	var hashInFile Sha256
-	index := int64(0)
-	for {
-		bytecount, err := bhs.file.Read(hashInFile[0:32])
-		if bytecount == 0 || err != nil {
-			log.Println(err)
-			log.Println("IndexOfHash(): file.Read() did not read any bytes")
-			return int64(-1), err
-		}
-		if hashInFile == *hash {
-			return index, nil
-		}
-		index++
-	}
-}
 
-func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
-	_, err := bhs.file.Seek(32*index, io.SeekStart)
-	if err != nil {
-		log.Println(err)
-		log.Println("GetHashAtIndex(): Could not call file.Seek()")
-		return err
+	func (bhs *BasicHashStore) IndexOfHash(hash *Sha256) (int64, error) {
+		_, err := bhs.file.Seek(0, io.SeekStart)
+		if err != nil {
+			log.Println(err)
+			log.Println("IndexOfHash(): Could not call file.Seek()")
+			return -1, err
+		}
+		var hashInFile Sha256
+		index := int64(0)
+		for {
+			bytecount, err := bhs.file.Read(hashInFile[0:32])
+			if bytecount == 0 || err != nil {
+				log.Println(err)
+				log.Println("IndexOfHash(): file.Read() did not read any bytes")
+				return int64(-1), err
+			}
+			if hashInFile == *hash {
+				return index, nil
+			}
+			index++
+		}
 	}
-	_, err = bhs.file.Read(hash[0:32])
+*/
+func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
+	_, err := bhs.file.ReadAt(hash[0:32], 32*index)
 	if err != nil {
 		log.Println(err)
 		log.Println("GetHashAtIndex(): Could not call file.Read()")
@@ -77,12 +72,11 @@ func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
 }
 
 func (bhs *BasicHashStore) CountHashes() (int64, error) {
-	bytecount, err := bhs.file.Seek(0, io.SeekEnd)
+	fi, err := bhs.file.Stat()
 	if err != nil {
-		log.Println(err)
-		log.Println("CountHashes(): Could not call file.Seek()")
 		return -1, err
 	}
+	bytecount := fi.Size()
 	return bytecount / 32, nil
 }
 
@@ -97,6 +91,7 @@ func (bhs *BasicHashStore) Close() error {
 	return nil
 }
 
+/*
 func (bhs *BasicHashStore) WholeFileAsInt32() ([]uint32, error) {
 	entries, err := bhs.CountHashes()
 	if err != nil {
@@ -140,4 +135,9 @@ func (bhs *BasicHashStore) WholeFileAsInt32() ([]uint32, error) {
 		arr[i] = binary.LittleEndian.Uint32(intBytes[0:4])
 	}
 	return arr, nil
+}
+*/
+
+func (bhs *BasicHashStore) Sync() error {
+	return bhs.file.Sync()
 }

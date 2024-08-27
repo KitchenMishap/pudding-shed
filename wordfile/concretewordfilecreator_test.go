@@ -6,9 +6,17 @@ import (
 	"testing"
 )
 
-func TestConcreteWordFileCreator(t *testing.T) {
-	var creator1 = NewConcreteWordFileCreator("CreatorTesting1", "Temp_Testing", 1)
-	var creator8 = NewConcreteWordFileCreator("CreatorTesting8", "Temp_Testing", 8)
+func TestConcreteWordFileCreatorNonOptimized(t *testing.T) {
+	helperConcreteWordFileCreator(t, false)
+}
+
+func TestConcreteWordFileCreatorAppendOptimized(t *testing.T) {
+	helperConcreteWordFileCreator(t, true)
+}
+
+func helperConcreteWordFileCreator(t *testing.T, appendOptimize bool) {
+	var creator1 = NewConcreteWordFileCreator("CreatorTesting1", "Temp_Testing", 1, appendOptimize)
+	var creator8 = NewConcreteWordFileCreator("CreatorTesting8", "Temp_Testing", 8, appendOptimize)
 
 	// Delete the wordfile manually from any previous test
 	os.Remove("Temp_Testing\\CreatorTesting1.int")

@@ -375,6 +375,7 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi, trans
 		return -1, err
 	}
 
+	/* This was causing errors. DO AWAY WITH IT FOR NOW
 	// This is a txi, so a txo has been spent to it
 	// We need to tell the txo
 	// First, find the txo
@@ -387,7 +388,7 @@ func (cac *concreteAppendableChain) appendTxi(txi chainreadinterface.ITxi, trans
 	err = cac.txoSpentTxi.WriteWordAt(txiHeight, txoHeight)
 	if err != nil {
 		return -1, err
-	}
+	}*/
 
 	return txiHeight, nil
 }
@@ -510,4 +511,84 @@ func (cac *concreteAppendableChain) RetrieveTransHeightToParentBlock(transHeight
 }
 func (cac *concreteAppendableChain) RetrieveBlockHeightToFirstTrans(blockHeight int64) (int64, error) {
 	return cac.blkFirstTrans.ReadWordAt(blockHeight)
+}
+func (cac *concreteAppendableChain) Sync() error {
+	err := cac.blkHashes.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.trnHashes.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.addrHashes.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.blkFirstTrans.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.trnFirstTxi.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.trnFirstTxo.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.txiTx.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.txiVout.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.txoSats.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.txoSpentTxi.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.txoAddress.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.addrFirstTxo.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.addrAdditionalTxos.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.parentBlockOfTrans.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.parentTransOfTxi.Sync()
+	if err != nil {
+		return err
+	}
+	err = cac.parentTransOfTxo.Sync()
+	if err != nil {
+		return err
+	}
+	for _, v := range cac.blkNonEssentialInts {
+		err = v.Sync()
+		if err != nil {
+			return err
+		}
+	}
+	for _, v := range cac.trnNonEssentialInts {
+		err = v.Sync()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

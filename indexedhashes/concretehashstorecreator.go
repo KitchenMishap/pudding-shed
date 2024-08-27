@@ -8,16 +8,18 @@ import (
 )
 
 type ConcreteHashStoreCreator struct {
-	name                string
-	folder              string
-	partialHashBitCount int64
-	entryByteCount      int64
-	collisionsPerChunk  int64
-	useMemFileForLookup bool
+	name                        string
+	folder                      string
+	partialHashBitCount         int64
+	entryByteCount              int64
+	collisionsPerChunk          int64
+	useMemFileForLookup         bool
+	useAppendOptimizedForHashes bool
 }
 
 func NewConcreteHashStoreCreator(name string, folder string,
-	partialHashBitCount int64, entryByteCount int64, collisionsPerChunk int64, useMemFileForLookup bool) (*ConcreteHashStoreCreator, error) {
+	partialHashBitCount int64, entryByteCount int64, collisionsPerChunk int64,
+	useMemFileForLookup bool, useAppendOptimizedForHashes bool) (*ConcreteHashStoreCreator, error) {
 	if entryByteCount > ZEROBUF {
 		err := errors.New("hard coded ZEROBUF not big enough")
 		return nil, err
@@ -30,6 +32,7 @@ func NewConcreteHashStoreCreator(name string, folder string,
 	result.entryByteCount = entryByteCount
 	result.collisionsPerChunk = collisionsPerChunk
 	result.useMemFileForLookup = useMemFileForLookup
+	result.useAppendOptimizedForHashes = useAppendOptimizedForHashes
 	return &result, nil
 }
 
@@ -87,9 +90,15 @@ func (hsc *ConcreteHashStoreCreator) CreateHashStore() error {
 func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 	// Open the hashes file
 	fullName := filepath.Join(hsc.folder, hsc.name+".hsh")
-	hashesFile, err := os.OpenFile(fullName, os.O_RDWR, 0)
+	hashesFileUnderlying, err := os.OpenFile(fullName, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
+	}
+	var hashesFile memfile.AppendableLookupFile
+	if hsc.useAppendOptimizedForHashes {
+		hashesFile = memfile.NewAppendOptimizedFile(hashesFileUnderlying)
+	} else {
+		hashesFile = hashesFileUnderlying
 	}
 
 	// Open the lookup file

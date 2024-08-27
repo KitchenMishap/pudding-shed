@@ -5,6 +5,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
+	"strings"
 )
 
 // OneBlockChain - We call it a one block chain, as one block is in memory at any point in time
@@ -62,15 +63,22 @@ func (obc *OneBlockChain) startParsingNextBlock(nextHeight int64) {
 				postJsonRemoveCoinbaseTxis(block)
 				// Convert bitcoin floats to satoshi ints
 				postJsonCalculateSatoshis(block)
-				// Convert the hash strings to binary
-				err = postJsonEncodeSha256s(block)
+				// For each address in each txo, generate a hash as an id
+				err = postJsonEncodeAddressHashes(block)
 				if err != nil {
 					// Something happened, send error report to channel
 					obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, err}
 				} else {
-					// Success! Send it via channel back to main goroutine
-					// (Note there's some further processing needed, but we can only do that in the main goroutine)
-					obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, nil}
+					// Convert the hash strings to binary
+					err = postJsonEncodeSha256s(block)
+					if err != nil {
+						// Something happened, send error report to channel
+						obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, err}
+					} else {
+						// Success! Send it via channel back to main goroutine
+						// (Note there's some further processing needed, but we can only do that in the main goroutine)
+						obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, nil}
+					}
 				}
 			}
 		}
@@ -187,6 +195,38 @@ func postJsonCalculateSatoshis(block *JsonBlockEssential) {
 			txoPtr.satoshis = int64(satoshisPerBitcoin * txoPtr.J_value)
 		}
 	}
+}
+
+func postJsonEncodeAddressHashes(block *JsonBlockEssential) error {
+	for nthTrans := range block.J_tx {
+		transPtr := &block.J_tx[nthTrans]
+		// The addresses are in the txos
+		for nthTxo := range transPtr.J_vout {
+			txoPtr := &transPtr.J_vout[nthTxo]
+			addrPtr := &txoPtr.J_scriptPubKey
+			adornTxoAddressWithPuddingHash(addrPtr)
+		}
+	}
+	return nil
+}
+
+func adornTxoAddressWithPuddingHash(addrPtr *jsonScriptPubKeyEssential) {
+	address := addrPtr.J_address // Remember some types of address are case sensitive
+	hex := strings.ToLower(addrPtr.J_hex)
+
+	// THE FOLLOWING HASH IS PECULIAR TO PUDDING SHED SOFTWARE AND NOT IN GENERAL USE BY BITCOINERS
+	// BUT NOTE THAT IT CAN BE GENERATED JUST BY HASHING A USUAL ASCII ADDRESS STRING
+	// The hash we use to identify an address is as follows: (this hash is peculiar to pudding-shed)
+	// If address is more than 10 characters, we assume it's a human-readable ASCII address, we use the hash of that.
+	// Otherwise, we use the hash of hex expressed as ASCII
+	hash := indexedhashes.Sha256{}
+	if len(address) > 10 { // So addresses of "unknown", "none", "", etc aren't accidentally hashed
+		hash = HashOfString(address)
+	} else {
+		hash = HashOfString(hex)
+	}
+
+	addrPtr.puddingHash = hash
 }
 
 func (obc *OneBlockChain) postJsonGatherTransHashes(block *JsonBlockEssential) error {

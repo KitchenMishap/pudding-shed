@@ -7,12 +7,13 @@ type HashReader interface {
 	GetHashAtIndex(index int64, hash *Sha256) error
 	CountHashes() (int64, error)
 	Close() error
-	WholeFileAsInt32() ([]uint32, error)
+	//	WholeFileAsInt32() ([]uint32, error)
 }
 
 type HashReadWriter interface {
 	HashReader
 	AppendHash(hash *Sha256) (int64, error)
+	Sync() error
 }
 
 type HashStoreCreator interface {

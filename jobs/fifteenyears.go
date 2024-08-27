@@ -68,6 +68,12 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 			t := time.Now()
 			fmt.Println(t.Format("Mon Jan 2 15:04:05"))
 			fmt.Println("Block ", height, " Transaction ", transactions)
+			// The sync is just so we can see
+			// file sizes in explorer during processing
+			err := ac.Sync()
+			if err != nil {
+				return err
+			}
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
 		if err != nil {

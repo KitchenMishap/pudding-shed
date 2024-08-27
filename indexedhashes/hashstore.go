@@ -349,8 +349,24 @@ func (hs *HashStore) Close() error {
 	return err
 }
 
+/*
 func (hs *HashStore) WholeFileAsInt32() ([]uint32, error) {
 	array, err := hs.hashesFile.WholeFileAsInt32()
 	// WholeFileAsInt32() has printed any error that occurred
 	return array, err
+}
+*/
+
+func (hs *HashStore) Sync() error {
+	//err := hs.lookupsFile.Sync()	Really big so we'd rather not!
+	//if err != nil {return err}
+	err := hs.collisionsFile.Sync()
+	if err != nil {
+		return err
+	}
+	err = hs.hashesFile.Sync()
+	if err != nil {
+		return err
+	}
+	return nil
 }

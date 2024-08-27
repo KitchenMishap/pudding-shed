@@ -43,3 +43,7 @@ func (f fixedSizeMemFile) WriteAt(p []byte, off int64) (n int, err error) {
 func (f fixedSizeMemFile) Close() error {
 	return os.WriteFile(f.filename, f.buffer, f.perm)
 }
+
+func (f fixedSizeMemFile) Sync() error {
+	return nil // Contraversial... ToDo
+}

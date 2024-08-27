@@ -13,6 +13,7 @@ type LookupFile interface {
 	io.ReaderAt
 	io.WriterAt
 	io.Closer
+	Sync() error
 }
 
 // SparseLookupFile is a LookupFile that may be optimized for the following scenario.
@@ -22,10 +23,13 @@ type SparseLookupFile interface {
 	LookupFile
 }
 
-// AppendableLookupFile is a LookupFile that may be optimized for the following scenario.
-// The file typically grows by aggressive appending, one element at a time.
-// It supports Stat() so its size may be determined.
-type AppendableLookupFile interface {
+type LookupFileWithSize interface {
 	LookupFile
 	Stat() (os.FileInfo, error)
+}
+
+// AppendableLookupFile is a LookupFile that may be optimized for the following scenario.
+// The file typically grows by aggressive appending, one element at a time.
+type AppendableLookupFile interface {
+	LookupFileWithSize
 }
