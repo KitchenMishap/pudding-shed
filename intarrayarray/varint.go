@@ -22,10 +22,10 @@ func (vi *VarInt) FromBytes(byts []byte) int {
 	} else if byts[0] == 0xFD {
 		vi.val = int64(binary.LittleEndian.Uint16(byts[1:3]))
 		return 3
-	} else if byts[1] == 0xFE {
+	} else if byts[0] == 0xFE {
 		vi.val = int64(binary.LittleEndian.Uint32(byts[1:5]))
 		return 5
-	} else if byts[1] == 0xFF {
+	} else if byts[0] == 0xFF {
 		vi.val = int64(binary.LittleEndian.Uint64(byts[1:9]))
 		return 9
 	}
