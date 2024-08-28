@@ -5,12 +5,13 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // "bigit" means "big digit". For example "456" when a big digit is 3 decimal digits
 
 type NumberedFolders interface {
-	NumberToFoldersAndFile(num int64) (string, string)
+	NumberToFoldersAndFile(num int64) (string, string, int64)
 }
 
 type numberedFolders struct {
@@ -50,7 +51,7 @@ func NewNumberedFolders(fileDigits int, folderDigits int) NumberedFolders {
 	return numbered
 }
 
-func (nf numberedFolders) NumberToFoldersAndFile(num int64) (folders string, filename string) {
+func (nf numberedFolders) NumberToFoldersAndFile(num int64) (folders string, filename string, filenum int64) {
 	bigitCount := 0
 	var bigitArray []string
 	// bigitArray[0] will be the least significant bigit
@@ -123,7 +124,8 @@ func (nf numberedFolders) NumberToFoldersAndFile(num int64) (folders string, fil
 				folderPath += string(os.PathSeparator)
 			}
 		}
-		return folderPath, filename
+		fileNum, _ := strconv.Atoi(filename)
+		return folderPath, filename, int64(fileNum)
 	} else {
 		// Case where multiple values of num are represented in the same file
 
@@ -154,6 +156,9 @@ func (nf numberedFolders) NumberToFoldersAndFile(num int64) (folders string, fil
 				folderPath += string(os.PathSeparator)
 			}
 		}
-		return folderPath, filename
+		fileNameForNum := filename
+		fileNameForNum = strings.ReplaceAll(fileNameForNum, "x", "0")
+		fileNum, _ := strconv.Atoi(fileNameForNum)
+		return folderPath, filename, int64(fileNum)
 	}
 }
