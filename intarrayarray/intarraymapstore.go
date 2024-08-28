@@ -25,22 +25,26 @@ func (ms *IntArrayMapStore) filePath(folders string, filename string) string {
 	return ms.folderPath(folders) + sep + filename + ".iaa"
 }
 
-func (ms *IntArrayMapStore) GetArray(arrayKey int64) []int64 {
+func (ms *IntArrayMapStore) GetArray(arrayKey int64) ([]int64, error) {
 	// Find the folder and filename
 	folders, filename := ms.numberedFolders.NumberToFoldersAndFile(arrayKey)
 	filepath := ms.filePath(folders, filename)
 	// Load in the file (don't use currentIntArrayArray for reads
 	// because we're not so likely to use the same file twice in a row for reads)
 	intArrayArray := NewIntArrayArray(ms.arrayCountPerFile, ms.elementByteSize)
-	intArrayArray.LoadFile(filepath)
+	err := intArrayArray.LoadFile(filepath)
+	if err != nil {
+		return []int64{}, err
+	}
+
 	// Get the array
-	return intArrayArray.GetArray(arrayKey % ms.arrayCountPerFile)
+	return intArrayArray.GetArray(arrayKey % ms.arrayCountPerFile), nil
 }
 
-func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) {
+func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) error {
 	// Find the folder and filename
 	folders, filename := ms.numberedFolders.NumberToFoldersAndFile(arrayKey)
-	folderpath := ms.folderPath(folders)
+	folderPath := ms.folderPath(folders)
 	filepath := ms.filePath(folders, filename)
 	// Is it already loaded?
 	if ms.currentFilepath != filepath {
@@ -50,15 +54,25 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) {
 		}
 
 		// Create the folder if necessary
-		os.MkdirAll(folderpath, 0755)
+		err := os.MkdirAll(folderPath, 0755)
+		if err != nil {
+			return err
+		}
 
 		// Load in the file
 		ms.currentFilepath = filepath
 		ms.currentIntArrayArray = NewIntArrayArray(ms.arrayCountPerFile, ms.elementByteSize)
-		ms.currentIntArrayArray.LoadFile(filepath) // Don't care if file doesn't exist
+		err = ms.currentIntArrayArray.LoadFile(filepath)
+		if err != nil {
+			// Don't care if file doesn't exist
+		}
 	}
+	// The file we want (containing the array we wish to append to) is now loaded
+
 	// Append to the array
 	ms.currentIntArrayArray.AppendToArray(arrayKey%ms.arrayCountPerFile, value)
+
+	return nil
 }
 
 func (ms *IntArrayMapStore) FlushFile() error {

@@ -28,7 +28,11 @@ func (adr *Address) populate() error {
 		return err
 	}
 	adr.txoHeights = []int64{firstTxoHeight}
-	additionalTxos := adr.data.addrAdditionalTxos.GetArray(addressHeight)
+	additionalTxos, err := adr.data.addrAdditionalTxos.GetArray(addressHeight)
+	if err != nil {
+		return err
+	}
+
 	adr.txoHeights = append(adr.txoHeights, additionalTxos...)
 	adr.populated = true
 	return nil
