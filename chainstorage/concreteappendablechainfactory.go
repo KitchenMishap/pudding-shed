@@ -46,6 +46,7 @@ type ConcreteAppendableChainCreator struct {
 
 // Check that implements
 var _ IAppendableChainFactory = (*ConcreteAppendableChainCreator)(nil)
+var _ IAppendableChainFactoryWithIndexer = (*ConcreteAppendableChainCreator)(nil)
 
 func NewConcreteAppendableChainCreator(
 	folder string, blkNeiNames []string, trnNeiNames []string,
@@ -462,9 +463,9 @@ func (cacc *ConcreteAppendableChainCreator) openPrivate() (*concreteAppendableCh
 	return &result, nil
 }
 
-func (cacc *ConcreteAppendableChainCreator) OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, error) {
+func (cacc *ConcreteAppendableChainCreator) OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, IParents, error) {
 	concreteChain, err := cacc.openReadOnlyPrivate()
-	return concreteChain, concreteChain, err
+	return concreteChain, concreteChain, concreteChain, err
 }
 
 func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteReadableChain, error) {

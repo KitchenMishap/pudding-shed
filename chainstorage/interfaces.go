@@ -20,10 +20,16 @@ type IAppendableChainFactory interface {
 	Exists() bool
 	Create() error
 	Open() (IAppendableChain, error)
-	OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, error)
+	OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, IParents, error)
 }
 
 type IAppendableChainFactoryWithIndexer interface {
 	IAppendableChainFactory
 	OpenWithIndexer() (IAppendableChain, transactionindexing.ITransactionIndexer, error)
+}
+
+type IParents interface {
+	ParentBlockOfTrans(transactionHeight int64) (int64, error)
+	ParentTransOfTxi(transactionHeight int64) (int64, error)
+	ParentTransOfTxo(transactionHeight int64) (int64, error)
 }

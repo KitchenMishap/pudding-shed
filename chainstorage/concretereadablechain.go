@@ -31,6 +31,7 @@ type concreteReadableChain struct {
 // Check that implements
 var _ chainreadinterface.IBlockChain = (*concreteReadableChain)(nil)
 var _ chainreadinterface.IHandleCreator = (*concreteReadableChain)(nil)
+var _ IParents = (*concreteReadableChain)(nil)
 
 // Functions to implement IBlockTree as part of IBlockChain
 
@@ -256,4 +257,14 @@ func (crc *concreteReadableChain) TxoHandleByHeight(txoHeight int64) (chainreadi
 	result.hashSpecified = false
 	result.data = crc
 	return &result, nil
+}
+
+func (crc *concreteReadableChain) ParentBlockOfTrans(transactionHeight int64) (int64, error) {
+	return crc.parentBlockOfTrans.ReadWordAt(transactionHeight)
+}
+func (crc *concreteReadableChain) ParentTransOfTxi(transactionHeight int64) (int64, error) {
+	return crc.parentTransOfTxi.ReadWordAt(transactionHeight)
+}
+func (crc *concreteReadableChain) ParentTransOfTxo(transactionHeight int64) (int64, error) {
+	return crc.parentTransOfTxo.ReadWordAt(transactionHeight)
 }
