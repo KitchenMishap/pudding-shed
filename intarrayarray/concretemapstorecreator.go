@@ -3,6 +3,7 @@ package intarrayarray
 import (
 	"github.com/KitchenMishap/pudding-shed/numberedfolders"
 	"math"
+	"os"
 )
 
 type ConcreteMapStoreCreator struct {
@@ -28,7 +29,9 @@ func (c *ConcreteMapStoreCreator) MapExists() bool {
 }
 
 func (c *ConcreteMapStoreCreator) CreateMap() error {
-	// ToDo [  ]
+	dir := c.folder + string(os.PathSeparator) + c.name
+	os.RemoveAll(dir)
+	os.MkdirAll(dir, os.ModePerm)
 	return nil
 }
 
@@ -39,6 +42,8 @@ func (c *ConcreteMapStoreCreator) OpenMap() (IntArrayMapStoreReadWrite, error) {
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
+	result.latestIntArrayArray = NewIntArrayArray(result.arrayCountPerFile, c.elementByteSize)
+	result.olderIntArrayArray = NewIntArrayArray(result.arrayCountPerFile, c.elementByteSize)
 	return &result, nil
 }
 
@@ -49,5 +54,7 @@ func (c *ConcreteMapStoreCreator) OpenMapReadOnly() (IntArrayMapStoreReadOnly, e
 	result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 	result.elementByteSize = c.elementByteSize
 	result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
+	result.latestIntArrayArray = NewIntArrayArray(result.arrayCountPerFile, c.elementByteSize)
+	result.olderIntArrayArray = NewIntArrayArray(result.arrayCountPerFile, c.elementByteSize)
 	return &result, nil
 }

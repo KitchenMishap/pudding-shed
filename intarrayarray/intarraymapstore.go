@@ -20,7 +20,11 @@ type IntArrayMapStore struct {
 
 func (ms *IntArrayMapStore) folderPath(folders string) string {
 	sep := string(os.PathSeparator)
-	return ms.folder + sep + ms.name + sep + folders
+	if folders == "" {
+		return ms.folder + sep + ms.name
+	} else {
+		return ms.folder + sep + ms.name + sep + folders
+	}
 }
 
 func (ms *IntArrayMapStore) filePath(folders string, filename string) string {
@@ -72,6 +76,9 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) error {
 		if err != nil {
 			return err
 		}
+		// Make a note of the filename and number
+		ms.latestFilepath = filepath
+		ms.latestFileNumber = fileNumber
 		err = ms.latestIntArrayArray.LoadFile(filepath)
 		if err != nil {
 			// We don't mind about file not found, happy to be empty
@@ -97,6 +104,8 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) error {
 			}
 		}
 		// We can now safely load the required file into "older"
+		// Make a note of the filename
+		ms.olderFilepath = filepath
 		err := ms.olderIntArrayArray.LoadFile(filepath)
 		if err != nil {
 			return err

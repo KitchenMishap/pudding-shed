@@ -4,10 +4,9 @@ import "testing"
 
 func TestCreator(t *testing.T) {
 	creator := NewConcreteMapStoreCreator("name", "folder", 3, 3, 3)
-	if !creator.MapExists() {
-		creator.CreateMap()
-	}
-	writable := creator.OpenMap()
+	creator.CreateMap()
+
+	writable, _ := creator.OpenMap()
 
 	writable.AppendToArray(1234, 12345)
 
@@ -20,17 +19,21 @@ func TestCreator(t *testing.T) {
 
 	writable.FlushFile()
 
-	readable := creator.OpenMapReadOnly()
-	if len(readable.GetArray(1234)) != 1 {
+	readable, _ := creator.OpenMapReadOnly()
+	arr, _ := readable.GetArray(1234)
+	if len(arr) != 1 {
 		t.Fail()
 	}
-	if len(readable.GetArray(5678)) != 2 {
+	arr, _ = readable.GetArray(5678)
+	if len(arr) != 2 {
 		t.Fail()
 	}
-	if len(readable.GetArray(12345678)) != 3 {
+	arr, _ = readable.GetArray(12345678)
+	if len(arr) != 3 {
 		t.Fail()
 	}
-	if len(readable.GetArray(12)) != 0 {
+	arr, _ = readable.GetArray(12)
+	if len(arr) != 0 {
 		t.Fail()
 	}
 }
