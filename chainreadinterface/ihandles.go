@@ -48,3 +48,11 @@ type IAddressHandle interface {
 	HeightSpecified() bool
 	HashSpecified() bool
 }
+
+// IHandleCreator may supply handles, but this doesn't imply existence of the underlying object
+type IHandleCreator interface {
+	BlockHandleByHeight(blockHeight int64) (IBlockHandle, error)
+	TransactionHandleByHeight(transactionHeight int64) (ITransHandle, error)
+	TxiHandleByHeight(txiHeight int64) (ITxiHandle, error)
+	TxoHandleByHeight(txoHeight int64) (ITxoHandle, error)
+}

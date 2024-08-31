@@ -217,3 +217,36 @@ func (crc *concreteReadableChain) NextTransaction(hTrans chainreadinterface.ITra
 		hashSpecified:   false,
 	}, crc}, nil
 }
+
+func (crc *concreteReadableChain) BlockHandleByHeight(blockHeight int64) (chainreadinterface.IBlockHandle, error) {
+	result := BlockHandle{}
+	result.heightSpecified = true
+	result.height = blockHeight
+	result.hashSpecified = false
+	result.data = crc
+	return &result, nil
+}
+func (crc *concreteReadableChain) TransactionHandleByHeight(transactionHeight int64) (chainreadinterface.ITransHandle, error) {
+	result := TransHandle{}
+	result.heightSpecified = true
+	result.height = transactionHeight
+	result.hashSpecified = false
+	result.data = crc
+	return &result, nil
+}
+func (crc *concreteReadableChain) TxiHandleByHeight(txiHeight int64) (chainreadinterface.ITxiHandle, error) {
+	result := TxiHandle{}
+	result.heightSpecified = true
+	result.height = txiHeight
+	result.hashSpecified = false
+	result.data = crc
+	return &result, nil
+}
+func (crc *concreteReadableChain) TxoHandleByHeight(txoHeight int64) (chainreadinterface.ITxoHandle, error) {
+	result := TxoHandle{}
+	result.heightSpecified = true
+	result.height = txoHeight
+	result.hashSpecified = false
+	result.data = crc
+	return &result, nil
+}
