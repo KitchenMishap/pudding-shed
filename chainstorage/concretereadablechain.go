@@ -1,9 +1,11 @@
 package chainstorage
 
 import (
+	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
+	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
@@ -262,6 +264,45 @@ func (crc *concreteReadableChain) AddressHandleByHeight(addressHeight int64) (ch
 	result := AddressHandle{}
 	result.heightSpecified = true
 	result.height = addressHeight
+	return &result, nil
+}
+func (crc *concreteReadableChain) AddressHandleByHash(sha256 indexedhashes.Sha256) (chainreadinterface.IAddressHandle, error) {
+	result := AddressHandle{}
+	index, _ := crc.addrHashes.IndexOfHash(&sha256)
+	if index == -1 {
+		return nil, errors.New("address hash not found")
+	}
+	result.hashSpecified = false
+	result.heightSpecified = true
+	result.height = index
+	return &result, nil
+}
+func (crc *concreteReadableChain) AddressHandleByString(address string) (chainreadinterface.IAddressHandle, error) {
+	hash := jsonblock.HashOfString(address)
+	return crc.AddressHandleByHash(hash)
+}
+
+func (crc *concreteReadableChain) TransactionHandleByHash(sha256 indexedhashes.Sha256) (chainreadinterface.ITransHandle, error) {
+	result := TransHandle{}
+	index, _ := crc.trnHashes.IndexOfHash(&sha256)
+	if index == -1 {
+		return nil, errors.New("transaction hash not found")
+	}
+	result.hashSpecified = false
+	result.heightSpecified = true
+	result.height = index
+	return &result, nil
+}
+
+func (crc *concreteReadableChain) BlockHandleByHash(sha256 indexedhashes.Sha256) (chainreadinterface.IBlockHandle, error) {
+	result := BlockHandle{}
+	index, _ := crc.blkHashes.IndexOfHash(&sha256)
+	if index == -1 {
+		return nil, errors.New("block hash not found")
+	}
+	result.hashSpecified = false
+	result.heightSpecified = true
+	result.height = index
 	return &result, nil
 }
 

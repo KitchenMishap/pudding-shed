@@ -56,4 +56,8 @@ type IHandleCreator interface {
 	TxiHandleByHeight(txiHeight int64) (ITxiHandle, error)
 	TxoHandleByHeight(txoHeight int64) (ITxoHandle, error)
 	AddressHandleByHeight(addressHeight int64) (IAddressHandle, error)
+	AddressHandleByHash(hash indexedhashes.Sha256) (IAddressHandle, error)
+	AddressHandleByString(address string) (IAddressHandle, error)
+	TransactionHandleByHash(hash indexedhashes.Sha256) (ITransHandle, error)
+	BlockHandleByHash(hash indexedhashes.Sha256) (IBlockHandle, error)
 }
