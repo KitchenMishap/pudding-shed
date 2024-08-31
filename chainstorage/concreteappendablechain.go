@@ -34,6 +34,9 @@ type concreteAppendableChain struct {
 	parentBlockOfTrans wordfile.ReadWriteAtWordCounter
 }
 
+// Check that implements
+var _ IAppendableChain = (*concreteAppendableChain)(nil)
+
 func (cac *concreteAppendableChain) GetAsConcreteReadableChain() *concreteReadableChain {
 	result := concreteReadableChain{
 		blkFirstTrans:      cac.blkFirstTrans,

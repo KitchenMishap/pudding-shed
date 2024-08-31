@@ -28,6 +28,10 @@ type concreteReadableChain struct {
 	addrAdditionalTxos  intarrayarray.IntArrayMapStoreReadOnly
 }
 
+// Check that implements
+var _ chainreadinterface.IBlockChain = (*concreteReadableChain)(nil)
+var _ chainreadinterface.IHandleCreator = (*concreteReadableChain)(nil)
+
 // Functions to implement IBlockTree as part of IBlockChain
 
 func (crc *concreteReadableChain) GenesisBlock() chainreadinterface.IBlockHandle {

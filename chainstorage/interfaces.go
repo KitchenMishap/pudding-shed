@@ -20,7 +20,7 @@ type IAppendableChainFactory interface {
 	Exists() bool
 	Create() error
 	Open() (IAppendableChain, error)
-	OpenReadOnly() (chainreadinterface.IBlockChain, error)
+	OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, error)
 }
 
 type IAppendableChainFactoryWithIndexer interface {
