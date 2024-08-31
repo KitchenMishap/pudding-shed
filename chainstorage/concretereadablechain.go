@@ -244,17 +244,17 @@ func (crc *concreteReadableChain) TransactionHandleByHeight(transactionHeight in
 }
 func (crc *concreteReadableChain) TxiHandleByHeight(txiHeight int64) (chainreadinterface.ITxiHandle, error) {
 	result := TxiHandle{}
-	result.heightSpecified = true
-	result.height = txiHeight
-	result.hashSpecified = false
+	result.txxHeightSpecified = true
+	result.txxHeight = txiHeight
+	result.transIndexSpecified = false
 	result.data = crc
 	return &result, nil
 }
 func (crc *concreteReadableChain) TxoHandleByHeight(txoHeight int64) (chainreadinterface.ITxoHandle, error) {
 	result := TxoHandle{}
-	result.heightSpecified = true
-	result.height = txoHeight
-	result.hashSpecified = false
+	result.txxHeightSpecified = true
+	result.txxHeight = txoHeight
+	result.transIndexSpecified = false
 	result.data = crc
 	return &result, nil
 }
