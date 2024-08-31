@@ -20,6 +20,9 @@ type concreteReadableChain struct {
 	txoAddress          wordfile.ReadAtWordCounter
 	txoSpentTxi         wordfile.ReadAtWordCounter
 	addrFirstTxo        wordfile.ReadAtWordCounter
+	parentBlockOfTrans  wordfile.ReadAtWordCounter
+	parentTransOfTxi    wordfile.ReadAtWordCounter
+	parentTransOfTxo    wordfile.ReadAtWordCounter
 	blkNonEssentialInts map[string]wordfile.ReadAtWordCounter
 	trnNonEssentialInts map[string]wordfile.ReadAtWordCounter
 	addrAdditionalTxos  intarrayarray.IntArrayMapStoreReadOnly

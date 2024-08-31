@@ -32,23 +32,25 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 
 	delegated := transactionIndexingMethod == "delegated"
 
-	acc, err := chainstorage.NewConcreteAppendableChainCreator(path)
+	acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
+		[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
+		[]string{"size", "vsize", "weight"},
+		delegated)
 	if err != nil {
 		return err
 	}
-	err = acc.Create([]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
-		[]string{"size", "vsize", "weight"})
+	err = acc.Create()
 	if err != nil {
 		return err
 	}
-	ac, cac, err := acc.Open(delegated)
+	ac, ind, err := acc.OpenWithIndexer()
 	if err != nil {
 		return err
 	}
 
 	var transactionIndexer transactionindexing.ITransactionIndexer = nil
 	if transactionIndexingMethod == "delegated" {
-		transactionIndexer = cac.GetAsDelegatedTransactionIndexer()
+		transactionIndexer = ind
 	} else if transactionIndexingMethod == "separate files" {
 		transactionIndexer = jsonblock.CreateOpenTransactionIndexerFiles(path)
 	} else {
