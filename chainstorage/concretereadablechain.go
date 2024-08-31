@@ -258,6 +258,12 @@ func (crc *concreteReadableChain) TxoHandleByHeight(txoHeight int64) (chainreadi
 	result.data = crc
 	return &result, nil
 }
+func (crc *concreteReadableChain) AddressHandleByHeight(addressHeight int64) (chainreadinterface.IAddressHandle, error) {
+	result := AddressHandle{}
+	result.heightSpecified = true
+	result.height = addressHeight
+	return &result, nil
+}
 
 func (crc *concreteReadableChain) ParentBlockOfTrans(transactionHeight int64) (int64, error) {
 	return crc.parentBlockOfTrans.ReadWordAt(transactionHeight)

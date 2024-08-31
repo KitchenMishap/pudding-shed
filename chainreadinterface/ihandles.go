@@ -55,4 +55,5 @@ type IHandleCreator interface {
 	TransactionHandleByHeight(transactionHeight int64) (ITransHandle, error)
 	TxiHandleByHeight(txiHeight int64) (ITxiHandle, error)
 	TxoHandleByHeight(txoHeight int64) (ITxoHandle, error)
+	AddressHandleByHeight(addressHeight int64) (IAddressHandle, error)
 }
