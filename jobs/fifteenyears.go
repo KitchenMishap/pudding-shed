@@ -19,6 +19,8 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		lastBlock = 66000
 	} else if years == 4 {
 		lastBlock = 132000
+	} else if years == 6 {
+		lastBlock = 315360
 	} else if years == 15 {
 		lastBlock = 824196
 	} else if years == 16 {
