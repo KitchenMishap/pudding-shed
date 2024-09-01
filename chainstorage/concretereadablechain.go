@@ -327,3 +327,6 @@ func (crc *concreteReadableChain) TxiVoutFile() wordfile.ReadAtWordCounter { ret
 func (crc *concreteReadableChain) TransFirstTxiFile() wordfile.ReadAtWordCounter {
 	return crc.trnFirstTxi
 }
+func (crc *concreteReadableChain) TransFirstTxoFile() wordfile.ReadAtWordCounter {
+	return crc.trnFirstTxo
+}
