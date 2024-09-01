@@ -40,5 +40,5 @@ type IPrivilegedFiles interface {
 	TxoSatsFile() wordfile.ReadAtWordCounter
 	TxiTxFile() wordfile.ReadAtWordCounter
 	TxiVoutFile() wordfile.ReadAtWordCounter
-	TransFirstTxoFile() wordfile.ReadAtWordCounter
+	TransFirstTxiFile() wordfile.ReadAtWordCounter
 }

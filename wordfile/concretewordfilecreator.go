@@ -106,3 +106,23 @@ func (wfc *ConcreteWordFileCreator) countWords(file *os.File) (int64, error) {
 	}
 	return filesize / wfc.wordSize, nil
 }
+func (wfc *ConcreteWordFileCreator) CreateWordFileFilledZeros(count int64) {
+	// First create folder if necessary
+	if wfc.folder != "" {
+		err := os.MkdirAll(wfc.folder, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	fullName := filepath.Join(wfc.folder, wfc.name+".int")
+	file, err := os.Create(fullName)
+	if err != nil {
+		return err
+	}
+	file.Truncate(count * wfc.wordSize)
+
+	defer file.Close()
+
+	return nil
+}

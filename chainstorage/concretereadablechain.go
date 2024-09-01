@@ -324,6 +324,6 @@ func (crc *concreteReadableChain) ParentTransOfTxo(transactionHeight int64) (int
 func (crc *concreteReadableChain) TxoSatsFile() wordfile.ReadAtWordCounter { return crc.txoSats }
 func (crc *concreteReadableChain) TxiTxFile() wordfile.ReadAtWordCounter   { return crc.txiTx }
 func (crc *concreteReadableChain) TxiVoutFile() wordfile.ReadAtWordCounter { return crc.txiVout }
-func (crc *concreteReadableChain) TransFirstTxoFile() wordfile.ReadAtWordCounter {
-	return crc.trnFirstTxo
+func (crc *concreteReadableChain) TransFirstTxiFile() wordfile.ReadAtWordCounter {
+	return crc.trnFirstTxi
 }
