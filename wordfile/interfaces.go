@@ -35,4 +35,5 @@ type WordFileCreator interface {
 	CreateWordFile() error
 	OpenWordFile() (ReadWriteAtWordCounter, error)
 	OpenWordFileReadOnly() (ReadAtWordCounter, error)
+	CreateWordFileFilledZeros(count int64) error
 }
