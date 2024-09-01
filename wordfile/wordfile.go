@@ -2,20 +2,21 @@ package wordfile
 
 import (
 	"encoding/binary"
-	"errors"
 	"github.com/KitchenMishap/pudding-shed/memfile"
 	"log"
 )
 
 type WordFile struct {
-	file     memfile.AppendableLookupFile
-	wordSize int64
+	file      memfile.AppendableLookupFile
+	wordSize  int64
+	wordCount int64
 }
 
-func NewWordFile(file memfile.AppendableLookupFile, wordSize int64) *WordFile {
+func NewWordFile(file memfile.AppendableLookupFile, wordSize int64, wordCount int64) *WordFile {
 	p := new(WordFile)
 	p.file = file
 	p.wordSize = wordSize
+	p.wordCount = wordCount
 	return p
 }
 
@@ -37,22 +38,14 @@ func (wf *WordFile) WriteWordAt(val int64, off int64) error {
 		log.Println(err)
 		log.Println("WriteWordAt(): Couldn't WriteAt()", off*wf.wordSize)
 	}
+	if off+1 > wf.wordCount {
+		wf.wordCount = off + 1
+	}
 	return err
 }
 
 func (wf *WordFile) CountWords() (words int64, err error) {
-	fi, err := wf.file.Stat()
-	if err != nil {
-		log.Println(err)
-		log.Println("CountWords(): Couldn't call file.Stat()")
-		return 0, err
-	}
-	filesize := fi.Size()
-	if filesize%wf.wordSize != 0 {
-		log.Println("CountWords(): File is not a whole number of words")
-		return 0, errors.New("file is not a whole number of words")
-	}
-	return filesize / wf.wordSize, nil
+	return wf.wordCount, nil
 }
 
 func (wf *WordFile) Close() error {

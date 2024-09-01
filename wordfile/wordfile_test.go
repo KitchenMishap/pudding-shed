@@ -34,7 +34,7 @@ func HelperWordfile(wordsize int64, mask int64, t *testing.T) {
 		}
 	}(f)
 	// Treat it as a n-byte wordfile
-	wf := NewWordFile(f, wordsize)
+	wf := NewWordFile(f, wordsize, 0)
 
 	// Check it's empty
 	cf, err := wf.CountWords()

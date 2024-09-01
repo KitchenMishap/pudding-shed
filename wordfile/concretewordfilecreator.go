@@ -1,6 +1,7 @@
 package wordfile
 
 import (
+	"errors"
 	"github.com/KitchenMishap/pudding-shed/memfile"
 	"log"
 	"os"
@@ -64,12 +65,17 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 		return nil, err
 	}
 
+	wordCount, err := wfc.countWords(file)
+	if err != nil {
+		return nil, err
+	}
+
 	var result ReadWriteAtWordCounter
 	if wfc.appendOptimize {
 		appendOptimizedFile := memfile.NewAppendOptimizedFile(file)
-		result = NewWordFile(appendOptimizedFile, wfc.wordSize)
+		result = NewWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
 	} else {
-		result = NewWordFile(file, wfc.wordSize)
+		result = NewWordFile(file, wfc.wordSize, wordCount)
 	}
 	return result, nil
 }
@@ -80,6 +86,25 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, e
 		return nil, err
 	}
 
-	result := NewWordFile(file, wfc.wordSize)
+	wordCount, err := wfc.countWords(file)
+	if err != nil {
+		return nil, err
+	}
+
+	result := NewWordFile(file, wfc.wordSize, wordCount)
 	return result, nil
+}
+func (wfc *ConcreteWordFileCreator) countWords(file *os.File) (int64, error) {
+	fi, err := file.Stat()
+	if err != nil {
+		log.Println(err)
+		log.Println("countWords(): Couldn't call file.Stat()")
+		return 0, err
+	}
+	filesize := fi.Size()
+	if filesize%wfc.wordSize != 0 {
+		log.Println("countWords(): File is not a whole number of words")
+		return 0, errors.New("file is not a whole number of words")
+	}
+	return filesize / wfc.wordSize, nil
 }
