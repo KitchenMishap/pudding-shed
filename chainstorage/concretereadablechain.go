@@ -34,6 +34,7 @@ type concreteReadableChain struct {
 var _ chainreadinterface.IBlockChain = (*concreteReadableChain)(nil)
 var _ chainreadinterface.IHandleCreator = (*concreteReadableChain)(nil)
 var _ IParents = (*concreteReadableChain)(nil)
+var _ IPrivilegedFiles = (*concreteReadableChain)(nil)
 
 // Functions to implement IBlockTree as part of IBlockChain
 
@@ -306,6 +307,8 @@ func (crc *concreteReadableChain) BlockHandleByHash(sha256 indexedhashes.Sha256)
 	return &result, nil
 }
 
+// IParents
+
 func (crc *concreteReadableChain) ParentBlockOfTrans(transactionHeight int64) (int64, error) {
 	return crc.parentBlockOfTrans.ReadWordAt(transactionHeight)
 }
@@ -314,4 +317,13 @@ func (crc *concreteReadableChain) ParentTransOfTxi(transactionHeight int64) (int
 }
 func (crc *concreteReadableChain) ParentTransOfTxo(transactionHeight int64) (int64, error) {
 	return crc.parentTransOfTxo.ReadWordAt(transactionHeight)
+}
+
+// IPrivilegedFiles
+
+func (crc *concreteReadableChain) TxoSatsFile() wordfile.ReadAtWordCounter { return crc.txoSats }
+func (crc *concreteReadableChain) TxiTxFile() wordfile.ReadAtWordCounter   { return crc.txiTx }
+func (crc *concreteReadableChain) TxiVoutFile() wordfile.ReadAtWordCounter { return crc.txiVout }
+func (crc *concreteReadableChain) TransFirstTxoFile() wordfile.ReadAtWordCounter {
+	return crc.trnFirstTxo
 }

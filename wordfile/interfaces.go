@@ -21,11 +21,13 @@ type ReadWriteAtWordCounter interface {
 	WriterAtWord
 	WordCounter
 	Sync() error
+	WordSize() int64
 }
 
 type ReadAtWordCounter interface {
 	ReaderAtWord
 	WordCounter
+	WordSize() int64
 }
 
 type WordFileCreator interface {

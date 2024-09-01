@@ -60,3 +60,7 @@ func (wf *WordFile) Close() error {
 func (wf *WordFile) Sync() error {
 	return wf.file.Sync()
 }
+
+func (wf *WordFile) WordSize() int64 {
+	return wf.wordSize
+}

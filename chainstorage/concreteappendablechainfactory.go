@@ -462,9 +462,9 @@ func (cacc *ConcreteAppendableChainCreator) openPrivate() (*concreteAppendableCh
 	return &result, nil
 }
 
-func (cacc *ConcreteAppendableChainCreator) OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, IParents, error) {
+func (cacc *ConcreteAppendableChainCreator) OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, IParents, IPrivilegedFiles, error) {
 	concreteChain, err := cacc.openReadOnlyPrivate()
-	return concreteChain, concreteChain, concreteChain, err
+	return concreteChain, concreteChain, concreteChain, concreteChain, err
 }
 
 func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteReadableChain, error) {
