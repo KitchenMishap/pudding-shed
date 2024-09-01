@@ -3,7 +3,7 @@ package intarrayarray
 import "testing"
 
 func TestCreator(t *testing.T) {
-	creator := NewConcreteMapStoreCreator("name", "folder", 3, 3, 3)
+	creator := NewConcreteMapStoreCreator("name", "folder", 1, 3, 3)
 	creator.CreateMap()
 
 	writable, _ := creator.OpenMap()

@@ -98,7 +98,13 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) error {
 	} else {
 		// Save any previous "older"
 		if ms.olderFilepath != "" {
-			err := ms.olderIntArrayArray.SaveFile(ms.olderFilepath)
+			// Don't forget to create the folder... as it may not exist yet
+			err := os.MkdirAll(folderPath, 0755)
+			if err != nil {
+				return err
+			}
+
+			err = ms.olderIntArrayArray.SaveFile(ms.olderFilepath)
 			if err != nil {
 				return err
 			}
@@ -108,7 +114,7 @@ func (ms *IntArrayMapStore) AppendToArray(arrayKey int64, value int64) error {
 		ms.olderFilepath = filepath
 		err := ms.olderIntArrayArray.LoadFile(filepath)
 		if err != nil {
-			return err
+			// We don't mind a file not found here
 		}
 		// And append to it
 		ms.olderIntArrayArray.AppendToArray(arrayKey%ms.arrayCountPerFile, value)

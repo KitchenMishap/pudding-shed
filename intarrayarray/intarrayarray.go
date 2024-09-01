@@ -72,6 +72,9 @@ func (iaa *IntArrayArray) SaveFile(filepath string) error {
 	}
 	// Second write the file as a whole
 	err := os.WriteFile(filepath, buffer, 0755)
+	if err != nil {
+		return err
+	}
 	return err
 }
 

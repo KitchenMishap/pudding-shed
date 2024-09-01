@@ -17,6 +17,8 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		lastBlock = 33000
 	} else if years == 2 {
 		lastBlock = 66000
+	} else if years == 3 {
+		lastBlock = 99000
 	} else if years == 4 {
 		lastBlock = 132000
 	} else if years == 6 {
@@ -76,9 +78,11 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 			fmt.Println("Block ", height, " Transaction ", transactions)
 			// The sync is just so we can see
 			// file sizes in explorer during processing
-			err := ac.Sync()
-			if err != nil {
-				return err
+			if height%10000 == 0 {
+				err := ac.Sync()
+				if err != nil {
+					return err
+				}
 			}
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
