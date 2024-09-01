@@ -3,6 +3,7 @@ package indexedhashes
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"log"
 	"os"
 	"testing"
@@ -11,7 +12,8 @@ import (
 func TestNewBasicHashStore(t *testing.T) {
 	file, _ := os.Create("Temp_Testing\\Test.hsh")
 	defer file.Close()
-	bhs := NewBasicHashStore(file)
+	hashFile := wordfile.NewHashFile(file, 0)
+	bhs := NewBasicHashStore(hashFile)
 	HelperHashStoreSmallTest(bhs, t)
 }
 

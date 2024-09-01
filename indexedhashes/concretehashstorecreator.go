@@ -3,6 +3,7 @@ package indexedhashes
 import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/memfile"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"os"
 	"path/filepath"
 )
@@ -91,7 +92,6 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 	// Open the hashes file
 	fullName := filepath.Join(hsc.folder, hsc.name+".hsh")
 	hashesFileUnderlying, err := os.OpenFile(fullName, os.O_RDWR, 0)
-	hashesFileUnderlyingWithSize := memfile.NewFileWithSize(hashesFileUnderlying)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 	if hsc.useAppendOptimizedForHashes {
 		hashesFile, _ = memfile.NewAppendOptimizedFile(hashesFileUnderlying)
 	} else {
-		hashesFile = hashesFileUnderlyingWithSize
+		hashesFile = hashesFileUnderlying
 	}
 
 	// Open the lookup file
@@ -126,7 +126,8 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 
 	// Populate and return the HashReadWriter object
 	// Create the BasicHashStore sub-object
-	bhs := NewBasicHashStore(hashesFile)
+	hashFile := wordfile.NewHashFile(hashesFile, 0)
+	bhs := NewBasicHashStore(hashFile)
 	result := NewHashStore(hsc.partialHashBitCount, hsc.entryByteCount, hsc.collisionsPerChunk,
 		bhs, lookupFile, collisionsFile)
 	return result, nil
@@ -135,7 +136,6 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (HashReader, error)
 	// Open the hashes file
 	fullName := filepath.Join(hsc.folder, hsc.name+".hsh")
 	hashesFile, err := os.OpenFile(fullName, os.O_RDONLY, 0)
-	hashesFileWithSize := memfile.NewFileWithSize(hashesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,8 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (HashReader, error)
 
 	// Populate and return the HashReader object
 	// Create the BasicHashStore sub-object
-	bhs := NewBasicHashStore(hashesFileWithSize)
+	hashFile := wordfile.NewHashFile(hashesFile, 0)
+	bhs := NewBasicHashStore(hashFile)
 	result := NewHashStore(hsc.partialHashBitCount, hsc.entryByteCount, hsc.collisionsPerChunk,
 		bhs, lookupFile, collisionsFile)
 	return result, nil

@@ -12,7 +12,7 @@ func TestExample(t *testing.T) {
 	phbc := int64(30) // Partial hash bit count
 	ebc := int64(4)   // Entry byte count
 	cpc := int64(3)   // Collisions per chunk
-	creator, err := NewConcreteHashStoreCreator("FileName", "Temp_Testing", phbc, ebc, cpc, false)
+	creator, err := NewConcreteHashStoreCreator("FileName", "Temp_Testing", phbc, ebc, cpc, false, true)
 	if err != nil {
 		log.Println(err)
 	}

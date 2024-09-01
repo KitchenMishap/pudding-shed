@@ -30,5 +30,5 @@ type LookupFileWithSize interface {
 // AppendableLookupFile is a LookupFile that may be optimized for the following scenario.
 // The file typically grows by aggressive appending, one element at a time.
 type AppendableLookupFile interface {
-	LookupFileWithSize
+	LookupFile
 }
