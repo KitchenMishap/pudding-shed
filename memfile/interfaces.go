@@ -2,7 +2,6 @@ package memfile
 
 import (
 	"io"
-	"os"
 )
 
 // LookupFile is a file-like array-like object.
@@ -25,7 +24,7 @@ type SparseLookupFile interface {
 
 type LookupFileWithSize interface {
 	LookupFile
-	Stat() (os.FileInfo, error)
+	Size() int64
 }
 
 // AppendableLookupFile is a LookupFile that may be optimized for the following scenario.

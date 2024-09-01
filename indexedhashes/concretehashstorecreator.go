@@ -91,14 +91,15 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
 	// Open the hashes file
 	fullName := filepath.Join(hsc.folder, hsc.name+".hsh")
 	hashesFileUnderlying, err := os.OpenFile(fullName, os.O_RDWR, 0)
+	hashesFileUnderlyingWithSize := memfile.NewFileWithSize(hashesFileUnderlying)
 	if err != nil {
 		return nil, err
 	}
 	var hashesFile memfile.AppendableLookupFile
 	if hsc.useAppendOptimizedForHashes {
-		hashesFile = memfile.NewAppendOptimizedFile(hashesFileUnderlying)
+		hashesFile, _ = memfile.NewAppendOptimizedFile(hashesFileUnderlying)
 	} else {
-		hashesFile = hashesFileUnderlying
+		hashesFile = hashesFileUnderlyingWithSize
 	}
 
 	// Open the lookup file
@@ -134,6 +135,7 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (HashReader, error)
 	// Open the hashes file
 	fullName := filepath.Join(hsc.folder, hsc.name+".hsh")
 	hashesFile, err := os.OpenFile(fullName, os.O_RDONLY, 0)
+	hashesFileWithSize := memfile.NewFileWithSize(hashesFile)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +157,7 @@ func (hsc *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (HashReader, error)
 
 	// Populate and return the HashReader object
 	// Create the BasicHashStore sub-object
-	bhs := NewBasicHashStore(hashesFile)
+	bhs := NewBasicHashStore(hashesFileWithSize)
 	result := NewHashStore(hsc.partialHashBitCount, hsc.entryByteCount, hsc.collisionsPerChunk,
 		bhs, lookupFile, collisionsFile)
 	return result, nil

@@ -22,12 +22,8 @@ func NewBasicHashStore(file memfile.LookupFileWithSize) *BasicHashStore {
 }
 
 func (bhs *BasicHashStore) AppendHash(hash *Sha256) (int64, error) {
-	fi, err := bhs.file.Stat()
-	if err != nil {
-		return -1, err
-	}
-	bytecount := fi.Size()
-	_, err = bhs.file.WriteAt(hash[0:32], bytecount)
+	bytecount := bhs.file.Size()
+	_, err := bhs.file.WriteAt(hash[0:32], bytecount)
 	if err != nil {
 		log.Println(err)
 		log.Println("AppendHash(): Could not call file.WriteAt()")
@@ -72,11 +68,7 @@ func (bhs *BasicHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
 }
 
 func (bhs *BasicHashStore) CountHashes() (int64, error) {
-	fi, err := bhs.file.Stat()
-	if err != nil {
-		return -1, err
-	}
-	bytecount := fi.Size()
+	bytecount := bhs.file.Size()
 	return bytecount / 32, nil
 }
 

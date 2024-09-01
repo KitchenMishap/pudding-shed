@@ -9,16 +9,22 @@ type appendOptimizedFile struct {
 	file             *os.File
 	bufferedWriter   *bufio.Writer // nil unless the last operation was an append
 	nextAppendOffset int64         // valid if the last operation was an append
+	totalSize        int64         // Includes stuff in the bufferedWriter
 }
 
 // Check that implements
 var _ AppendableLookupFile = (*appendOptimizedFile)(nil)
 
-func NewAppendOptimizedFile(file *os.File) AppendableLookupFile {
+func NewAppendOptimizedFile(file *os.File) (AppendableLookupFile, error) {
 	result := appendOptimizedFile{}
 	result.file = file
 	result.bufferedWriter = nil // Until an append is done
-	return &result
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	result.totalSize = stat.Size()
+	return &result, nil
 }
 
 func (a *appendOptimizedFile) ReadAt(p []byte, off int64) (int, error) {
@@ -43,9 +49,11 @@ func (a *appendOptimizedFile) WriteAt(p []byte, off int64) (n int, err error) {
 			if err != nil {
 				// A failed append doesn't count as an append
 				a.bufferedWriter = nil
+				a.totalSize += int64(nWritten)
 				return nWritten, err
 			}
 			a.nextAppendOffset += int64(nWritten)
+			a.totalSize += int64(nWritten)
 			return nWritten, nil
 		} else {
 			// This WriteAt operation is NOT an append, so
@@ -56,29 +64,32 @@ func (a *appendOptimizedFile) WriteAt(p []byte, off int64) (n int, err error) {
 			}
 			// Do the WriteAt without a buffer
 			nWritten, err := a.file.WriteAt(p, off)
+			if off+int64(nWritten) > a.totalSize {
+				a.totalSize = off + int64(nWritten)
+			}
 			return nWritten, err
 		}
 	} else {
 		// Previous operation was not append. But what about this operation?
-		fi, err := a.file.Stat()
-		if err != nil {
-			return 0, err
-		}
-		size := fi.Size()
-		if off == size {
+		if off == a.totalSize {
 			// Yes it is an append, set up a buffer and use it
 			a.bufferedWriter = bufio.NewWriter(a.file)
 			nWritten, err := a.bufferedWriter.Write(p)
 			if err != nil {
 				// A failed append doesn't count as an append
+				a.totalSize += int64(nWritten)
 				a.bufferedWriter = nil
 				return nWritten, err
 			}
 			a.nextAppendOffset = off + int64(nWritten)
+			a.totalSize += int64(nWritten)
 			return nWritten, nil
 		}
 		// No it's not an append. Do it without a buffer
 		nWritten, err := a.file.WriteAt(p, off)
+		if off+int64(nWritten) > a.totalSize {
+			a.totalSize = off + int64(nWritten)
+		}
 		return nWritten, err
 	}
 }
@@ -91,12 +102,8 @@ func (a *appendOptimizedFile) Close() error {
 	return a.file.Close()
 }
 
-func (a *appendOptimizedFile) Stat() (os.FileInfo, error) {
-	err := a.flush()
-	if err != nil {
-		return nil, err
-	}
-	return a.file.Stat()
+func (a *appendOptimizedFile) Size() int64 {
+	return a.totalSize
 }
 
 func (a *appendOptimizedFile) flush() error {
