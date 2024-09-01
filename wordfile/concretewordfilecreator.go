@@ -106,7 +106,7 @@ func (wfc *ConcreteWordFileCreator) countWords(file *os.File) (int64, error) {
 	}
 	return filesize / wfc.wordSize, nil
 }
-func (wfc *ConcreteWordFileCreator) CreateWordFileFilledZeros(count int64) {
+func (wfc *ConcreteWordFileCreator) CreateWordFileFilledZeros(count int64) error {
 	// First create folder if necessary
 	if wfc.folder != "" {
 		err := os.MkdirAll(wfc.folder, os.ModePerm)
