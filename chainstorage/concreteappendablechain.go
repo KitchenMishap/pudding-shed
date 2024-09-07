@@ -279,7 +279,7 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		return -1, err
 	}
 	// We MUST write to the trnFirstTxo file, REGARDLESS of whether there ARE any Txos
-	putativeTxoHeight, err := cac.txoSats.CountWords() // Count all the txis by counting the txiSats field file
+	putativeTxoHeight, err := cac.txoSats.CountWords() // Count all the txos by counting the txoSats field file
 	if err != nil {
 		return -1, err
 	}
