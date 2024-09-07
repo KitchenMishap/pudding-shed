@@ -35,13 +35,12 @@ func (wf *WordFile) WriteWordAt(val int64, off int64) error {
 	binary.LittleEndian.PutUint64(intBytes[0:8], uint64(val))
 	_, err := wf.file.WriteAt(intBytes[0:wf.wordSize], off*wf.wordSize)
 	if err != nil {
-		log.Println(err)
-		log.Println("WriteWordAt(): Couldn't WriteAt()", off*wf.wordSize)
+		return err
 	}
 	if off+1 > wf.wordCount {
 		wf.wordCount = off + 1
 	}
-	return err
+	return nil
 }
 
 func (wf *WordFile) CountWords() (words int64, err error) {
