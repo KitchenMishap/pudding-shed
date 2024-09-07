@@ -388,9 +388,23 @@ func (hs *HashStore) SelfTest() error {
 			return err
 		}
 		if j == -1 {
+			println("Hash in question: ", hashBinToHexString((*[32]byte)(&hash)))
 			return errors.New("Hash which is present could not be found!")
 		}
 		if j != i {
+			println("Hash in question: ", hashBinToHexString((*[32]byte)(&hash)))
+			hash2 := Sha256{}
+			err = hs.GetHashAtIndex(i, &hash2)
+			if err != nil {
+				return err
+			}
+			println("Hash at ", i, ": ", hashBinToHexString((*[32]byte)(&hash2)))
+			hash3 := Sha256{}
+			err = hs.GetHashAtIndex(j, &hash3)
+			if err != nil {
+				return err
+			}
+			println("Hash at ", j, ": ", hashBinToHexString((*[32]byte)(&hash3)))
 			return errors.New("Hash detected at multiple indices!")
 		}
 	}
