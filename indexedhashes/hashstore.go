@@ -370,3 +370,30 @@ func (hs *HashStore) Sync() error {
 	}
 	return nil
 }
+
+func (hs *HashStore) SelfTest() error {
+	println("Hash Store is self testing...")
+	count, err := hs.CountHashes()
+	if err != nil {
+		return err
+	}
+	for i := int64(0); i < count; i++ {
+		hash := Sha256{}
+		err := hs.GetHashAtIndex(i, &hash)
+		if err != nil {
+			return err
+		}
+		j, err := hs.IndexOfHash(&hash)
+		if err != nil {
+			return err
+		}
+		if j == -1 {
+			return errors.New("Hash which is present could not be found!")
+		}
+		if j != i {
+			return errors.New("Hash detected at multiple indices!")
+		}
+	}
+	println("...passed")
+	return nil
+}

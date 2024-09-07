@@ -14,6 +14,7 @@ type HashReadWriter interface {
 	HashReader
 	AppendHash(hash *Sha256) (int64, error)
 	Sync() error
+	SelfTest() error
 }
 
 type HashStoreCreator interface {

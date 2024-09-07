@@ -9,6 +9,9 @@ import (
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
+var PrevFirstTxo int64
+var PrevTrans int64
+
 type concreteAppendableChain struct {
 	blkHashes           indexedhashes.HashReadWriter
 	trnFirstTxi         wordfile.ReadWriteAtWordCounter
@@ -283,7 +286,18 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 	if err != nil {
 		return -1, err
 	}
+	if PrevFirstTxo != -1 {
+		if putativeTxoHeight < PrevFirstTxo {
+			//panic("txo going backwards")
+		}
+		if transHeight < PrevTrans {
+			//panic("trans going backwards")
+		}
+	}
 	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transHeight)
+	PrevFirstTxo = putativeTxoHeight
+	PrevTrans = transHeight
+
 	if err != nil {
 		return -1, err
 	}
@@ -594,4 +608,8 @@ func (cac *concreteAppendableChain) Sync() error {
 	}
 
 	return nil
+}
+
+func (cac *concreteAppendableChain) SelfTestTransHashes() error {
+	return cac.trnHashes.SelfTest()
 }

@@ -11,6 +11,7 @@ type IAppendableChain interface {
 	Close()
 	GetAsChainReadInterface() chainreadinterface.IBlockChain
 	Sync() error
+	SelfTestTransHashes() error
 }
 
 // See also ITransactionIndexer,
