@@ -26,7 +26,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	} else if years == 15 {
 		lastBlock = 824196
 	} else if years == 16 {
-		lastBlock = 858000 // 23 Aug 2024
+		lastBlock = 860530 // 09 Sep 2024
 	}
 
 	println("Removing previous files...")
