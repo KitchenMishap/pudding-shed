@@ -373,6 +373,8 @@ func (hs *HashStore) Sync() error {
 
 func (hs *HashStore) SelfTest() error {
 	println("Hash Store is self testing...")
+	println("This test will correctly FAIL if blocks 91812,91842")
+	println("are included!")
 	count, err := hs.CountHashes()
 	if err != nil {
 		return err
@@ -405,6 +407,9 @@ func (hs *HashStore) SelfTest() error {
 				return err
 			}
 			println("Hash at ", j, ": ", hashBinToHexString((*[32]byte)(&hash3)))
+			println("Note that this test highlights the genuine issue that")
+			println("the coinbase transactions of blocks 91812 and 91842")
+			println("have identical hashes! (identical transactions, BIP37)")
 			return errors.New("Hash detected at multiple indices!")
 		}
 	}

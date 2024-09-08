@@ -25,6 +25,9 @@ func TestTransactionHashes(t *testing.T) {
 	}
 
 	println("Main part of test...")
+	println("Note that this test highlights the genuine issue that")
+	println("the coinbase transactions of blocks 91812 and 91842")
+	println("have identical hashes! (identical transactions, BIP37)")
 	folder := "F:/Data/CurrentJob"
 	creator, _ := chainstorage.NewConcreteAppendableChainCreator(folder, []string{}, []string{}, false)
 	cac, err := creator.Open()
