@@ -36,7 +36,7 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 
 	str := hashBinToHexString((*[32]byte)(hash))
 	if str == "d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599" {
-		println("Added it")
+		println("Note: Added a hash we know to be duplicated in the blockchain!")
 	}
 
 	// Write to hashes file
@@ -231,6 +231,11 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 
 // IndexOfHash -1 indicates "Not Present" but error will be nil if that's all that is wrong
 func (hs *HashStore) IndexOfHash(hash *Sha256) (int64, error) {
+	str := hashBinToHexString((*[32]byte)(hash))
+	if str == "d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599" {
+		println("Warning... looking up known duplicated transaction hash!")
+	}
+
 	NBYTES := hs.entryByteCount
 	MSB := int64(0x80) << (8 * (NBYTES - 1))
 	NBITS := hs.partialHashBitCount

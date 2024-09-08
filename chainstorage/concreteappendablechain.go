@@ -117,12 +117,18 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		panic("this code assumes at least one transaction per block")
 		// Otherwise, not every entry in blkFirstTrans will be written
 	}
+	firstTransOfBlock := int64(-1)
 	for t := int64(0); t < nTrans; t++ {
 		hTrans, err := block.NthTransaction(t)
 		if err != nil {
 			return err
 		}
 		transNum, err := cac.appendTransactionFrame(blockChain, blkNum, hTrans)
+		if t == 0 {
+			// We will need this soon, as duplicate transaction hashes
+			// in blocks 91812 and 91842 mean we can't look up by hash!
+			firstTransOfBlock = transNum
+		}
 		if err != nil {
 			return err
 		}
@@ -151,7 +157,7 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		if err != nil {
 			return err
 		}
-		_, err = cac.appendTransactionContents(blockChain, hTrans)
+		_, err = cac.appendTransactionContents(blockChain, hTrans, firstTransOfBlock+t)
 	}
 
 	return nil
@@ -199,6 +205,7 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 		if err != nil {
 			return -1, err
 		}
+		panic("Can't do the following due to duplicate hashes in chain!")
 		transNum, err := cac.RetrieveTransHashToHeight(&sha256)
 		if err != nil {
 			return -1, err
@@ -210,25 +217,10 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 }
 
 func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainreadinterface.IBlockChain,
-	hTrans chainreadinterface.ITransHandle) (int64, error) {
+	hTrans chainreadinterface.ITransHandle, transHeight int64) (int64, error) {
 	trans, err := blockChain.TransInterface(hTrans)
 	if err != nil {
 		return -1, err
-	}
-
-	// The transaction height might only be known on account of the chain we are appending to
-	transHeight := int64(-1)
-	if trans.HeightSpecified() {
-		transHeight = trans.Height()
-	} else {
-		transHash, err := trans.Hash()
-		if err != nil {
-			return -1, err
-		}
-		transHeight, err = cac.trnHashes.IndexOfHash(&transHash)
-		if err != nil {
-			return -1, err
-		}
 	}
 
 	for name, wfile := range cac.trnNonEssentialInts {
@@ -288,10 +280,10 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 	}
 	if PrevFirstTxo != -1 {
 		if putativeTxoHeight < PrevFirstTxo {
-			//panic("txo going backwards")
+			panic("txo going backwards")
 		}
 		if transHeight < PrevTrans {
-			//panic("trans going backwards")
+			panic("trans going backwards")
 		}
 	}
 	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transHeight)
@@ -521,6 +513,8 @@ func (cac *concreteAppendableChain) StoreBlockHeightToFirstTrans(blockHeight int
 	return cac.blkFirstTrans.WriteWordAt(firstTrans, blockHeight)
 }
 func (cac *concreteAppendableChain) RetrieveTransHashToHeight(sha256 *indexedhashes.Sha256) (int64, error) {
+	// Note: This isn't as simple as it sounds... There are two identical transactions in blocks 91812 and
+	// 91842 with identical hashes! We won't get both in this case of course.
 	return cac.trnHashes.IndexOfHash(sha256)
 }
 func (cac *concreteAppendableChain) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {

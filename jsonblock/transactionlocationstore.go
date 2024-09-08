@@ -35,6 +35,8 @@ func (tif *transactionIndexerFiles) StoreBlockHeightToFirstTrans(blockHeight int
 	return tif.blockFirstTrans.WriteWordAt(firstTrans, blockHeight)
 }
 func (tif *transactionIndexerFiles) RetrieveTransHashToHeight(sha256 *indexedhashes.Sha256) (int64, error) {
+	// Note this isn't as simple as it seems. There are duplicate transactions in blocks 91812 and
+	// 91842 with identical hashes! We will not of course get both returned in this case.
 	return tif.transHashStore.IndexOfHash(sha256)
 }
 func (tif *transactionIndexerFiles) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {
