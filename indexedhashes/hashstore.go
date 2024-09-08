@@ -33,6 +33,12 @@ func NewHashStore(partialHashBitCount int64, entryByteCount int64, collisionsPer
 const ZEROBUF = 32 // Arbitrary number. Should be enough (we do check)
 
 func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
+
+	str := hashBinToHexString((*[32]byte)(hash))
+	if str == "d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599" {
+		println("Added it")
+	}
+
 	// Write to hashes file
 	index, err := hs.hashesFile.AppendHash(hash)
 	if err != nil {
