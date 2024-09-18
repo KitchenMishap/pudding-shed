@@ -11,7 +11,7 @@ import (
 )
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
-	const path = "F:\\Data\\CurrentJob"
+	const path = "D:\\Data\\CurrentJob"
 	lastBlock := int64(10000) // Default
 	if years == 1 {
 		lastBlock = 33000
@@ -62,8 +62,8 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	var aReader corereader.CoreReader
-	var aOneBlockChain = jsonblock.CreateOneBlockChain(&aReader, transactionIndexer)
+	aReader := corereader.NewPool(10)
+	var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
 
 	hBlock := aOneBlockChain.GenesisBlock()
 	block, err := aOneBlockChain.BlockInterface(hBlock)

@@ -10,7 +10,7 @@ func main() {
 	chainstorage.PrevTrans = -1
 
 	//	err := jobs.SeveralYearsPrimaries(16, "delegated")
-	err := jobs.SeveralYearsPrimaries(16, "delegated")
+	err := jobs.SeveralYearsPrimaries(4, "delegated")
 	if err != nil {
 		println(err.Error())
 		println("There was an error :-O")
