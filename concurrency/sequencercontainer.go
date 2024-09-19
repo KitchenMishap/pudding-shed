@@ -1,19 +1,16 @@
 package concurrency
 
-// Sequenceable is a type that can be passed through a SequenceContainer
-type Sequenceable interface {
-	SequenceNumber() int64
-}
+import "github.com/KitchenMishap/pudding-shed/jsonblock"
 
 // NewSequencerContainer creates a SequenceContainer
 // Objects are sent in to SequenceContainer.InChan in a pseudo-sequence.
 // Objects come out of outChan in strict sequence order.
 // The intention is to place this in a pipeline after a thread pool which may have disrupted the original sequence.
-func NewSequencerContainer(firstOut int64, bloatedCount int64, outChan *chan Sequenceable) *SequencerContainer {
+func NewSequencerContainer(firstOut int64, bloatedCount int64, outChan chan *jsonblock.JsonBlockEssential) *SequencerContainer {
 	result := SequencerContainer{}
-	result.InChan = make(chan Sequenceable)
+	result.InChan = make(chan *jsonblock.JsonBlockEssential)
 	result.outChan = outChan
-	result.theMap = make(map[int64]Sequenceable)
+	result.theMap = make(map[int64]*jsonblock.JsonBlockEssential)
 	result.nextOut = firstOut
 	result.bloatedCount = bloatedCount
 	result.currentlyBloated = false
@@ -22,36 +19,36 @@ func NewSequencerContainer(firstOut int64, bloatedCount int64, outChan *chan Seq
 }
 
 type SequencerContainer struct {
-	InChan           chan Sequenceable
-	outChan          *chan Sequenceable
-	theMap           map[int64]Sequenceable
+	InChan           chan *jsonblock.JsonBlockEssential
+	outChan          chan *jsonblock.JsonBlockEssential
+	theMap           map[int64]*jsonblock.JsonBlockEssential
 	nextOut          int64
 	bloatedCount     int64
 	currentlyBloated bool
 }
 
 func (sc *SequencerContainer) worker() {
-	newVal := <-container.InChan
+	newVal := <-sc.InChan
 	if newVal == nil {
 		// input channel closed, should be able to empty the map
-		for sendNextOut() {
+		for sc.sendNextOut() {
 		}
 		if len(sc.theMap) > 0 {
 			panic("The sequencerContainer became jammed")
 		}
-		sc.outChan.Close()
+		close(sc.outChan)
 		return
-	} else if newVal.SequenceNumber() == sc.nextOut {
+	} else if int64(newVal.J_height) == sc.nextOut {
 		sc.outChan <- newVal
 		sc.nextOut++
 		// May have freed up some others to go
-		for sendNextOut() {
+		for sc.sendNextOut() {
 		}
 	} else {
 		// Waiting for a different sequence number to come in
 		// Put this one aside in the map
-		sc.theMap[newVal.SequenceNumber()] = newVal
-		sc.currentlyBloated = len(sc.theMap) >= sc.bloatedCount
+		sc.theMap[int64(newVal.J_height)] = newVal
+		sc.currentlyBloated = int64(len(sc.theMap)) >= sc.bloatedCount
 	}
 }
 

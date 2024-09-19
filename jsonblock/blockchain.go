@@ -54,7 +54,7 @@ func (obc *OneBlockChain) startParsingNextBlock(nextHeight int64) {
 			obc.nextBlockChannel <- nextBlockReport{nextHeight, nil, nil, err}
 		} else {
 			// (2) Parse json
-			block, err := parseJsonBlock(bytes)
+			block, err := ParseJsonBlock(bytes)
 			if err != nil {
 				// Something happened, send error report to channel
 				obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, nil, err}

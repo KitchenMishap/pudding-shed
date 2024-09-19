@@ -73,7 +73,7 @@ type jsonScriptPubKeyEssential struct {
 	// (This hash is not in use by bitcoiners generally)
 }
 
-func parseJsonBlock(jsonBytes []byte) (*JsonBlockEssential, error) {
+func ParseJsonBlock(jsonBytes []byte) (*JsonBlockEssential, error) {
 	var res JsonBlockEssential
 	err := json.Unmarshal(jsonBytes, &res)
 	if err != nil {
