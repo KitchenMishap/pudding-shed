@@ -2,7 +2,7 @@ package jobs
 
 import "testing"
 
-func TestOneYearDelegated(t *testing.T) {
+func TestFourYearsDelegated(t *testing.T) {
 	SeveralYearsParallel(4, "delegated")
 }
 
