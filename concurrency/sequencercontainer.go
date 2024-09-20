@@ -1,7 +1,6 @@
 package concurrency
 
 import (
-	"fmt"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"sync"
 )
@@ -36,7 +35,6 @@ type SequencerContainer struct {
 
 func (sc *SequencerContainer) worker() {
 	for newVal := range sc.InChan {
-		fmt.Println("Received sequence ", newVal.J_height)
 		if newVal == nil {
 			// input channel closed, should be able to empty the map
 			for sc.sendNextOut() {
@@ -47,7 +45,6 @@ func (sc *SequencerContainer) worker() {
 			close(*sc.outChan)
 			return
 		} else if int64(newVal.J_height) == sc.nextOut {
-			fmt.Println("Outputing sequence ", newVal.J_height, " directly")
 			*sc.outChan <- newVal
 			sc.nextOut++
 			// May have freed up some others to go
@@ -56,11 +53,9 @@ func (sc *SequencerContainer) worker() {
 		} else {
 			// Longing for a different sequence number to come in
 			// Put this one aside in the map
-			fmt.Println("Storing sequence ", newVal.J_height, " (container size ", len(sc.theMap), ") due to out of sequence")
 			sc.theMap[int64(newVal.J_height)] = newVal
 			// If we become bloated, lock the input valve upstream
 			if len(sc.theMap) == sc.bloatedCount { // Important, == not > or >=
-				fmt.Println("BECAME BLOATED")
 				sc.setBloatedCondition(true)
 			}
 		}
@@ -72,11 +67,9 @@ func (sc *SequencerContainer) sendNextOut() bool {
 	if !ok {
 		return false
 	} else {
-		fmt.Println("Outputing sequence ", sc.nextOut, " from container")
 		*sc.outChan <- next
 		// If we were exactly bloated, unlock the input valve upstream
 		if len(sc.theMap) == sc.bloatedCount {
-			fmt.Println("NO LONGER BLOATED")
 			sc.setBloatedCondition(false)
 		}
 		delete(sc.theMap, sc.nextOut)
@@ -94,11 +87,9 @@ func (sc *SequencerContainer) setBloatedCondition(bloated bool) {
 }
 
 func (sc *SequencerContainer) WaitForNotBloated() {
-	fmt.Println("Waiting for not bloated")
 	sc.bloatedCondition.L.Lock()
 	for sc.bloated {
 		sc.bloatedCondition.Wait()
 	}
 	sc.bloatedCondition.L.Unlock()
-	fmt.Println("Not bloated")
 }

@@ -155,9 +155,7 @@ func (obh *OneBlockHolder) LatestBlock() (chainreadinterface.IBlockHandle, error
 func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
 	if bh.HeightSpecified() {
 		if bh.Height() == obh.latestBlockVisited {
-			fmt.Println("OneBlockHolder: Attempting to receive a block")
 			obh.currentBlock = <-obh.InChan
-			fmt.Println("OneBlockHolder: Received a block")
 
 			// There's some processing to be done on the block, non-parallel
 			obh.PostJsonGatherTransHashes(obh.currentBlock)

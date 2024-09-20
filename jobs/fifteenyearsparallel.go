@@ -181,13 +181,10 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	go func() {
 		statusMap.Store("sequencedIntoHolder", "Starting")
 		for b := range sequencedChan {
-			fmt.Println("Squirting into aOneBlockHolder...")
 			statusMap.Store("sequencedIntoHolder", "Squirting")
 			aOneBlockHolder.InChan <- b
 			statusMap.Store("sequencedIntoHolder", "Squirted")
-			fmt.Println("Squirted into aOneBlockHolder.")
 		}
-		fmt.Println("Finished squirting for some reason!")
 		statusMap.Store("sequencedIntoHolder", "FINISHING...")
 		close(aOneBlockHolder.InChan)
 		statusMap.Store("sequencedIntoHolder", "FINISHED")
@@ -215,39 +212,28 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 			}
 		}
 
-		fmt.Println("Before Appending:")
-		i := 0
-		statusMap.Range(func(key, value interface{}) bool {
-			fmt.Printf("\t%v: %v\n", key, value)
-			i++
-			return true
-		})
+		/*		i := 0
+				statusMap.Range(func(key, value interface{}) bool {
+					fmt.Printf("\t%v: %v\n", key, value)
+					i++
+					return true
+				})*/
 
-		fmt.Println("Appending block ", block.Height(), "...")
 		err = ac.AppendBlock(aOneBlockHolder, block)
 		if err != nil {
 			ac.Close()
 			return err
 		}
-		fmt.Println("Appended block")
-
-		//		fmt.Println("After Appending:")
-		//		str = ""
-		//		for k, v := range statusMap {
-		//			str += k + ": " + v + "\t"
-		//		}
-		//		fmt.Println(str)
 
 		count, _ := block.TransactionCount()
 		transactions += count
 
-		fmt.Println("Before NextBlock()")
-		i = 0
-		statusMap.Range(func(key, value interface{}) bool {
-			fmt.Printf("\t%v: %v\n", key, value)
-			i++
-			return true
-		})
+		/*		i = 0
+				statusMap.Range(func(key, value interface{}) bool {
+					fmt.Printf("\t%v: %v\n", key, value)
+					i++
+					return true
+				})*/
 
 		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
 		if err != nil {
