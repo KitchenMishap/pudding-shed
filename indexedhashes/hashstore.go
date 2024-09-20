@@ -61,6 +61,17 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 		return -1, err
 	}
 
+	const MAXNBYTES = 8 // Fairly arbitrary and conservative
+	const MAXCPC = 8    // Fairly arbitrary but not conservative
+	const MAXCHUNK = MAXNBYTES * (MAXCPC + 1)
+
+	if NBYTES > MAXNBYTES {
+		return -1, errors.New("Need to increase MAXNBYTES")
+	}
+	if CPC > MAXCPC {
+		return -1, errors.New("Need to increase MAXCPC")
+	}
+
 	// Encode valnum+1 as NBYTES bytes
 	var valnumBytes [8]byte
 	binary.LittleEndian.PutUint64(valnumBytes[0:8], uint64(valnum+1)) // MUST be LittleEndian
@@ -140,14 +151,25 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 		lookup = lookup & ^MSB
 		chunk := lookup - 1
 		j := int64(0)
-		var colliderBytes [8]byte
-		_, err := hs.collisionsFile.ReadAt(colliderBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
+
+		// Read an entire chunk at once, to speed things up a bit
+		// (these ReadAt's were a bottleneck according to profiling!)
+
+		var chunkBytes [MAXCHUNK]byte
+
+		_, err := hs.collisionsFile.ReadAt(chunkBytes[0:NBYTES*(CPC+1)], (chunk*(CPC+1))*NBYTES)
 		if err != nil {
 			log.Println(err)
 			log.Println("AppendHash(): Could not ReadAt() from collisions file")
 			return -1, err
 		}
+
+		colliderBytes := [8]byte{} // Reset to zero
+		for k := int64(0); k < NBYTES; k++ {
+			colliderBytes[k] = chunkBytes[j*NBYTES+k]
+		}
 		collider := int64(binary.LittleEndian.Uint64(colliderBytes[:]))
+
 		for collider != 0 {
 			// Need to skip past occupied slots
 			j++
@@ -156,11 +178,8 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 				j = 0
 				// Read linked list offset
 				var nextChunkBytes [8]byte
-				_, err = hs.collisionsFile.ReadAt(nextChunkBytes[0:NBYTES], (chunk*(CPC+1)+CPC)*NBYTES)
-				if err != nil {
-					log.Println(err)
-					log.Println("AppendHash(): Could not ReadAt() from collisions file")
-					return -1, err
+				for m := int64(0); m < NBYTES; m++ {
+					nextChunkBytes[m] = chunkBytes[CPC*NBYTES+m]
 				}
 				nextChunk := int64(binary.LittleEndian.Uint64(nextChunkBytes[:]))
 				if nextChunk == 0 {
@@ -199,20 +218,26 @@ func (hs *HashStore) AppendHash(hash *Sha256) (int64, error) {
 					// println("Benign code coverage check(4 of 4): Reached end of chunk that's not end of linked list")
 
 					chunk = nextChunk - 1
-					_, err = hs.collisionsFile.ReadAt(colliderBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
+
+					// Read the whole next chunk
+					chunkBytes = [MAXCHUNK]byte{} // Reset to zero
+					_, err := hs.collisionsFile.ReadAt(chunkBytes[0:NBYTES*(CPC+1)], (chunk*(CPC+1))*NBYTES)
 					if err != nil {
 						log.Println(err)
-						log.Println("AppendHash(): Could not call ReadAt() on collisionsFile")
+						log.Println("AppendHash(): Could not ReadAt() from collisions file")
 						return -1, err
+					}
+
+					colliderBytes := [8]byte{} // Reset to zero
+					for k := int64(0); k < NBYTES; k++ {
+						colliderBytes[k] = chunkBytes[j*NBYTES+k]
 					}
 					collider = int64(binary.LittleEndian.Uint64(colliderBytes[:]))
 				}
 			} else {
-				_, err = hs.collisionsFile.ReadAt(colliderBytes[0:NBYTES], (chunk*(CPC+1)+j)*NBYTES)
-				if err != nil {
-					log.Println(err)
-					log.Println("AppendHash(): Could not call ReadAt() on collisionsFile")
-					return -1, err
+				colliderBytes := [8]byte{} // Reset to zero
+				for k := int64(0); k < NBYTES; k++ {
+					colliderBytes[k] = chunkBytes[j*NBYTES+k]
 				}
 				collider = int64(binary.LittleEndian.Uint64(colliderBytes[:]))
 			}
