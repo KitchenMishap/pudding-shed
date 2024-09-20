@@ -18,9 +18,9 @@ type ConcreteAppendableChainCreator struct {
 	transactionOutputsFolder          string
 	addressesFolder                   string
 	parentsFolder                     string
-	blockHashStoreCreator             *indexedhashes.ConcreteHashStoreCreator
-	transactionHashStoreCreator       *indexedhashes.ConcreteHashStoreCreator
-	addressHashStoreCreator           *indexedhashes.ConcreteHashStoreCreator
+	blockHashStoreCreator             indexedhashes.HashStoreCreator
+	transactionHashStoreCreator       indexedhashes.HashStoreCreator
+	addressHashStoreCreator           indexedhashes.HashStoreCreator
 	blkFirstTransWordFileCreator      *wordfile.ConcreteWordFileCreator
 	trnFirstTxiWordFileCreator        *wordfile.ConcreteWordFileCreator
 	trnFirstTxoWordFileCreator        *wordfile.ConcreteWordFileCreator
@@ -50,7 +50,7 @@ var _ IAppendableChainFactoryWithIndexer = (*ConcreteAppendableChainCreator)(nil
 
 func NewConcreteAppendableChainCreator(
 	folder string, blkNeiNames []string, trnNeiNames []string,
-	transactionIndexingToBeDelegated bool) (*ConcreteAppendableChainCreator, error) {
+	transactionIndexingToBeDelegated bool, useMemForTransAddrHashes bool) (*ConcreteAppendableChainCreator, error) {
 	result := ConcreteAppendableChainCreator{}
 
 	result.blocksFolder = path.Join(folder, "Blocks")
@@ -78,15 +78,29 @@ func NewConcreteAppendableChainCreator(
 	if err != nil {
 		return nil, err
 	}
-	result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3, useMemFileForHashes, useAppendOptimized)
-	if err != nil {
-		return nil, err
-	}
-	result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3, useMemFileForHashes, useAppendOptimized) // ToDo [  ] Calculate these parameters!
-	if err != nil {
-		return nil, err
+
+	if useMemForTransAddrHashes {
+		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(
+			"Transactions", result.transactionsFolder)
+		if err != nil {
+			return nil, err
+		}
+		result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(
+			"Addresses", result.addressesFolder)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
+			"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3, useMemFileForHashes, useAppendOptimized)
+		if err != nil {
+			return nil, err
+		}
+		result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
+			"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3, useMemFileForHashes, useAppendOptimized) // ToDo [  ] Calculate these parameters!
+		if err != nil {
+			return nil, err
+		}
 	}
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs)
