@@ -2,6 +2,7 @@ package jsonblock
 
 import (
 	"errors"
+	"fmt"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
@@ -23,7 +24,7 @@ func CreateOneBlockHolder(
 	indexer transactionindexing.ITransactionIndexer,
 ) *OneBlockHolder {
 	res := OneBlockHolder{
-		InChan:                   make(chan *JsonBlockEssential, 1),
+		InChan:                   make(chan *JsonBlockEssential),
 		transactionIndexer:       indexer,
 		currentBlock:             nil,
 		latestBlockVisited:       -1,
@@ -50,13 +51,23 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	if obh.latestBlockVisited != -1 {
 		panic("OneBlockHolder: Can only visit Genesis block once")
 	}
+	fmt.Println("OneBlockHolder: Attempting to receive genesis block")
 	obh.currentBlock = <-obh.InChan
+	fmt.Println("OneBlockHolder: Received genesis block")
+
+	// There's some processing to be done on the block, non-parallel
+	obh.PostJsonGatherTransHashes(obh.currentBlock)
+	PostJsonArrayIndicesIntoElements(obh.currentBlock)
+	obh.PostJsonUpdateTransReferences(obh.currentBlock)
+	PostJsonGatherNonEssentialInts(obh.currentBlock)
+
 	if obh.currentBlock == nil {
 		panic("OneBlockHolder: First block was nil")
 	}
 	if obh.currentBlock.J_height != 0 {
 		panic("OneBlockHolder: First block was not height zero")
 	}
+	obh.latestBlockVisited = 0
 	return obh.currentBlock
 }
 
@@ -144,7 +155,16 @@ func (obh *OneBlockHolder) LatestBlock() (chainreadinterface.IBlockHandle, error
 func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
 	if bh.HeightSpecified() {
 		if bh.Height() == obh.latestBlockVisited {
+			fmt.Println("OneBlockHolder: Attempting to receive a block")
 			obh.currentBlock = <-obh.InChan
+			fmt.Println("OneBlockHolder: Received a block")
+
+			// There's some processing to be done on the block, non-parallel
+			obh.PostJsonGatherTransHashes(obh.currentBlock)
+			PostJsonArrayIndicesIntoElements(obh.currentBlock)
+			obh.PostJsonUpdateTransReferences(obh.currentBlock)
+			PostJsonGatherNonEssentialInts(obh.currentBlock)
+
 			obh.latestBlockVisited = int64(obh.currentBlock.J_height)
 			return obh.currentBlock, nil
 		} else {
@@ -161,4 +181,61 @@ func (obh *OneBlockHolder) LatestTransaction() (chainreadinterface.ITransHandle,
 
 func (obh *OneBlockHolder) NextTransaction(transHandle chainreadinterface.ITransHandle) (chainreadinterface.ITransHandle, error) {
 	panic("OneBlockHolder: NextTransaction() not supported (but probably could be)")
+}
+
+func (obh *OneBlockHolder) PostJsonGatherTransHashes(block *JsonBlockEssential) error {
+	blockHeight := int64(block.J_height)
+	firstTransHeight := obh.latestTransactionVisited + 1
+	err := obh.transactionIndexer.StoreBlockHeightToFirstTrans(blockHeight, firstTransHeight)
+	if err != nil {
+		return err
+	}
+	transHeight := obh.latestTransactionVisited
+	for nthTrans := range block.J_tx {
+		transHeight++
+		err = obh.transactionIndexer.StoreTransHeightToParentBlock(transHeight, blockHeight)
+		if err != nil {
+			return err
+		}
+		transPtr := &block.J_tx[nthTrans]
+		err = obh.transactionIndexer.StoreTransHashToHeight(&transPtr.txid, transHeight)
+		if err != nil {
+			return err
+		}
+	}
+	obh.latestTransactionVisited = transHeight
+	return nil
+}
+
+// postJsonUpdateTransReferences() uses the accrued transaction hash map to
+// locate the txos (by way of block/nthTrans/vindex path indices) corresponding to each txi.
+func (obh *OneBlockHolder) PostJsonUpdateTransReferences(block *JsonBlockEssential) error {
+	// Use the map to locate the txos (by indices path) referenced by trans hashes in the txis in this block
+	for nthTrans := range block.J_tx {
+		transPtr := &block.J_tx[nthTrans]
+		for nthTxi := range transPtr.J_vin {
+			txiPtr := &transPtr.J_vin[nthTxi]
+
+			// Look up the path indices by source transaction hash
+			sourceTransHeight, err := obh.transactionIndexer.RetrieveTransHashToHeight(&txiPtr.txid)
+			if err != nil {
+				return err
+			}
+			sourceBlockHeight, err := obh.transactionIndexer.RetrieveTransHeightToParentBlock(sourceTransHeight)
+			if err != nil {
+				return err
+			}
+			sourceBlockFirstTrans, err := obh.transactionIndexer.RetrieveBlockHeightToFirstTrans(sourceBlockHeight)
+			if err != nil {
+				return err
+			}
+			sourceNthTrans := sourceTransHeight - sourceBlockFirstTrans
+
+			// Store the path indices of the source txo, into the txi that referenced it
+			txiPtr.sourceTrans.blockHeight = sourceBlockHeight
+			txiPtr.sourceTrans.nthInBlock = sourceNthTrans
+			// txiPtr.J_vout is already there of course
+		}
+	}
+	return nil
 }

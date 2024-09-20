@@ -8,6 +8,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -15,19 +16,23 @@ type preprocessTask struct {
 	blockBytes []byte
 	jsonBlock  *jsonblock.JsonBlockEssential
 	err        error
-	outChan    chan *preprocessTask
+	outChan    *chan *preprocessTask
 }
 
 func (ppt *preprocessTask) Process() error {
 	var err error
 	ppt.jsonBlock, err = jsonblock.ParseJsonBlock(ppt.blockBytes)
+	jsonblock.PostJsonRemoveCoinbaseTxis(ppt.jsonBlock)
+	jsonblock.PostJsonCalculateSatoshis(ppt.jsonBlock)
+	jsonblock.PostJsonEncodeAddressHashes(ppt.jsonBlock)
+	jsonblock.PostJsonEncodeSha256s(ppt.jsonBlock)
 	return err
 }
 func (ppt *preprocessTask) SetError(err error) {
 	ppt.err = err
 }
 func (ppt *preprocessTask) Done() {
-	ppt.outChan <- ppt
+	*ppt.outChan <- ppt
 }
 func (ppt *preprocessTask) GetError() error {
 	return ppt.err
@@ -52,7 +57,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 		lastBlock = 860530 // 09 Sep 2024
 	}
 
-	println("Removing previous files...")
+	fmt.Println("Removing previous files...")
 	err := os.RemoveAll(path)
 	if err != nil {
 		return err
@@ -60,7 +65,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 
 	delegated := transactionIndexingMethod == "delegated"
 
-	println("Creating appendable chain...")
+	fmt.Println("Creating appendable chain...")
 	acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
 		[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
 		[]string{"size", "vsize", "weight"},
@@ -77,7 +82,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 		return err
 	}
 
-	println("Creating transaction indexer...")
+	fmt.Println("Creating transaction indexer...")
 	var transactionIndexer transactionindexing.ITransactionIndexer = nil
 	if transactionIndexingMethod == "delegated" {
 		transactionIndexer = ind
@@ -87,21 +92,38 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	readerPool := corereader.NewPool(10)
-	workerPool := concurrency.NewWorkerPool(30)
+	readerPool := corereader.NewPool(2)
+	workerPool := concurrency.NewWorkerPool(3)
+
+	statusMap := sync.Map{}
 
 	// Going parallel now
+
+	// These two are much further downstream. But we create them here as here is the only good place
+	// for the cutoff valve when the sequencer becomes bloated!
+	sequencedChan := make(chan *jsonblock.JsonBlockEssential)
+	sequencer := concurrency.NewSequencerContainer(0, 5, &sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)
 
 	// A go routine to squirt all the block requests through readerPool
 	go func() {
-		for height := int64(0); height <= lastBlock; {
+		for height := int64(0); height <= lastBlock+1; height++ {
 			task := corereader.NewTask(height, &haveReadChannel)
 			// Squirt it into the pool
+			statusMap.Store("startCoreReader", "WaitingBloated")
+			sequencer.WaitForNotBloated()
+			statusMap.Store("startCoreReader", "WaitedNotBloated")
+			statusMap.Store("startCoreReader", "Squirting")
 			readerPool.InChan <- task
+			statusMap.Store("startCoreReader", "Squirted")
 		}
+		statusMap.Store("startCoreReader", "FINISHING...")
+		close(readerPool.InChan)
+		readerPool.Flush()
+		close(haveReadChannel)
+		statusMap.Store("startCoreReader", "FINISHED")
 	}()
 
 	// Once each block's []byte slice is available, we need to parse it
@@ -116,27 +138,40 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	// through the worker pool
 	go func() {
 		for obj := range haveReadChannel {
+			statusMap.Store("haveReadToWorker", "transferring")
 			byts := obj.ResultBytes
 			tsk := preprocessTask{}
 			tsk.blockBytes = byts
-			tsk.outChan = preprocessedChan
+			tsk.outChan = &preprocessedChan
+
+			// This is NOT a good place to sequencer.WaitForNotBloated()
+			// A good place for doing so MUST be somewhere where the items
+			// are still in sequence!
+
+			statusMap.Store("haveReadToWorker", "squirting")
 			workerPool.InChan <- &tsk
+			statusMap.Store("haveReadToWorker", "squirted")
 		}
+		statusMap.Store("haveReadToWorker", "FINISHING...")
+		close(workerPool.InChan)
+		statusMap.Store("haveReadToWorker", "FINISHED")
 	}()
 
 	// Preprocessed blocks will now come through preprocessedChan
 	// We now need to squirt them through a SequencerContainer to
 	// get them back in the right order
 
-	sequencedChan := make(chan *jsonblock.JsonBlockEssential)
-
-	sequencer := concurrency.NewSequencerContainer(0, 100, sequencedChan)
-
 	// Squirt them into the sequencer
 	go func() {
+		statusMap.Store("preprocessedToSequencer", "Starting")
 		for blk := range preprocessedChan {
+			statusMap.Store("preprocessedToSequencer", "Squirting")
 			sequencer.InChan <- blk.jsonBlock
+			statusMap.Store("preprocessedToSequencer", "Squirted")
 		}
+		statusMap.Store("preprocessedToSequencer", "FINISHING...")
+		close(sequencer.InChan)
+		statusMap.Store("preprocessedToSequencer", "FINISHED")
 	}()
 
 	// Final destination for the sequenced blocks
@@ -144,9 +179,18 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 
 	// Squirt the sequenced blocks into the holder
 	go func() {
+		statusMap.Store("sequencedIntoHolder", "Starting")
 		for b := range sequencedChan {
+			fmt.Println("Squirting into aOneBlockHolder...")
+			statusMap.Store("sequencedIntoHolder", "Squirting")
 			aOneBlockHolder.InChan <- b
+			statusMap.Store("sequencedIntoHolder", "Squirted")
+			fmt.Println("Squirted into aOneBlockHolder.")
 		}
+		fmt.Println("Finished squirting for some reason!")
+		statusMap.Store("sequencedIntoHolder", "FINISHING...")
+		close(aOneBlockHolder.InChan)
+		statusMap.Store("sequencedIntoHolder", "FINISHED")
 	}()
 
 	hBlock := aOneBlockHolder.GenesisBlock()
@@ -170,14 +214,40 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 				}
 			}
 		}
+
+		fmt.Println("Before Appending:")
+		i := 0
+		statusMap.Range(func(key, value interface{}) bool {
+			fmt.Printf("\t%v: %v\n", key, value)
+			i++
+			return true
+		})
+
+		fmt.Println("Appending block ", block.Height(), "...")
 		err = ac.AppendBlock(aOneBlockHolder, block)
 		if err != nil {
 			ac.Close()
 			return err
 		}
+		fmt.Println("Appended block")
+
+		//		fmt.Println("After Appending:")
+		//		str = ""
+		//		for k, v := range statusMap {
+		//			str += k + ": " + v + "\t"
+		//		}
+		//		fmt.Println(str)
 
 		count, _ := block.TransactionCount()
 		transactions += count
+
+		fmt.Println("Before NextBlock()")
+		i = 0
+		statusMap.Range(func(key, value interface{}) bool {
+			fmt.Printf("\t%v: %v\n", key, value)
+			i++
+			return true
+		})
 
 		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
 		if err != nil {
@@ -195,6 +265,6 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	if transactionIndexingMethod != "delegated" {
 		transactionIndexer.Close()
 	}
-	println("Done Several Years")
+	fmt.Println("Done Several Years")
 	return nil
 }

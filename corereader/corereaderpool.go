@@ -1,6 +1,9 @@
 package corereader
 
-import "github.com/KitchenMishap/pudding-shed/jsonblock"
+import (
+	"github.com/KitchenMishap/pudding-shed/jsonblock"
+	"sync"
+)
 
 // corereader.Pool implements jsonblock.IBlockJsonFetcher
 var _ jsonblock.IBlockJsonFetcher = (*Pool)(nil) // Check that implements
@@ -9,6 +12,7 @@ func NewPool(poolSize int) *Pool {
 	result := Pool{}
 	result.InChan = make(chan *Task)
 	result.counter = CoreReader{}
+	result.wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		reader := CoreReader{}
 		go result.worker(reader)
@@ -19,6 +23,7 @@ func NewPool(poolSize int) *Pool {
 type Pool struct {
 	InChan  chan *Task
 	counter CoreReader
+	wg      sync.WaitGroup
 }
 
 func (p *Pool) CountBlocks() (int64, error) {
@@ -51,4 +56,9 @@ func (pool *Pool) worker(reader CoreReader) {
 		task.ResultBytes, task.ResultErr = reader.FetchBlockJsonBytes(task.BlockHeight)
 		*task.CompletionChan <- task
 	}
+	pool.wg.Done()
+}
+
+func (pool *Pool) Flush() {
+	pool.wg.Wait()
 }

@@ -60,17 +60,17 @@ func (obc *OneBlockChain) startParsingNextBlock(nextHeight int64) {
 				obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, nil, err}
 			} else {
 				// (3) We can safely do the following in this parallel go routine too
-				postJsonRemoveCoinbaseTxis(block)
+				PostJsonRemoveCoinbaseTxis(block)
 				// Convert bitcoin floats to satoshi ints
-				postJsonCalculateSatoshis(block)
+				PostJsonCalculateSatoshis(block)
 				// For each address in each txo, generate a hash as an id
-				err = postJsonEncodeAddressHashes(block)
+				err = PostJsonEncodeAddressHashes(block)
 				if err != nil {
 					// Something happened, send error report to channel
 					obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, err}
 				} else {
 					// Convert the hash strings to binary
-					err = postJsonEncodeSha256s(block)
+					err = PostJsonEncodeSha256s(block)
 					if err != nil {
 						// Something happened, send error report to channel
 						obc.nextBlockChannel <- nextBlockReport{nextHeight, bytes, block, err}
@@ -130,7 +130,7 @@ func (obc *OneBlockChain) switchBlock(blockHeightRequested int64) (*JsonBlockEss
 		}
 
 		// Store in each array element (tx, txi, txo), the element's index into that array
-		postJsonArrayIndicesIntoElements(obc.currentBlock)
+		PostJsonArrayIndicesIntoElements(obc.currentBlock)
 
 		err = obc.postJsonUpdateTransReferences(obc.currentBlock)
 		if err != nil {
@@ -138,13 +138,13 @@ func (obc *OneBlockChain) switchBlock(blockHeightRequested int64) (*JsonBlockEss
 		}
 
 		// Gather a map of the non-essential ints
-		postJsonGatherNonEssentialInts(obc.currentBlock)
+		PostJsonGatherNonEssentialInts(obc.currentBlock)
 	}
 
 	return obc.currentBlock, nil
 }
 
-func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) {
+func PostJsonRemoveCoinbaseTxis(block *JsonBlockEssential) {
 	// Coinbase Txi's are a transaction's entry in vin[] which represent the concept of coinbase in Bitcoin Core's JSON
 	// We detect them by way of absence of hash string
 
@@ -160,7 +160,7 @@ func postJsonRemoveCoinbaseTxis(block *JsonBlockEssential) {
 	}
 }
 
-func postJsonEncodeSha256s(block *JsonBlockEssential) error {
+func PostJsonEncodeSha256s(block *JsonBlockEssential) error {
 	// First the block hash
 	err := indexedhashes.HashHexToSha256(block.J_hash, &block.hash)
 	if err != nil {
@@ -186,7 +186,7 @@ func postJsonEncodeSha256s(block *JsonBlockEssential) error {
 	return nil
 }
 
-func postJsonCalculateSatoshis(block *JsonBlockEssential) {
+func PostJsonCalculateSatoshis(block *JsonBlockEssential) {
 	const satoshisPerBitcoin = float64(100_000_000)
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
@@ -197,7 +197,7 @@ func postJsonCalculateSatoshis(block *JsonBlockEssential) {
 	}
 }
 
-func postJsonEncodeAddressHashes(block *JsonBlockEssential) error {
+func PostJsonEncodeAddressHashes(block *JsonBlockEssential) error {
 	for nthTrans := range block.J_tx {
 		transPtr := &block.J_tx[nthTrans]
 		// The addresses are in the txos
@@ -253,7 +253,7 @@ func (obc *OneBlockChain) postJsonGatherTransHashes(block *JsonBlockEssential) e
 	return nil
 }
 
-func postJsonArrayIndicesIntoElements(block *JsonBlockEssential) {
+func PostJsonArrayIndicesIntoElements(block *JsonBlockEssential) {
 	// We copy Height into each element of the Tx array,
 	// And place each element's index into each element
 	for nth := range block.J_tx {
@@ -307,7 +307,7 @@ func (obc *OneBlockChain) postJsonUpdateTransReferences(block *JsonBlockEssentia
 	return nil
 }
 
-func postJsonGatherNonEssentialInts(block *JsonBlockEssential) {
+func PostJsonGatherNonEssentialInts(block *JsonBlockEssential) {
 	block.nonEssentialInts = make(map[string]int64)
 	block.nonEssentialInts["version"] = block.J_version
 	block.nonEssentialInts["time"] = block.J_time
