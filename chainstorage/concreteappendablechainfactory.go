@@ -69,7 +69,7 @@ func NewConcreteAppendableChainCreator(
 
 	// WARNING true will cost you 50GB memory!
 	// And trash your SSD if you don't have it
-	useMemFileForHashes := true
+	useMemFileForHashes := false
 	useAppendOptimized := true
 
 	var err error
