@@ -92,8 +92,8 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	readerPool := corereader.NewPool(2)
-	workerPool := concurrency.NewWorkerPool(3)
+	readerPool := corereader.NewPool(1)
+	workerPool := concurrency.NewWorkerPool(20)
 
 	statusMap := sync.Map{}
 
@@ -102,7 +102,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	// These two are much further downstream. But we create them here as here is the only good place
 	// for the cutoff valve when the sequencer becomes bloated!
 	sequencedChan := make(chan *jsonblock.JsonBlockEssential)
-	sequencer := concurrency.NewSequencerContainer(0, 5, &sequencedChan)
+	sequencer := concurrency.NewSequencerContainer(0, 30, &sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)
