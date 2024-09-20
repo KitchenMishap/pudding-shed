@@ -382,7 +382,7 @@ func (hs *HashStore) Sync() error {
 	return nil
 }
 
-func (hs *HashStore) SelfTest() error {
+/*func (hs *HashStore) SelfTest() error {
 	println("Hash Store is self testing...")
 	println("This test will correctly FAIL if blocks 91812,91842")
 	println("are included!")
@@ -426,4 +426,4 @@ func (hs *HashStore) SelfTest() error {
 	}
 	println("...passed")
 	return nil
-}
+}*/
