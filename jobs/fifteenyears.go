@@ -23,6 +23,8 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		lastBlock = 132000
 	} else if years == 6 {
 		lastBlock = 315360
+	} else if years == 7 {
+		lastBlock = 391000 // 7 years = mnemonic for 100 million transactions
 	} else if years == 15 {
 		lastBlock = 840000
 	} else if years == 16 {
