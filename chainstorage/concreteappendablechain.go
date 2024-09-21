@@ -238,36 +238,47 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		}
 	}
 
-	nTxis, err := trans.TxiCount()
-	if err != nil {
-		return -1, err
-	}
-	// We MUST write to the trnFirstTxi file, REGARDLESS of whether there ARE any Txis
-	putativeTxiHeight, err := cac.txiTx.CountWords() // Count all the txis by counting the txiTx field file
-	if err != nil {
-		return -1, err
-	}
-	err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transHeight)
-	if err != nil {
-		return -1, err
-	}
-	for nTxi := int64(0); nTxi < nTxis; nTxi++ {
-		hTxi, err := trans.NthTxi(nTxi)
+	// Txis can (we hope) be written in parallel to txos. We therefore branch off a goroutine for the txis
+	myChan := make(chan error)
+	go func() {
+		nTxis, err := trans.TxiCount()
 		if err != nil {
-			return -1, err
+			myChan <- err
+			return
 		}
-		txi, err := blockChain.TxiInterface(hTxi)
+		// We MUST write to the trnFirstTxi file, REGARDLESS of whether there ARE any Txis
+		putativeTxiHeight, err := cac.txiTx.CountWords() // Count all the txis by counting the txiTx field file
 		if err != nil {
-			return -1, err
+			myChan <- err
+			return
 		}
-		txiHeight, err := cac.appendTxi(txi, transHeight)
+		err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transHeight)
 		if err != nil {
-			return -1, err
+			myChan <- err
+			return
 		}
-		if txi.TxiHeightSpecified() && txi.TxiHeight() != txiHeight {
-			panic("cannot append a txi out of sequence")
+		for nTxi := int64(0); nTxi < nTxis; nTxi++ {
+			hTxi, err := trans.NthTxi(nTxi)
+			if err != nil {
+				myChan <- err
+				return
+			}
+			txi, err := blockChain.TxiInterface(hTxi)
+			if err != nil {
+				myChan <- err
+				return
+			}
+			txiHeight, err := cac.appendTxi(txi, transHeight)
+			if err != nil {
+				myChan <- err
+				return
+			}
+			if txi.TxiHeightSpecified() && txi.TxiHeight() != txiHeight {
+				panic("cannot append a txi out of sequence")
+			}
 		}
-	}
+		myChan <- nil
+	}()
 
 	nTxos, err := trans.TxoCount()
 	if err != nil {
@@ -309,6 +320,12 @@ func (cac *concreteAppendableChain) appendTransactionContents(blockChain chainre
 		if txo.TxoHeightSpecified() && txo.TxoHeight() != txoHeight {
 			panic("cannot append a txo out of sequence")
 		}
+	}
+
+	// Wait for the txis to be done
+	err = <-myChan
+	if err != nil {
+		return -1, err
 	}
 
 	return transHeight, nil
