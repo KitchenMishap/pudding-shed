@@ -49,6 +49,8 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 		lastBlock = 99000
 	} else if years == 4 {
 		lastBlock = 132000
+	} else if years == 5 {
+		lastBlock = 165000
 	} else if years == 6 {
 		lastBlock = 315360
 	} else if years == 15 {
