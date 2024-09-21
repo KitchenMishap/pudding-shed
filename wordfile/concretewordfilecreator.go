@@ -9,16 +9,18 @@ import (
 )
 
 type ConcreteWordFileCreator struct {
-	name     string
-	folder   string
-	wordSize int64
+	name        string
+	folder      string
+	wordSize    int64
+	memShadowed bool
 }
 
-func NewConcreteWordFileCreator(name string, folder string, wordSize int64) *ConcreteWordFileCreator {
+func NewConcreteWordFileCreator(name string, folder string, wordSize int64, memShadowed bool) *ConcreteWordFileCreator {
 	result := ConcreteWordFileCreator{}
 	result.name = name
 	result.folder = folder
 	result.wordSize = wordSize
+	result.memShadowed = memShadowed
 	return &result
 }
 
@@ -73,7 +75,14 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 	if err != nil {
 		return nil, err
 	}
-	result = NewWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
+	if wfc.memShadowed {
+		result, err = NewMemShadowedWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		result = NewWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
+	}
 	return result, nil
 }
 func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, error) {
@@ -89,7 +98,15 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, e
 	}
 
 	fileWithSize := memfile.NewFileWithSize(file)
-	result := NewWordFile(fileWithSize, wfc.wordSize, wordCount)
+	var result ReadAtWordCounter
+	if wfc.memShadowed {
+		result, err = NewMemShadowedWordFile(fileWithSize, wfc.wordSize, wordCount)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		result = NewWordFile(fileWithSize, wfc.wordSize, wordCount)
+	}
 	return result, nil
 }
 func (wfc *ConcreteWordFileCreator) countWords(file *os.File) (int64, error) {

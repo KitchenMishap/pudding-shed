@@ -102,18 +102,18 @@ func NewConcreteAppendableChainCreator(
 			return nil, err
 		}
 	}
-	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans)
-	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs)
-	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, roomFor1trilTxxs)
-	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, roomFor4bilTrans)
-	result.txiVoutWordFileCreator = wordfile.NewConcreteWordFileCreator("vout", result.transactionInputsFolder, 4)
-	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, roomForAllSatoshis)
-	result.txoAddressWordFileCreator = wordfile.NewConcreteWordFileCreator("address", result.transactionOutputsFolder, roomFor1trilAddrs)
-	result.txoSpentTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("spenttotxi", result.transactionOutputsFolder, roomFor1trilTxxs)
-	result.addrFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.addressesFolder, roomFor1trilTxxs)
-	result.parentBlockOfTransWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblockoftrans", result.parentsFolder, roomFor4bilTrans)
-	result.parentTransOfTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxi", result.parentsFolder, roomFor1trilTxxs)
-	result.parentTransOfTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxo", result.parentsFolder, roomFor1trilTxxs)
+	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans, true)
+	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs, false)
+	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, roomFor1trilTxxs, false)
+	result.txiTxWordFileCreator = wordfile.NewConcreteWordFileCreator("tx", result.transactionInputsFolder, roomFor4bilTrans, false)
+	result.txiVoutWordFileCreator = wordfile.NewConcreteWordFileCreator("vout", result.transactionInputsFolder, 4, false)
+	result.txoSatsWordFileCreator = wordfile.NewConcreteWordFileCreator("value", result.transactionOutputsFolder, roomForAllSatoshis, false)
+	result.txoAddressWordFileCreator = wordfile.NewConcreteWordFileCreator("address", result.transactionOutputsFolder, roomFor1trilAddrs, false)
+	result.txoSpentTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("spenttotxi", result.transactionOutputsFolder, roomFor1trilTxxs, false)
+	result.addrFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.addressesFolder, roomFor1trilTxxs, false)
+	result.parentBlockOfTransWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblockoftrans", result.parentsFolder, roomFor4bilTrans, false)
+	result.parentTransOfTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxi", result.parentsFolder, roomFor1trilTxxs, false)
+	result.parentTransOfTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxo", result.parentsFolder, roomFor1trilTxxs, false)
 	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 2, 2, roomFor1trilTxxs, true)
 	result.supportedBlkNeis = map[string]int{
 		"version":      4,
@@ -216,7 +216,7 @@ func (cacc *ConcreteAppendableChainCreator) Create() error {
 
 	for supportedName, size := range cacc.supportedBlkNeis {
 		if slices.Contains(cacc.requestedBlkNeis, supportedName) {
-			blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size))
+			blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size), false)
 			err = blkNonEssentialIntCreator.CreateWordFile()
 			if err != nil {
 				return err
@@ -232,7 +232,7 @@ func (cacc *ConcreteAppendableChainCreator) Create() error {
 
 	for supportedName, size := range cacc.supportedTrnNeis {
 		if slices.Contains(cacc.requestedTrnNeis, supportedName) {
-			trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size))
+			trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size), false)
 			err = trnNonEssentialIntCreator.CreateWordFile()
 			if err != nil {
 				return err
@@ -455,7 +455,7 @@ func (cacc *ConcreteAppendableChainCreator) openPrivate() (*concreteAppendableCh
 	// We try to open each of the supported block NonEssentialInt wordfiles.
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedBlkNeis {
-		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size))
+		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size), false)
 		wfile, err := blkNonEssentialIntCreator.OpenWordFile()
 		if err == nil {
 			result.blkNonEssentialInts[supportedName] = wfile
@@ -466,7 +466,7 @@ func (cacc *ConcreteAppendableChainCreator) openPrivate() (*concreteAppendableCh
 	// We try to open each of the supported transaction NonEssentialInt wordfiles.
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedTrnNeis {
-		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size))
+		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size), false)
 		wfile, err := trnNonEssentialIntCreator.OpenWordFile()
 		if err == nil {
 			result.trnNonEssentialInts[supportedName] = wfile
@@ -676,7 +676,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 	// We try to open each of the supported block NonEssentialInt wordfiles.
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedBlkNeis {
-		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size))
+		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size), false)
 		wfile, err := blkNonEssentialIntCreator.OpenWordFile()
 		if err == nil {
 			result.blkNonEssentialInts[supportedName] = wfile
@@ -687,7 +687,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 	// We try to open each of the supported transaction NonEssentialInt wordfiles.
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedTrnNeis {
-		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size))
+		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size), false)
 		wfile, err := trnNonEssentialIntCreator.OpenWordFile()
 		if err == nil {
 			result.trnNonEssentialInts[supportedName] = wfile
