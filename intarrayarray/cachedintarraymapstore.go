@@ -19,12 +19,6 @@ type CachedIntArrayMapStore struct {
 	mapFolderFilenameToArrayArray map[string]IntArrayArray
 	mapFolderFilenameToLastAccess map[string]int64
 	mapFolderFilenameToFolderPath map[string]string
-
-	//	latestFilepath      string        // "Latest" is the file corresponding to latest txo we have seen
-	//	latestFileNumber    int64         // The index represented by the first entry in latest file
-	//	latestIntArrayArray IntArrayArray // We keep latest in memory even when we need to go back to something older
-	//	olderFilepath       string        // "Older" is a file we temporarily load as we need to append to old data
-	//	olderIntArrayArray  IntArrayArray
 }
 
 func (ms *CachedIntArrayMapStore) folderPath(folders string) string {
@@ -92,7 +86,7 @@ func (ms *CachedIntArrayMapStore) loadIntoCache(folders string, filename string)
 	ms.mapFolderFilenameToArrayArray[foldersFilename] = cached
 	ms.mapFolderFilenameToFolderPath[foldersFilename] = folderPath
 	ms.mapFolderFilenameToLastAccess[foldersFilename] = 0
-	ms.cacheElementCountLimit += cached.elementTally
+	ms.cacheElementCount += cached.elementTally
 
 	for ms.cacheElementCount >= ms.cacheElementCountLimit {
 		ms.trimCache(foldersFilename)
@@ -123,7 +117,7 @@ func (ms *CachedIntArrayMapStore) trimCache(excludeFoldersFilename string) error
 	if err != nil {
 		return err
 	}
-	ms.cacheElementCountLimit -= cached.elementTally
+	ms.cacheElementCount -= cached.elementTally
 
 	delete(ms.mapFolderFilenameToArrayArray, oldestFoldersFilename)
 	delete(ms.mapFolderFilenameToLastAccess, oldestFoldersFilename)
