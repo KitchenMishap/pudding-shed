@@ -8,6 +8,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -213,6 +214,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 				if err != nil {
 					return err
 				}
+				runtime.GC()
 			}
 		}
 
