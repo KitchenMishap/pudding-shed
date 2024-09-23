@@ -9,6 +9,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -215,6 +216,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 					return err
 				}
 				runtime.GC()
+				debug.FreeOSMemory()
 			}
 		}
 
@@ -257,6 +259,8 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	if transactionIndexingMethod != "delegated" {
 		transactionIndexer.Close()
 	}
+	runtime.GC()
+	debug.FreeOSMemory()
 	fmt.Println("Done Several Years")
 	return nil
 }

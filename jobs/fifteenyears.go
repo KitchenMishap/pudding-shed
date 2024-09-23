@@ -8,6 +8,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"time"
 )
 
@@ -88,6 +89,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 					return err
 				}
 				runtime.GC()
+				debug.FreeOSMemory()
 			}
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
@@ -115,6 +117,8 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	if transactionIndexingMethod != "delegated" {
 		transactionIndexer.Close()
 	}
+	runtime.GC()
+	debug.FreeOSMemory()
 	println("Done Several Years")
 	return nil
 }
