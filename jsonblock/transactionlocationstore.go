@@ -75,7 +75,7 @@ func CreateOpenTransactionIndexerFiles(folderName string) transactionindexing.IT
 	}
 	obj.transParentBlock = wordFile
 
-	wordFileCreator2 := wordfile.NewConcreteWordFileCreator("blkFirstTran", folderName, 5, true)
+	wordFileCreator2 := wordfile.NewConcreteWordFileCreator("blkFirstTran", folderName, 5, false)
 	err = wordFileCreator2.CreateWordFile()
 	if err != nil {
 		panic(err)
