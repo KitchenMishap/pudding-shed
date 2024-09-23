@@ -50,7 +50,8 @@ var _ IAppendableChainFactoryWithIndexer = (*ConcreteAppendableChainCreator)(nil
 
 func NewConcreteAppendableChainCreator(
 	folder string, blkNeiNames []string, trnNeiNames []string,
-	transactionIndexingToBeDelegated bool, useMemForTransAddrHashes bool) (*ConcreteAppendableChainCreator, error) {
+	transactionIndexingToBeDelegated bool, useMemForTransAddrHashes bool,
+	useUniformHashStores bool) (*ConcreteAppendableChainCreator, error) {
 	result := ConcreteAppendableChainCreator{}
 
 	result.blocksFolder = path.Join(folder, "Blocks")
@@ -72,14 +73,26 @@ func NewConcreteAppendableChainCreator(
 	useMemFileForHashes := false
 	useAppendOptimized := true
 
-	var err error
-	result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-		"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3, useMemFileForHashes, useAppendOptimized)
+	var err error = nil
+
+	if useUniformHashStores {
+		result.blockHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
+			1000000, result.blocksFolder, "BlockHashes", 2)
+	} else {
+		result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
+			"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3, useMemFileForHashes, useAppendOptimized)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if useMemForTransAddrHashes {
+	if useUniformHashStores {
+		result.transactionHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
+			2000000000, result.transactionsFolder, "TransactionHashes", 2)
+		result.addressHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
+			4000000000, result.addressesFolder, "AddressHashes", 2)
+
+	} else if useMemForTransAddrHashes {
 		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(
 			"Transactions", result.transactionsFolder)
 		if err != nil {
