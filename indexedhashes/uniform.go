@@ -144,6 +144,7 @@ func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	file.Sync()
 	file.Close()
 	file = nil
 
