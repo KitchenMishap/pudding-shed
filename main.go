@@ -12,7 +12,7 @@ func main() {
 	// err := jobs.SeveralYearsParallel(16, "delegated")
 	// err := jobs.SeveralYearsParallel(4, "delegated")
 
-	err := justhashes.JustHashes("F:/Data/JustHashes", 1000000)
+	err := justhashes.JustHashes("F:/Data/JustHashes", 863000)
 
 	if err != nil {
 		println(err.Error())
