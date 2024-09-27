@@ -15,7 +15,7 @@ import (
 type JsonBlockEssential struct {
 	J_height int                  `json:"height"`
 	J_hash   string               `json:"hash"`
-	J_tx     []jsonTransEssential `json:"tx"`
+	J_tx     []JsonTransEssential `json:"tx"`
 	hash     indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 
 	// Non essential integers
@@ -31,10 +31,10 @@ type JsonBlockEssential struct {
 	nonEssentialInts map[string]int64 `json:"-"` // Does not appear in json. Calculated after passing of whole block
 }
 
-type jsonTransEssential struct {
+type JsonTransEssential struct {
 	J_txid string               `json:"txid"`
-	J_vin  []jsonTxiEssential   `json:"vin"`
-	J_vout []jsonTxoEssential   `json:"vout"`
+	J_vin  []JsonTxiEssential   `json:"vin"`
+	J_vout []JsonTxoEssential   `json:"vout"`
 	txid   indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 	handle TransHandle          `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 
@@ -47,7 +47,7 @@ type jsonTransEssential struct {
 	nonEssentialInts map[string]int64 `json:"-"` // Does not appear in json. Calculated after passing of whole block
 }
 
-type jsonTxiEssential struct {
+type JsonTxiEssential struct {
 	J_txid       string               `json:"txid"`
 	J_vout       int                  `json:"vout"`
 	txid         indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
@@ -56,15 +56,15 @@ type jsonTxiEssential struct {
 	sourceTrans  TransHandle          `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 }
 
-type jsonTxoEssential struct {
+type JsonTxoEssential struct {
 	J_value        float64                   `json:"value"`
-	J_scriptPubKey jsonScriptPubKeyEssential `json:"scriptPubKey"`
+	J_scriptPubKey JsonScriptPubKeyEssential `json:"scriptPubKey"`
 	satoshis       int64                     `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 	parentTrans    TransHandle               `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 	parentVIndex   int64                     `json:"-"` // Does not appear in json. "calculated" after parsing of whole block
 }
 
-type jsonScriptPubKeyEssential struct {
+type JsonScriptPubKeyEssential struct {
 	J_hex       string               `json:"hex"`
 	J_address   string               `json:"address"`
 	J_type      string               `json:"type"`
@@ -88,4 +88,12 @@ func encodeJsonBlock(block *JsonBlockEssential) ([]byte, error) {
 		return nil, err
 	}
 	return jsonBytes, nil
+}
+
+func (jb *JsonBlockEssential) BlockHash() indexedhashes.Sha256 {
+	return jb.hash
+}
+
+func (jt *JsonTransEssential) TransHash() indexedhashes.Sha256 {
+	return jt.txid
 }

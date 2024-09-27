@@ -210,7 +210,7 @@ func PostJsonEncodeAddressHashes(block *JsonBlockEssential) error {
 	return nil
 }
 
-func adornTxoAddressWithPuddingHash(addrPtr *jsonScriptPubKeyEssential) {
+func adornTxoAddressWithPuddingHash(addrPtr *JsonScriptPubKeyEssential) {
 	address := addrPtr.J_address // Remember some types of address are case sensitive
 	hex := strings.ToLower(addrPtr.J_hex)
 
