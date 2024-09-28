@@ -12,6 +12,12 @@ import (
 
 func NewUniformHashStoreCreator(hashCountEstimate int64,
 	folder string, name string, digitsPerFolder int) HashStoreCreator {
+	return newUniformHashStoreCreatorPrivate(hashCountEstimate,
+		folder, name, digitsPerFolder)
+}
+
+func newUniformHashStoreCreatorPrivate(hashCountEstimate int64,
+	folder string, name string, digitsPerFolder int) *UniformHashStoreCreator {
 	result := UniformHashStoreCreator{}
 	result.folder = folder
 	result.name = name
@@ -68,13 +74,17 @@ func (uc *UniformHashStoreCreator) CreateHashStore() error {
 }
 
 func (uc *UniformHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
+	return uc.openHashStorePrivate()
+}
+
+func (uc *UniformHashStoreCreator) openHashStorePrivate() (*UniformHashStore, error) {
 	if !uc.HashStoreExists() {
 		return nil, errors.New("Hash store (folder) does not exist")
 	}
 	store := UniformHashStore{}
 	store.folderPath = uc.folderPath()
 	store.hashDivider = uc.hashDivider
-	store.NumberedFolders = numberedfolders.NewNumberedFolders(0, uc.digitsPerFolder)
+	store.numberedFolders = numberedfolders.NewNumberedFolders(0, uc.digitsPerFolder)
 
 	file, err := os.OpenFile(uc.hashFilePath(), os.O_RDWR, 0755)
 	if err != nil {
@@ -99,16 +109,13 @@ func (uc *UniformHashStoreCreator) OpenHashStoreReadOnly() (HashReader, error) {
 }
 
 type UniformHashStore struct {
-	hashDivider uint64
-	folderPath  string
-	numberedfolders.NumberedFolders
-	hashFile *wordfile.HashFile
+	hashDivider     uint64
+	folderPath      string
+	numberedFolders numberedfolders.NumberedFolders
+	hashFile        *wordfile.HashFile
 }
 
-func (us *UniformHashStore) folderPathFilePathForHash(hash *Sha256) (string, string) {
-	hashLSBs := binary.LittleEndian.Uint64(hash[0:8])
-	dividedHash := hashLSBs / us.hashDivider
-	folders, filename, _ := us.NumberedFolders.NumberToFoldersAndFile(int64(dividedHash))
+func (us *UniformHashStore) folderPathFilePathFromFoldersFilename(folders string, filename string) (string, string) {
 	sep := string(os.PathSeparator)
 	if folders == "" {
 		return us.folderPath,
@@ -117,6 +124,13 @@ func (us *UniformHashStore) folderPathFilePathForHash(hash *Sha256) (string, str
 		return us.folderPath + sep + folders,
 			us.folderPath + sep + folders + sep + filename + ".idx"
 	}
+}
+
+func (us *UniformHashStore) folderPathFilePathForHash(hash *Sha256) (string, string) {
+	hashLSBs := binary.LittleEndian.Uint64(hash[0:8])
+	dividedHash := hashLSBs / us.hashDivider
+	folders, filename, _ := us.numberedFolders.NumberToFoldersAndFile(int64(dividedHash))
+	return us.folderPathFilePathFromFoldersFilename(folders, filename)
 }
 
 func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {

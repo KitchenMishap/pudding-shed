@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
-	"github.com/KitchenMishap/pudding-shed/justhashes"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 func main() {
@@ -12,7 +12,9 @@ func main() {
 	// err := jobs.SeveralYearsParallel(16, "delegated")
 	// err := jobs.SeveralYearsParallel(4, "delegated")
 
-	err := justhashes.JustHashes("F:/Data/JustHashes", 863000)
+	//err := justhashes.JustHashes("F:/Data/JustHashes", 863000)
+
+	err := indexedhashes.CreateHashIndexFiles()
 
 	if err != nil {
 		println(err.Error())
