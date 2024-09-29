@@ -126,10 +126,14 @@ func (us *UniformHashStore) folderPathFilePathFromFoldersFilename(folders string
 	}
 }
 
-func (us *UniformHashStore) folderPathFilePathForHash(hash *Sha256) (string, string) {
+func (us *UniformHashStore) addressForHash(hash *Sha256) uint64 {
 	hashLSBs := binary.LittleEndian.Uint64(hash[0:8])
 	dividedHash := hashLSBs / us.hashDivider
-	folders, filename, _ := us.numberedFolders.NumberToFoldersAndFile(int64(dividedHash))
+	return dividedHash
+}
+
+func (us *UniformHashStore) folderPathFilePathForAddress(address uint64) (string, string) {
+	folders, filename, _ := us.numberedFolders.NumberToFoldersAndFile(int64(address))
 	return us.folderPathFilePathFromFoldersFilename(folders, filename)
 }
 
@@ -145,7 +149,8 @@ func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {
 	binary.LittleEndian.PutUint64(toAppend[0:8], uint64(newIndex))
 	copy(toAppend[8:40], hash[0:32])
 
-	folderPath, filePath := us.folderPathFilePathForHash(hash)
+	address := us.addressForHash(hash)
+	folderPath, filePath := us.folderPathFilePathForAddress(address)
 	err = os.MkdirAll(folderPath, 0755)
 	if err != nil {
 		return -1, err
@@ -166,7 +171,8 @@ func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {
 }
 
 func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
-	_, filePath := us.folderPathFilePathForHash(hash)
+	address := us.addressForHash(hash)
+	_, filePath := us.folderPathFilePathForAddress(address)
 
 	contents, err := os.ReadFile(filePath)
 	if err != nil {
