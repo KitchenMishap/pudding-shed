@@ -15,6 +15,7 @@ func NewMemBlocker(maxBytes uint64) *MemBlocker {
 type MemBlocker struct {
 	maxBytes           uint64 // The number of process allocated bytes above which we must wait
 	memStats           runtime.MemStats
+	lastHeapSize       uint64
 	someBytesFreedCond *sync.Cond
 }
 
@@ -45,5 +46,10 @@ func (mb *MemBlocker) MemoryWasFreed() {
 // this program is using
 func (mb *MemBlocker) countAllocatedMemory() uint64 {
 	runtime.ReadMemStats(&mb.memStats)
+	mb.lastHeapSize = mb.memStats.HeapAlloc
 	return mb.memStats.HeapAlloc
+}
+
+func (mb *MemBlocker) LastHeapSize() uint64 {
+	return mb.lastHeapSize
 }

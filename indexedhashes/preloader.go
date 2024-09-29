@@ -93,6 +93,50 @@ func (es *entryStore) addNewList(address uint64, list *hashEntriesList) {
 	es.mapSizeGroups[size][address] = true // true is dummy to make a set out of a map
 }
 
+func (es *entryStore) biggestListSize() int {
+	es.lock.Lock()
+	defer es.lock.Unlock()
+	biggest := 0
+	for k, _ := range es.mapSizeGroups {
+		if len(es.mapSizeGroups[k]) > 0 { // Shouldn't have to do this test!
+			if k > biggest {
+				biggest = k
+			}
+		}
+	}
+	return biggest
+}
+
+func (es *entryStore) extractAListOfSize(listSize int) *hashEntriesList {
+	es.lock.Lock()
+	defer es.lock.Unlock()
+	//fmt.Println("extracting a list of size ", listSize)
+	addrMap, exists := es.mapSizeGroups[listSize]
+	if !exists {
+		return nil
+	}
+	//fmt.Println("There are ", len(addrMap), " lists of that size ")
+	if len(addrMap) == 0 {
+		return nil
+	}
+	for address, _ := range addrMap {
+		// Extract
+		entriesList, exists := es.mapAddressToHashEntries[address]
+		if !exists {
+			panic("address in addrMap but not in mapAddressToHashEntries")
+		}
+		delete(es.mapAddressToHashEntries, address)
+		if entriesList == nil {
+			panic("Whoops")
+		}
+		// Also need to delete from the map based on count
+		delete(es.mapSizeGroups[listSize], address)
+		return entriesList
+		// We only wanted the first one in the map
+	}
+	return nil
+}
+
 // The file store is used in combination with the files themselves.
 // The object here merely records whether the files are empty
 type fileStoreBits struct {
@@ -222,5 +266,70 @@ func (pl *UniformHashPreLoader) delegateEntryToStores(entry hashEntry, address u
 			pl.memStore.addNewList(address, newList)
 		}
 	}
+	return nil
+}
+
+func (pl *UniformHashPreLoader) extractSomeEntriesStoresToFiles(count int) (int, error) {
+	for i := 0; i < count; i++ {
+		achieved, err := pl.extractEntryFromStoresToFile()
+		if err != nil {
+			return i, err
+		}
+		if !achieved {
+			return i, nil
+		} // No point carrying on if we couldn't do any
+	}
+	return count, nil
+}
+
+func (pl *UniformHashPreLoader) extractEntryFromStoresToFile() (bool, error) {
+	// Decide the store that has the biggest available list
+	biggestInMem := pl.memStore.biggestListSize()
+	biggestInCache := pl.cacheStore.biggestListSize()
+	if biggestInMem > biggestInCache {
+		//fmt.Println("Finding the list of advertised size ", biggestInMem)
+		aBigList := pl.memStore.extractAListOfSize(biggestInMem)
+		if aBigList == nil {
+			//fmt.Println("Couldn't find it!")
+			return false, nil
+		}
+		err := pl.sendToFile(aBigList)
+		if err == nil {
+			return true, nil
+		} else {
+			return false, err
+		}
+	} else if biggestInCache > 0 {
+		aBigList := pl.cacheStore.extractAListOfSize(biggestInCache)
+		if aBigList == nil {
+			return false, nil
+		}
+		err := pl.sendToFile(aBigList)
+		if err == nil {
+			return true, nil
+		} else {
+			return false, err
+		}
+	} else {
+		return false, nil
+	}
+}
+
+func (pl *UniformHashPreLoader) sendToFile(hl *hashEntriesList) error {
+	// Construct file into memory first
+	count := len(hl.hashEntries)
+	bytes := make([]byte, 40*count)
+	for i := 0; i < count; i++ {
+		binary.LittleEndian.PutUint64(bytes[40*i:40*i+8], hl.hashEntries[i].index)
+		copy(bytes[40*i+8:40*i+40], hl.hashEntries[i].hash[:])
+	}
+
+	_, filePath := pl.uniform.folderPathFilePathForAddress(hl.address)
+	err := os.WriteFile(filePath, bytes, 0755)
+	if err != nil {
+		return err
+	}
+	//fmt.Println("Written file: ", filePath)
+	pl.fileStore.setFileNotEmpty(hl.address)
 	return nil
 }
