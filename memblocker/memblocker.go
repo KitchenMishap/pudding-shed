@@ -19,6 +19,11 @@ type MemBlocker struct {
 	someBytesFreedCond *sync.Cond
 }
 
+func (mb *MemBlocker) IsThereFreeMemory() bool {
+	allocatedBytes := mb.countAllocatedMemory()
+	return allocatedBytes < mb.maxBytes
+}
+
 // WaitForSpareMemory waits until this process's allocated bytes on the heap falls below maxBytes
 func (mb *MemBlocker) WaitForSpareMemory() {
 	mb.someBytesFreedCond.L.Lock()

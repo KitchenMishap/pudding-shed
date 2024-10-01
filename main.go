@@ -14,8 +14,8 @@ func main() {
 
 	//err := justhashes.JustHashes("F:/Data/JustHashes", 863000)
 
-	// err := indexedhashes.CreateHashEmptyFiles()
-	err := indexedhashes.CreateHashIndexFiles()
+	err := indexedhashes.CreateHashEmptyFiles()
+	//err := indexedhashes.CreateHashIndexFiles()
 
 	if err != nil {
 		println(err.Error())

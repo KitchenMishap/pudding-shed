@@ -244,7 +244,7 @@ func (pl *UniformHashPreLoader) dividedAddressForHash(hash *Sha256) uint64 {
 }
 
 func (pl *UniformHashPreLoader) delegateEntryToStores(entry hashEntry, address uint64) error {
-	pl.memBlocker.WaitForSpareMemory()
+	//pl.memBlocker.WaitForSpareMemory()	 CALLER HAS TO DO THIS NOW!
 	// Is there an entry for address in Mem?
 	if pl.memStore.addIfListed(address, entry) {
 		// We've put it in mem with its friends

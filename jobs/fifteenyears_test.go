@@ -9,6 +9,13 @@ import (
 	"testing"
 )
 
+func TestIndexHashes(t *testing.T) {
+	err := indexedhashes.CreateHashIndexFiles()
+	if err != nil {
+		fmt.Println("Error creating hash index file")
+	}
+}
+
 func TestFiveYearsDelegated(t *testing.T) {
 	SeveralYearsParallel(4, "delegated")
 }
