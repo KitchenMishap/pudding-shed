@@ -11,7 +11,7 @@ import (
 )
 
 func CreateHashIndexFiles() error {
-	creator := newUniformHashStoreCreatorPrivate(1000000000, "F:/Data/Hashes", "TransHashes", 2)
+	creator := NewUniformHashStoreCreatorPrivate(1000000000, "F:/Data/Hashes", "TransHashes", 2)
 	hs, err := creator.openHashStorePrivate()
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func CreateHashIndexFiles() error {
 }
 
 func CreateHashEmptyFiles() error {
-	creator := newUniformHashStoreCreatorPrivate(1000000000, "F:/Data/Hashes", "TransHashes", 2)
+	creator := NewUniformHashStoreCreatorPrivate(1000000000, "F:/Data/Hashes", "TransHashes", 2)
 	err := creator.CreateHashStore()
 	if err != nil {
 		return err

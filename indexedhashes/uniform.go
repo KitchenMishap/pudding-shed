@@ -12,18 +12,23 @@ import (
 
 func NewUniformHashStoreCreator(hashCountEstimate int64,
 	folder string, name string, digitsPerFolder int) HashStoreCreator {
-	return newUniformHashStoreCreatorPrivate(hashCountEstimate,
+	return NewUniformHashStoreCreatorPrivate(hashCountEstimate,
 		folder, name, digitsPerFolder)
 }
 
-func newUniformHashStoreCreatorPrivate(hashCountEstimate int64,
+func NewUniformHashStoreCreatorPrivate(hashCountEstimate int64,
 	folder string, name string, digitsPerFolder int) *UniformHashStoreCreator {
 	result := UniformHashStoreCreator{}
 	result.folder = folder
 	result.name = name
 	result.digitsPerFolder = digitsPerFolder
 
-	const targetEntriesPerFile = 169 // Suitable for a filesize of approaching 8KB
+	// Poisson distribution for lambda = 75:
+	// https://homepage.divms.uiowa.edu/~mbognar/applets/pois.html
+	// P(X >= 102) = 0.00175
+	// So for a 102-entry system, with targetEntriesPerFile = 75, 0.175% of entries will end up in overflow files
+	// (102*40 is about 4096 with 16 bytes spare; 4096 is a typical hard drive allocation unit)
+	const targetEntriesPerFile = 75
 	targetNumFiles := hashCountEstimate / targetEntriesPerFile
 	possibleHashes := math.Pow(2, 64) // Because taking 64 LS bits of hash
 	result.hashDivider = uint64(possibleHashes / float64(targetNumFiles))
