@@ -75,9 +75,10 @@ func NewConcreteAppendableChainCreator(
 
 	var err error = nil
 
+	const gigabytesMem = 1
 	if useUniformHashStores {
-		result.blockHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
-			1000000, result.blocksFolder, "BlockHashes", 2)
+		result.blockHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
+			result.blocksFolder, "BlockHashes", 1000000, 2, gigabytesMem)
 	} else {
 		result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
 			"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3, useMemFileForHashes, useAppendOptimized)
@@ -87,10 +88,10 @@ func NewConcreteAppendableChainCreator(
 	}
 
 	if useUniformHashStores {
-		result.transactionHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
-			2000000000, result.transactionsFolder, "TransactionHashes", 2)
-		result.addressHashStoreCreator = indexedhashes.NewUniformHashStoreCreator(
-			4000000000, result.addressesFolder, "AddressHashes", 2)
+		result.transactionHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
+			result.transactionsFolder, "TransactionHashes", 2000000000, 2, gigabytesMem)
+		result.addressHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
+			result.addressesFolder, "AddressHashes", 4000000000, 2, gigabytesMem)
 
 	} else if useMemForTransAddrHashes {
 		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(

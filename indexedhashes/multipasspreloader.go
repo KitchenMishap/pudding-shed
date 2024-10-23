@@ -45,12 +45,12 @@ type MultipassPreloader struct {
 	numberedFolders numberedfolders.NumberedFolders
 }
 
-func NewMultipassPreloader(creator *UniformHashStoreCreator, bytesPerPass int64, fileDigits int, folderDigits int) *MultipassPreloader {
+func NewMultipassPreloader(creator *UniformHashStoreCreator, bytesPerPass int64) *MultipassPreloader {
 	result := MultipassPreloader{}
 	result.creator = creator
 	result.bytesPerPass = bytesPerPass
 	result.binStartsFile = nil
-	result.numberedFolders = numberedfolders.NewNumberedFolders(fileDigits, folderDigits)
+	result.numberedFolders = numberedfolders.NewNumberedFolders(0, creator.params.DigitsPerFolder)
 	return &result
 }
 
@@ -136,7 +136,7 @@ func (spd *SinglePassDetails) ReadIn(mp *MultipassPreloader) error {
 
 func (spd *SinglePassDetails) dealWithOneHash(ih *indexHash, mp *MultipassPreloader) {
 	LSWord := binary.LittleEndian.Uint64(ih.hash[0:8])
-	address := int64(LSWord / mp.creator.hashDivider)
+	address := int64(LSWord / mp.creator.params.HashDivider)
 	if address < spd.firstAddress || address >= spd.lastAddressPlusOne {
 		return // Not interested. Will be dealt with in a different pass.
 	}
@@ -213,7 +213,7 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 }
 
 func (mp *MultipassPreloader) CreateInitialFiles() error {
-	biggestAddressPlusOne := uint64(math.Pow(2, 64) / float64(mp.creator.hashDivider))
+	biggestAddressPlusOne := uint64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
 	bsFileSize := uint64(4096) * biggestAddressPlusOne
 
 	sep := string(os.PathSeparator)
@@ -243,7 +243,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		return err
 	}
 
-	biggestAddressPlusOne := int64(math.Pow(2, 64) / float64(mp.creator.hashDivider))
+	biggestAddressPlusOne := int64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
 	bytesPerBin := int64(4096)
 	binsPerPass := mp.bytesPerPass / bytesPerBin
 	addressesPerPass := binsPerPass

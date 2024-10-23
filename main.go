@@ -22,11 +22,23 @@ func main() {
 	//err := indexedhashes.CreateHashEmptyFiles()
 	//err := indexedhashes.CreateHashIndexFiles()
 
-	uhc := indexedhashes.NewUniformHashStoreCreatorPrivate(1000000000,
-		"F:/Data/UniformHashes", "Transactions", 2)
-	gigabyte := int64(1024 * 1024 * 1024)
-	mp := indexedhashes.NewMultipassPreloader(uhc, 1*gigabyte, 0, 2)
-	err := mp.IndexTheHashes()
+	const hashCountEstimate = 1000000000
+	const digitsPerFolder = 2
+	const gigabytesMem = 1
+
+	//uhc, _ := indexedhashes.NewUniformHashStoreCreatorAndPreloader(
+	//	"F:/Data/UniformHashes", "Transactions",
+	//	hashCountEstimate, digitsPerFolder, gigabytesMem)
+	//err := uhc.CreateHashStore()
+
+	_, mp, err := indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
+		"F:/Data/UniformHashes", "Transactions", gigabytesMem)
+	if err != nil {
+		println(err.Error())
+		println("There was an error :-O")
+	} else {
+		err = mp.IndexTheHashes()
+	}
 
 	if err != nil {
 		println(err.Error())

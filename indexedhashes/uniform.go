@@ -2,18 +2,48 @@ package indexedhashes
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/memfile"
 	"github.com/KitchenMishap/pudding-shed/numberedfolders"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
+	"io"
 	"math"
 	"os"
 )
 
-func NewUniformHashStoreCreator(hashCountEstimate int64,
-	folder string, name string, digitsPerFolder int) HashStoreCreator {
-	return NewUniformHashStoreCreatorPrivate(hashCountEstimate,
+func NewUniformHashStoreCreatorAndPreloader(
+	folder string, name string,
+	hashCountEstimate int64, digitsPerFolder int,
+	gigabytesMem int64) (HashStoreCreator, *MultipassPreloader) {
+	creator := NewUniformHashStoreCreatorPrivate(hashCountEstimate,
 		folder, name, digitsPerFolder)
+	preloader := NewMultipassPreloader(creator, 1024*1024*1024*gigabytesMem)
+	return creator, preloader
+}
+
+func NewUniformHashStoreCreatorAndPreloaderFromFile(
+	folder string, name string, gigabytesMem int64) (HashStoreCreator, *MultipassPreloader, error) {
+	creator := UniformHashStoreCreator{}
+	creator.folder = folder
+	creator.name = name
+	sep := string(os.PathSeparator)
+	paramsFilePath := folder + sep + name + sep + "Params.json"
+	paramsFile, err := os.Open(paramsFilePath)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer paramsFile.Close()
+	bytes, err := io.ReadAll(paramsFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = json.Unmarshal(bytes, &creator.params)
+	if err != nil {
+		return nil, nil, err
+	}
+	preloader := NewMultipassPreloader(&creator, 1024*1024*1024*gigabytesMem)
+	return &creator, preloader, nil
 }
 
 func NewUniformHashStoreCreatorPrivate(hashCountEstimate int64,
@@ -21,7 +51,7 @@ func NewUniformHashStoreCreatorPrivate(hashCountEstimate int64,
 	result := UniformHashStoreCreator{}
 	result.folder = folder
 	result.name = name
-	result.digitsPerFolder = digitsPerFolder
+	result.params.DigitsPerFolder = digitsPerFolder
 
 	// Poisson distribution for lambda = 75:
 	// https://homepage.divms.uiowa.edu/~mbognar/applets/pois.html
@@ -31,16 +61,20 @@ func NewUniformHashStoreCreatorPrivate(hashCountEstimate int64,
 	const targetEntriesPerFile = 75
 	targetNumFiles := hashCountEstimate / targetEntriesPerFile
 	possibleHashes := math.Pow(2, 64) // Because taking 64 LS bits of hash
-	result.hashDivider = uint64(possibleHashes / float64(targetNumFiles))
+	result.params.HashDivider = uint64(possibleHashes / float64(targetNumFiles))
 
 	return &result
 }
 
+type UniformHashStoreParams struct {
+	HashDivider     uint64 `json:"hashDivider"`
+	DigitsPerFolder int    `json:"digitsPerFolder"`
+}
+
 type UniformHashStoreCreator struct {
-	folder          string
-	name            string
-	digitsPerFolder int
-	hashDivider     uint64
+	folder string
+	name   string
+	params UniformHashStoreParams
 }
 
 func (uc *UniformHashStoreCreator) folderPath() string {
@@ -75,7 +109,23 @@ func (uc *UniformHashStoreCreator) CreateHashStore() error {
 	}
 	file, err := os.OpenFile(uc.hashFilePath(), os.O_CREATE, 0755)
 	defer file.Close()
-	return err
+	if err != nil {
+		return err
+	}
+
+	sep := string(os.PathSeparator)
+	fileParams, err := os.OpenFile(uc.folderPath()+sep+"Params.json", os.O_CREATE, 0755)
+	defer fileParams.Close()
+	if err != nil {
+		return err
+	}
+	byts, err := json.Marshal(uc.params)
+	_, err = fileParams.Write(byts)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (uc *UniformHashStoreCreator) OpenHashStore() (HashReadWriter, error) {
@@ -88,8 +138,8 @@ func (uc *UniformHashStoreCreator) openHashStorePrivate() (*UniformHashStore, er
 	}
 	store := UniformHashStore{}
 	store.folderPath = uc.folderPath()
-	store.hashDivider = uc.hashDivider
-	store.numberedFolders = numberedfolders.NewNumberedFolders(0, uc.digitsPerFolder)
+	store.hashDivider = uc.params.HashDivider
+	store.numberedFolders = numberedfolders.NewNumberedFolders(0, uc.params.DigitsPerFolder)
 
 	file, err := os.OpenFile(uc.hashFilePath(), os.O_RDWR, 0755)
 	if err != nil {
