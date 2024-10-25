@@ -1,9 +1,11 @@
 package indexedhashes
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/KitchenMishap/pudding-shed/memfile"
 	"github.com/KitchenMishap/pudding-shed/numberedfolders"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -23,7 +25,7 @@ func NewUniformHashStoreCreatorAndPreloader(
 }
 
 func NewUniformHashStoreCreatorAndPreloaderFromFile(
-	folder string, name string, gigabytesMem int64) (HashStoreCreator, *MultipassPreloader, error) {
+	folder string, name string, gigabytesMem int64) (*UniformHashStoreCreator, *MultipassPreloader, error) {
 	creator := UniformHashStoreCreator{}
 	creator.folder = folder
 	creator.name = name
@@ -85,6 +87,11 @@ func (uc *UniformHashStoreCreator) folderPath() string {
 func (uc *UniformHashStoreCreator) hashFilePath() string {
 	sep := string(os.PathSeparator)
 	return uc.folderPath() + sep + "Hashes.hsh"
+}
+
+func (uc *UniformHashStoreCreator) binStartsFilePath() string {
+	sep := string(os.PathSeparator)
+	return uc.folderPath() + sep + "BinStarts.bst"
 }
 
 func (uc *UniformHashStoreCreator) HashStoreExists() bool {
@@ -155,6 +162,11 @@ func (uc *UniformHashStoreCreator) openHashStorePrivate() (*UniformHashStore, er
 		return nil, err
 	}
 	store.hashFile = wordfile.NewHashFile(underlying, size/32)
+	file, err = os.OpenFile(uc.binStartsFilePath(), os.O_RDWR, 0755)
+	if err != nil {
+		return nil, err
+	}
+	store.binStartsFile = file
 	return &store, nil
 }
 
@@ -168,16 +180,17 @@ type UniformHashStore struct {
 	folderPath      string
 	numberedFolders numberedfolders.NumberedFolders
 	hashFile        *wordfile.HashFile
+	binStartsFile   *os.File
 }
 
 func (us *UniformHashStore) folderPathFilePathFromFoldersFilename(folders string, filename string) (string, string) {
 	sep := string(os.PathSeparator)
 	if folders == "" {
 		return us.folderPath,
-			us.folderPath + sep + filename + ".idx"
+			us.folderPath + sep + "BinOverflows" + sep + filename + ".ovf"
 	} else {
 		return us.folderPath + sep + folders,
-			us.folderPath + sep + folders + sep + filename + ".idx"
+			us.folderPath + sep + "BinOverflows" + sep + folders + sep + filename + ".ovf"
 	}
 }
 
@@ -227,35 +240,43 @@ func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {
 
 func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	address := us.addressForHash(hash)
-	_, filePath := us.folderPathFilePathForAddress(address)
 
-	contents, err := os.ReadFile(filePath)
+	// First look in BinStarts.bst
+	offset := address * 4096
+	byts := [4096]byte{}
+	_, err := us.binStartsFile.ReadAt(byts[:], int64(offset))
 	if err != nil {
-		return -1, nil
-	} // Just means hash doesn't exists; not an error
-
-	spare := len(contents) % 40
-	if spare != 0 {
-		return -1, errors.New("indices file is not a multiple of 40 bytes")
+		return -1, err
 	}
-	entries := len(contents) / 40
+	bin := binStart{}
+	bin.FromBytes(&byts)
 
-	for i := 0; i < entries; i++ {
-		offset := i * 40
-		byteOffset := int(-1)
-		for byteOffset = 0; byteOffset < 32; byteOffset++ {
-			if contents[offset+8+byteOffset] != hash[byteOffset] {
-				// Not a match
-				break
-			}
-			if byteOffset == 31 {
-				// A match, read the index
-				u64 := binary.LittleEndian.Uint64(contents[offset : offset+8])
-				return int64(u64), nil
+	entries := bin.entryCount
+	if entries > 102 {
+		entries = 102 // Only the first 102 are in the binstarts file
+	}
+	for i := int64(0); i < entries; i++ {
+		if *hash == bin.indexHashes[i].hash {
+			return bin.indexHashes[i].index, nil
+		}
+	}
+
+	// Second look in overflow file
+	if bin.entryCount > 102 {
+		// Look in the overflow files
+		_, filepath := us.folderPathFilePathForAddress(address)
+		overflowFile, err := os.ReadFile(filepath)
+		if err != nil {
+			return -1, err
+		}
+		for i := int64(0); i < bin.entryCount-102; i++ {
+			if bytes.Equal((*hash)[:], overflowFile[8+i*40:8+i*40+32]) {
+				return int64(binary.LittleEndian.Uint64(overflowFile[i*40 : i*40+8])), nil
 			}
 		}
 	}
-	return -1, nil // No hash found, but not an error
+
+	return -1, nil
 }
 
 func (us *UniformHashStore) GetHashAtIndex(index int64, hash *Sha256) error {
@@ -269,9 +290,59 @@ func (us *UniformHashStore) CountHashes() (int64, error) {
 }
 
 func (us *UniformHashStore) Close() error {
-	return us.hashFile.Close()
+	err := us.hashFile.Close()
+	if err != nil {
+		return err
+	}
+	err = us.binStartsFile.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (us *UniformHashStore) Sync() error {
 	return us.hashFile.Sync()
+}
+
+func (us *UniformHashStore) Test() (bool, error) {
+	count, err := us.CountHashes()
+	if err != nil {
+		return false, err
+	}
+	// Percentage tested: 67.10946496250655
+	// Repeated hash at  729158472 ,  -1
+	// Hash mismatch at  729158472 ,  -1
+	//for i := int64(729158472); i < count; i++ {
+	for i := int64(0); i < count; i++ {
+		hash := Sha256{}
+		err := us.GetHashAtIndex(i, &hash)
+		if err != nil {
+			return false, err
+		}
+
+		index, err := us.IndexOfHash(&hash)
+		if err != nil {
+			return false, err
+		}
+		// Because we support repeated hashes, index might not be equal to i
+		// But mention it anyway
+		if index != i {
+			fmt.Println("Repeated hash at ", i, ", ", index)
+		}
+		hash2 := Sha256{}
+		err = us.GetHashAtIndex(index, &hash2)
+		for j := 0; j < 32; j++ {
+			if hash[j] != hash2[j] {
+				fmt.Println("Hash mismatch at ", i, ", ", index)
+				return false, nil
+			}
+		}
+
+		if i%(count/10000) == 0 {
+			percent := 100.0 * float64(i) / float64(count)
+			fmt.Println("Percentage tested:", percent)
+		}
+	}
+	return true, nil
 }

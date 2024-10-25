@@ -55,7 +55,7 @@ func NewMultipassPreloader(creator *UniformHashStoreCreator, bytesPerPass int64)
 }
 
 type indexHash struct {
-	index uint64
+	index int64
 	hash  Sha256
 }
 
@@ -69,8 +69,17 @@ func (bs *binStart) ToBytes(bytes *[4096]byte) {
 	binary.LittleEndian.PutUint64(bytes[0:8], uint64(bs.entryCount))
 	binary.LittleEndian.PutUint64(bytes[8:16], uint64(bs.reserved))
 	for i := 0; i < 102; i++ {
-		binary.LittleEndian.PutUint64(bytes[16+i*40:16+i*40+8], bs.indexHashes[i].index)
+		binary.LittleEndian.PutUint64(bytes[16+i*40:16+i*40+8], uint64(bs.indexHashes[i].index))
 		copy(bytes[16+8+i*40:16+8+i*40+32], bs.indexHashes[i].hash[:])
+	}
+}
+
+func (bs *binStart) FromBytes(bytes *[4096]byte) {
+	bs.entryCount = int64(binary.LittleEndian.Uint64(bytes[0:8]))
+	bs.reserved = int64(binary.LittleEndian.Uint64(bytes[8:16]))
+	for i := 0; i < 102; i++ {
+		bs.indexHashes[i].index = int64(binary.LittleEndian.Uint64(bytes[16+i*40 : 16+i*40+8]))
+		copy(bs.indexHashes[i].hash[:], bytes[16+8+i*40:16+8+i*40+32])
 	}
 }
 
@@ -128,6 +137,7 @@ func (spd *SinglePassDetails) ReadIn(mp *MultipassPreloader) error {
 		for index := 0; index < hashCount; index++ {
 			copy(ih.hash[:], chunk[index*32:index*32+32])
 			spd.dealWithOneHash(&ih, mp)
+			ih.index++
 		}
 		nBytes, _ = hashesFile.Read(chunk)
 	}
@@ -192,7 +202,7 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 			if err != nil {
 				return err
 			}
-			file, err := os.Create(folderPath + sep + filename)
+			file, err := os.Create(folderPath + sep + filename + ".ovf")
 			if err != nil {
 				return err
 			}
@@ -200,7 +210,7 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 			for i := 0; i < len(element); i++ {
 				ih := element[i]
 				bytes := make([]byte, 40)
-				binary.LittleEndian.PutUint64(bytes[0:8], ih.index)
+				binary.LittleEndian.PutUint64(bytes[0:8], uint64(ih.index))
 				copy(bytes[8:8+32], ih.hash[:])
 				_, err = file.Write(bytes)
 				if err != nil {
