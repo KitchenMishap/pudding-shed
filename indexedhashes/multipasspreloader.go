@@ -10,32 +10,32 @@ import (
 	"sync"
 )
 
-// The file formats for UniformHashStore2 are as follows.
+// The file formats for UniformHashStore are as follows.
 // All file contents are raw binary.
 
 // The file Hashes.hsh contains the raw binary hashes, 32 bytes each. This file is an input to MultipassPreloader.
 // The hashes in this file (and elsewhere) are LittleEndian: LSBs first.
 // For block hashes, which due to proof of work start with zeroes, these zeroes are at the END of each 32 bytes.
 // This means that the first 8 bytes can be treated as pseudo-random, and can be used to generate
-// addresses so that each (hash, index) pair can go in a bin identified by the address.
+// addresses so that each index can go in a bin identified by the address.
 // Multiple different hashes, so long as they correspond to the same address, therefore end up in the same bin.
 
 // The file BinStarts.bst is a fixed size large structured file split sequentially into bins of a fixed size.
-// The fixed bin size is intended to correspond to the file system's file allocation size (usually 4096 bytes).
+// The fixed bin size WAS intended to correspond to the file system's file allocation size, but this is no longer true.
 // The number of bins is fixed and optimized based on a rough estimate (not a maximum) of the number of hashes expected.
-// A bin starts with an 8 byte count of the number of hashes in the bin. Despite the 8 bytes, this number
+// A bin starts with an 8 byte count of the number of indices in the bin. Despite the 8 bytes, this number
 // is typically less than 100, but CAN be more than 102.
-// Then 8 bytes reserved (zero). There are then 102 slots of 40 byte entries.
-// Unused entries at the end are zeroed. So a bin is always 8(count) + 8(reserved) + 102*40(entries) = 4096 bytes.
-// A 40 byte entry consists of an 8 byte index for the hash (ie the order the hash appears in Hashes.hsh), followed
-// by the 32 byte hash.
+// Then 8 bytes reserved (zero). There are then 102 slots of 8 byte entries.
+// Unused entries at the end are zeroed. So a bin is always 8(count) + 8(reserved) + 102*8(entries) = 832 bytes.
+// An entry consists of an 8 byte index for the hash (ie the order the hash appears in Hashes.hsh).
+// The hash itself is NO LONGER stored in an entry - instead use the index to refer back into the original Hashes.hsh.
 // If the count specified in the first 8 bytes is more than 102, then there will be files for overflow in BinOverflows/.
 
 // BinOverflows/ files are small files in a numbered folder structure based on the bin address.
-// Each file is a multiple of 40 byte entries, the first entry in the file being slot 102, and with the
-// same (index, hash) format as above - with no count or reserved or zero padding (the file can be any multiple of 40)
+// Each file is a multiple of 8 byte entries, the first entry in the file being slot 102, and with the
+// same (index) format as above - with no count or reserved or zero padding (the file can be any multiple of 8)
 
-// MultipassPreloader is a system that preloads a UniformHashStore2 fileset.
+// MultipassPreloader is a system that preloads a UniformHashStore fileset.
 // To minimize memory usage, it reads the hashes file multiple times, each time
 // concentrating on a different set of address bins (the set is known as a dumpster)
 type MultipassPreloader struct {
@@ -56,7 +56,7 @@ func NewMultipassPreloader(creator *UniformHashStoreCreator, bytesPerPass int64)
 
 type indexHash struct {
 	index int64
-	hash  Sha256
+	hash  Sha256 // Hashes are stored whilst in mem, but not in file
 }
 
 type binStart struct {
@@ -65,21 +65,21 @@ type binStart struct {
 	indexHashes [102]indexHash
 }
 
-func (bs *binStart) ToBytes(bytes *[4096]byte) {
+const binStartSize = 8 + 8 + 102*8
+
+func (bs *binStart) ToBytes(bytes *[binStartSize]byte) {
 	binary.LittleEndian.PutUint64(bytes[0:8], uint64(bs.entryCount))
 	binary.LittleEndian.PutUint64(bytes[8:16], uint64(bs.reserved))
 	for i := 0; i < 102; i++ {
-		binary.LittleEndian.PutUint64(bytes[16+i*40:16+i*40+8], uint64(bs.indexHashes[i].index))
-		copy(bytes[16+8+i*40:16+8+i*40+32], bs.indexHashes[i].hash[:])
+		binary.LittleEndian.PutUint64(bytes[16+i*8:16+i*8+8], uint64(bs.indexHashes[i].index))
 	}
 }
 
-func (bs *binStart) FromBytes(bytes *[4096]byte) {
+func (bs *binStart) FromBytes(bytes *[binStartSize]byte) {
 	bs.entryCount = int64(binary.LittleEndian.Uint64(bytes[0:8]))
 	bs.reserved = int64(binary.LittleEndian.Uint64(bytes[8:16]))
 	for i := 0; i < 102; i++ {
-		bs.indexHashes[i].index = int64(binary.LittleEndian.Uint64(bytes[16+i*40 : 16+i*40+8]))
-		copy(bs.indexHashes[i].hash[:], bytes[16+8+i*40:16+8+i*40+32])
+		bs.indexHashes[i].index = int64(binary.LittleEndian.Uint64(bytes[16+i*8 : 16+i*8+8]))
 	}
 }
 
@@ -178,10 +178,10 @@ func (spd *SinglePassDetails) dealWithOneHash(ih *indexHash, mp *MultipassPreloa
 }
 
 func (spd *SinglePassDetails) writeIntoBinStartsFile(mp *MultipassPreloader) error {
-	chunk := [4096]byte{}
+	chunk := [binStartSize]byte{}
 	for index, element := range spd.binStarts {
 		binAddress := spd.firstAddress + int64(index)
-		fileByte := 4096 * binAddress
+		fileByte := binStartSize * binAddress
 		element.ToBytes(&chunk)
 		_, err := mp.binStartsFile.WriteAt(chunk[:], int64(fileByte))
 		if err != nil {
@@ -209,9 +209,8 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 			defer file.Close()
 			for i := 0; i < len(element); i++ {
 				ih := element[i]
-				bytes := make([]byte, 40)
+				bytes := make([]byte, 8)
 				binary.LittleEndian.PutUint64(bytes[0:8], uint64(ih.index))
-				copy(bytes[8:8+32], ih.hash[:])
 				_, err = file.Write(bytes)
 				if err != nil {
 					return err
@@ -224,7 +223,7 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 
 func (mp *MultipassPreloader) CreateInitialFiles() error {
 	biggestAddressPlusOne := uint64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
-	bsFileSize := uint64(4096) * biggestAddressPlusOne
+	bsFileSize := uint64(binStartSize) * biggestAddressPlusOne
 
 	sep := string(os.PathSeparator)
 	bsFilePath := mp.creator.folderPath() + sep + "BinStarts.bst"
@@ -254,7 +253,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 	}
 
 	biggestAddressPlusOne := int64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
-	bytesPerBin := int64(4096)
+	bytesPerBin := int64(binStartSize)
 	binsPerPass := mp.bytesPerPass / bytesPerBin
 	addressesPerPass := binsPerPass
 	passes := 1 + biggestAddressPlusOne/addressesPerPass

@@ -1,7 +1,6 @@
 package indexedhashes
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -242,8 +241,8 @@ func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	address := us.addressForHash(hash)
 
 	// First look in BinStarts.bst
-	offset := address * 4096
-	byts := [4096]byte{}
+	offset := address * binStartSize
+	byts := [binStartSize]byte{}
 	_, err := us.binStartsFile.ReadAt(byts[:], int64(offset))
 	if err != nil {
 		return -1, err
@@ -256,8 +255,14 @@ func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 		entries = 102 // Only the first 102 are in the binstarts file
 	}
 	for i := int64(0); i < entries; i++ {
-		if *hash == bin.indexHashes[i].hash {
-			return bin.indexHashes[i].index, nil
+		rumouredIndex := bin.indexHashes[i].index
+		rumouredHash := Sha256{}
+		err := us.GetHashAtIndex(rumouredIndex, &rumouredHash)
+		if err != nil {
+			return -1, err
+		}
+		if *hash == rumouredHash {
+			return rumouredIndex, nil
 		}
 	}
 
@@ -270,8 +275,14 @@ func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 			return -1, err
 		}
 		for i := int64(0); i < bin.entryCount-102; i++ {
-			if bytes.Equal((*hash)[:], overflowFile[8+i*40:8+i*40+32]) {
-				return int64(binary.LittleEndian.Uint64(overflowFile[i*40 : i*40+8])), nil
+			rumouredIndex := int64(binary.LittleEndian.Uint64(overflowFile[i*8 : i*8+8]))
+			rumouredHash := Sha256{}
+			err := us.GetHashAtIndex(rumouredIndex, &rumouredHash)
+			if err != nil {
+				return -1, err
+			}
+			if *hash == rumouredHash {
+				return rumouredIndex, nil
 			}
 		}
 	}
