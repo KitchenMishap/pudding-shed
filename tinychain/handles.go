@@ -15,7 +15,7 @@ func (hh *HashHeight) Height() int64 {
 	return hh.height
 }
 func (hh *HashHeight) Hash() (indexedhashes.Sha256, error) {
-	return HashOfInt(uint64(hh.height)), nil
+	return indexedhashes.HashOfInt(uint64(hh.height)), nil
 }
 func (hh *HashHeight) HeightSpecified() bool {
 	return true

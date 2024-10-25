@@ -339,7 +339,7 @@ func (us *UniformHashStore) Test() (bool, error) {
 			}
 		}
 
-		if i%(count/10000) == 0 {
+		if i%(count/100) == 0 {
 			percent := 100.0 * float64(i) / float64(count)
 			fmt.Println("Percentage tested:", percent)
 		}

@@ -3,7 +3,6 @@ package jobs
 import (
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
-	"github.com/KitchenMishap/pudding-shed/tinychain"
 	"os"
 	"strconv"
 	"testing"
@@ -37,7 +36,7 @@ func TestMemoryLeak(t *testing.T) {
 		return
 	}
 	for i := uint64(0); i < 100000; i++ {
-		hash := tinychain.HashOfInt(i)
+		hash := indexedhashes.HashOfInt(i)
 		_, err := hs.AppendHash(&hash)
 		if err != nil {
 			fmt.Println(err.Error())
