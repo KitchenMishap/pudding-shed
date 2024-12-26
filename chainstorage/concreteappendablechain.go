@@ -6,6 +6,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
+	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
@@ -75,6 +76,12 @@ func (cac *concreteAppendableChain) GetAsChainReadInterface() chainreadinterface
 
 func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IBlockChain,
 	hBlock chainreadinterface.IBlockHandle) error {
+
+	// === TestPoint ===
+	if testpoints.TestPointBlockEnable && hBlock.HeightSpecified() && hBlock.Height() == testpoints.TestPointBlock {
+		fmt.Println("TESTPOINT: concreteAppendableChain.AppendBlock(", testpoints.TestPointBlock, ")")
+	}
+
 	block, err := blockChain.BlockInterface(hBlock)
 	if err != nil {
 		return err
@@ -92,6 +99,9 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 	blkNum, err := cac.blkHashes.IndexOfHash(&blkHash)
 	if err != nil {
 		return err
+	}
+	if blkNum == -1 {
+		return errors.New("must be able to find index of block hash")
 	}
 	if hBlock.HeightSpecified() && hBlock.Height() != blkNum {
 		panic("cannot append a block out of sequence")

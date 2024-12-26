@@ -54,26 +54,18 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		return err
 	}
 
+	// This object gets blocks from Bitcoin Core one by one, but just holding
+	// the various hashes and nothing else
 	aReaderForHashes := corereader.NewPool(10)
-	// We don't need an indexer when just gathering hashes
-	var aOneBlockChainForHashes = jsonblock.CreateOneBlockChain(aReaderForHashes, nil)
+	var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
 
-	hBlock := aOneBlockChainForHashes.GenesisBlock()
-	block, err := aOneBlockChainForHashes.BlockInterface(hBlock)
-	if err != nil {
-		return err
-	}
-	height := block.Height()
-	transactions := int64(0)
-	for height <= lastBlock {
+	for height := int64(0); height <= lastBlock; height++ {
 		if height%1000 == 0 {
 			t := time.Now()
 			fmt.Println(t.Format("Mon Jan 2 15:04:05"))
-			fmt.Println("Block ", height, " Transaction ", transactions)
-			// The sync is just so we can see
-			// file sizes in explorer during processing
+			fmt.Println("Block ", height)
 			if height%10000 == 0 {
-				err := hc.Sync()
+				err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
 				if err != nil {
 					return err
 				}
@@ -81,32 +73,22 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 				debug.FreeOSMemory()
 			}
 		}
-		err = hc.AppendBlock(aOneBlockChainForHashes, block)
+		block, err := aOneBlockChainForHashes.SwitchBlock(height)
 		if err != nil {
 			hc.Close()
 			return err
 		}
 
-		count, _ := block.TransactionCount()
-		transactions += count
-
-		hBlock, err = aOneBlockChainForHashes.NextBlock(hBlock)
+		err = hc.AppendHashes(block)
 		if err != nil {
-			hc.Close()
 			return err
 		}
-		block, err = aOneBlockChainForHashes.BlockInterface(hBlock)
-		if err != nil {
-			hc.Close()
-			return err
-		}
-		height = block.Height()
 	}
 	blocksCount, transactionsCount, addressesCount, err := hc.CountHashes()
+	hc.Close()
 	if err != nil {
 		return err
 	}
-	hc.Close()
 
 	// SECOND we index the hashes
 
@@ -116,10 +98,19 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	_, apl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", addressesCount, 2, 1)
 	fmt.Println("Indexing the blocks...")
 	err = bpl.IndexTheHashes()
-	fmt.Println("Indexing the blocks...")
+	if err != nil {
+		return err
+	}
+	fmt.Println("Indexing the transactions...")
 	err = tpl.IndexTheHashes()
-	fmt.Println("Indexing the blocks...")
+	if err != nil {
+		return err
+	}
+	fmt.Println("Indexing the addresses...")
 	err = apl.IndexTheHashes()
+	if err != nil {
+		return err
+	}
 	fmt.Println("Done indexing")
 
 	// THIRD we go through the blockchain again, gathering main data this time
@@ -155,13 +146,13 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	aReader := corereader.NewPool(10)
 	var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
 
-	hBlock = aOneBlockChain.GenesisBlock()
-	block, err = aOneBlockChain.BlockInterface(hBlock)
+	hBlock := aOneBlockChain.GenesisBlock()
+	block, err := aOneBlockChain.BlockInterface(hBlock)
 	if err != nil {
 		return err
 	}
-	height = block.Height()
-	transactions = int64(0)
+	height := block.Height()
+	transactions := int64(0)
 	for height <= lastBlock {
 		if height%1000 == 0 {
 			t := time.Now()

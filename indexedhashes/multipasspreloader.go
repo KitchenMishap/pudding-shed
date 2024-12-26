@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/numberedfolders"
+	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"math"
 	"os"
 	"sync"
@@ -145,6 +146,12 @@ func (spd *SinglePassDetails) ReadIn(mp *MultipassPreloader) error {
 }
 
 func (spd *SinglePassDetails) dealWithOneHash(ih *indexHash, mp *MultipassPreloader) {
+	// === TestPoint ===
+	// TestPoint for when inserting nth hash (but hit for nth block, nth transaction, and nth address)
+	if testpoints.TestPointBlockEnable && ih.index == testpoints.TestPointBlock {
+		fmt.Println("TESTPOINT: SinglePassDetails.dealWithOneHash(index = ", testpoints.TestPointBlock, ")")
+	}
+
 	LSWord := binary.LittleEndian.Uint64(ih.hash[0:8])
 	address := int64(LSWord / mp.creator.params.HashDivider)
 	if address < spd.firstAddress || address >= spd.lastAddressPlusOne {
