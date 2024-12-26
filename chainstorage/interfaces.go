@@ -6,11 +6,17 @@ import (
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
-type IAppendableChain interface {
+// Just stores hashes (block, transaction, address) associated with each appended block
+type IAppendableHashesChain interface {
 	AppendBlock(chainreadinterface.IBlockChain, chainreadinterface.IBlockHandle) error
 	Close()
-	GetAsChainReadInterface() chainreadinterface.IBlockChain
 	Sync() error
+	CountHashes() (int64, int64, int64, error)
+}
+
+type IAppendableChain interface {
+	IAppendableHashesChain
+	GetAsChainReadInterface() chainreadinterface.IBlockChain
 	SelfTestTransHashes() error
 }
 
@@ -18,9 +24,16 @@ type IAppendableChain interface {
 // An optional part of an appendable chain that delegates construction of transaction
 // hash indexing to an external actor
 
+type IAppendableHashesChainFactory interface {
+	Exists() bool
+	Create() error
+	Open() (IAppendableHashesChain, error)
+}
+
 type IAppendableChainFactory interface {
 	Exists() bool
 	Create() error
+	CreateFromHashStores() error
 	Open() (IAppendableChain, error)
 	OpenReadOnly() (chainreadinterface.IBlockChain, chainreadinterface.IHandleCreator, IParents, IPrivilegedFiles, error)
 }

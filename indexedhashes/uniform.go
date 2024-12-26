@@ -64,6 +64,12 @@ func NewUniformHashStoreCreatorPrivate(hashCountEstimate int64,
 	possibleHashes := math.Pow(2, 64) // Because taking 64 LS bits of hash
 	result.params.HashDivider = uint64(possibleHashes / float64(targetNumFiles))
 
+	sep := string(os.PathSeparator)
+	fileParams, _ := os.Create(result.folderPath() + sep + "Params.json")
+	defer fileParams.Close()
+	byts, _ := json.Marshal(result.params)
+	_, _ = fileParams.Write(byts)
+
 	return &result
 }
 
@@ -230,8 +236,14 @@ func (us *UniformHashStore) AppendHash(hash *Sha256) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
-	file.Sync()
-	file.Close()
+	err = file.Sync()
+	if err != nil {
+		return -1, err
+	}
+	err = file.Close()
+	if err != nil {
+		return -1, err
+	}
 	file = nil
 
 	return newIndex, nil
@@ -245,6 +257,7 @@ func (us *UniformHashStore) IndexOfHash(hash *Sha256) (int64, error) {
 	byts := [binStartSize]byte{}
 	_, err := us.binStartsFile.ReadAt(byts[:], int64(offset))
 	if err != nil {
+		fmt.Println("Error when: IndexOfHash() reading from ", offset, " of binStartsFile")
 		return -1, err
 	}
 	bin := binStart{}

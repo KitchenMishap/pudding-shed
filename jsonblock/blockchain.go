@@ -124,17 +124,21 @@ func (obc *OneBlockChain) switchBlock(blockHeightRequested int64) (*JsonBlockEss
 		obc.startParsingNextBlock(blockHeightRequested + 1)
 
 		// Gather the transaction hashes, as we'll need to look them up, from now and forevermore
-		err := obc.postJsonGatherTransHashes(obc.currentBlock)
-		if err != nil {
-			return nil, err
+		if obc.transactionIndexer != nil {
+			err := obc.postJsonGatherTransHashes(obc.currentBlock)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Store in each array element (tx, txi, txo), the element's index into that array
 		PostJsonArrayIndicesIntoElements(obc.currentBlock)
 
-		err = obc.postJsonUpdateTransReferences(obc.currentBlock)
-		if err != nil {
-			return nil, err
+		if obc.transactionIndexer != nil {
+			err := obc.postJsonUpdateTransReferences(obc.currentBlock)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Gather a map of the non-essential ints
@@ -287,6 +291,9 @@ func (obc *OneBlockChain) postJsonUpdateTransReferences(block *JsonBlockEssentia
 			sourceTransHeight, err := obc.transactionIndexer.RetrieveTransHashToHeight(&txiPtr.txid)
 			if err != nil {
 				return err
+			}
+			if sourceTransHeight == -1 {
+				return errors.New("Source transaction not found")
 			}
 			sourceBlockHeight, err := obc.transactionIndexer.RetrieveTransHeightToParentBlock(sourceTransHeight)
 			if err != nil {

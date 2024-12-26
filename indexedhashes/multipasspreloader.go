@@ -221,9 +221,13 @@ func (spd *SinglePassDetails) writeOverflowFiles(mp *MultipassPreloader) error {
 	return nil
 }
 
+func BiggestAddressPlusOne(hashDivider uint64) int64 {
+	return int64(math.Pow(2, 64)/float64(hashDivider) + 0.5) // Round to nearest!
+}
+
 func (mp *MultipassPreloader) CreateInitialFiles() error {
-	biggestAddressPlusOne := uint64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
-	bsFileSize := uint64(binStartSize) * biggestAddressPlusOne
+	biggestAddressPlusOne := BiggestAddressPlusOne(mp.creator.params.HashDivider)
+	bsFileSize := int64(binStartSize) * biggestAddressPlusOne
 
 	sep := string(os.PathSeparator)
 	bsFilePath := mp.creator.folderPath() + sep + "BinStarts.bst"
@@ -252,7 +256,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		return err
 	}
 
-	biggestAddressPlusOne := int64(math.Pow(2, 64) / float64(mp.creator.params.HashDivider))
+	biggestAddressPlusOne := BiggestAddressPlusOne(mp.creator.params.HashDivider)
 	bytesPerBin := int64(binStartSize)
 	binsPerPass := mp.bytesPerPass / bytesPerBin
 	addressesPerPass := binsPerPass
@@ -281,7 +285,11 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 			return err
 		}
 	}
-	fmt.Println("Done")
+	err = mp.binStartsFile.Close()
+	if err != nil {
+		return err
+	}
 
+	fmt.Println("Done")
 	return nil
 }

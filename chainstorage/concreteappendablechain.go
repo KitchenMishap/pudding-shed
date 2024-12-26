@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
@@ -85,7 +86,10 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 	if err != nil {
 		return err
 	}
-	blkNum, err := cac.blkHashes.AppendHash(&blkHash)
+
+	// We now assume that all hashes have already been stored and indexed
+	//blkNum, err := cac.blkHashes.AppendHash(&blkHash)
+	blkNum, err := cac.blkHashes.IndexOfHash(&blkHash)
 	if err != nil {
 		return err
 	}
@@ -177,7 +181,9 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 		return -1, err
 	}
 	if !cac.transactionIndexingIsDelegated {
-		transNum, err := cac.trnHashes.AppendHash(&transHash)
+		// We now assume that all hashes have already been stored and indexed
+		//transNum, err := cac.trnHashes.AppendHash(&transHash)
+		transNum, err := cac.trnHashes.IndexOfHash(&transHash)
 		if err != nil {
 			return -1, err
 		}
@@ -201,16 +207,16 @@ func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadi
 		transNum := blkFirstTrans + nthTrans
 		return transNum, nil
 	} else if hTrans.HashSpecified() {
-		sha256, err := hTrans.Hash()
+		_, err := hTrans.Hash()
 		if err != nil {
 			return -1, err
 		}
 		panic("Can't do the following due to duplicate hashes in chain!")
-		transNum, err := cac.RetrieveTransHashToHeight(&sha256)
-		if err != nil {
-			return -1, err
-		}
-		return transNum, nil
+		//transNum, err := cac.RetrieveTransHashToHeight(&sha256)
+		//if err != nil {
+		//	return -1, err
+		//}
+		//return transNum, nil
 	} else {
 		return -1, errors.New("no way to find transaction height")
 	}
@@ -453,26 +459,42 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 	}
 	txoAddressHash := txoAddress.Hash()
 
-	// Have we seen this address before?
-	txoAddressHeight, err := cac.addrHashes.IndexOfHash(&txoAddressHash)
+	// We now assume that hashes of addresses are already stored and indexed.
+
+	// To know whether we've not encountered an address before (when we DO know
+	// that its hash has been stored and indexed), we'll have to check the size
+	// of the addrFirstTxo file.
+
+	// We'll first have to get the height of the address, using its hash
+	addressHeight, err := cac.addrHashes.IndexOfHash(&txoAddressHash)
 	if err != nil {
 		return -1, err
 	}
-	if txoAddressHeight == -1 {
-		// Store the new address hash
-		txoAddressHeight, err = cac.addrHashes.AppendHash(&txoAddressHash)
+	if addressHeight == -1 {
+		return -1, errors.New("hash of address should already be known")
+	}
+	fileCount, err := cac.addrFirstTxo.CountWords()
+	if err != nil {
+		return -1, err
+	}
+	addressEncountered := (fileCount > addressHeight)
+
+	// If we've not encountered an address, this is the first txo that uses it
+	if !addressEncountered {
+		err = cac.addrFirstTxo.WriteWordAt(txoHeight, addressHeight)
 		if err != nil {
 			return -1, err
 		}
-		// This txo is the first txo to use this address, store it in the address
-		cac.addrFirstTxo.WriteWordAt(txoHeight, txoAddressHeight)
 	} else {
 		// We've seen this address before. Add this txo to the address's list of additional txos
-		cac.addrAdditionalTxos.AppendToArray(txoAddressHeight, txoHeight)
+		err = cac.addrAdditionalTxos.AppendToArray(addressHeight, txoHeight)
+		if err != nil {
+			return -1, err
+		}
 	}
 
 	// This txo needs to reference the address height
-	err = cac.txoAddress.WriteWordAt(txoAddressHeight, txoHeight)
+	err = cac.txoAddress.WriteWordAt(addressHeight, txoHeight)
 	if err != nil {
 		return -1, err
 	}
@@ -514,13 +536,7 @@ func (cac *concreteAppendableChain) GetAsDelegatedTransactionIndexer() transacti
 
 // Functions to implement concreteAppendableChain as an IDelegatedTrasactionIndexing
 func (cac *concreteAppendableChain) StoreTransHashToHeight(sha256 *indexedhashes.Sha256, transHeight int64) error {
-	height, err := cac.trnHashes.AppendHash(sha256)
-	if err != nil {
-		return err
-	}
-	if height != transHeight {
-		return errors.New("cannot append transaction hashes out of sequence")
-	}
+	// All hashes are now presumed already stored and indexed. Nothing to do.
 	return nil
 }
 func (cac *concreteAppendableChain) StoreTransHeightToParentBlock(transHeight int64, parentBlockHeight int64) error {
@@ -532,7 +548,11 @@ func (cac *concreteAppendableChain) StoreBlockHeightToFirstTrans(blockHeight int
 func (cac *concreteAppendableChain) RetrieveTransHashToHeight(sha256 *indexedhashes.Sha256) (int64, error) {
 	// Note: This isn't as simple as it sounds... There are two identical transactions in blocks 91812 and
 	// 91842 with identical hashes! We won't get both in this case of course.
-	return cac.trnHashes.IndexOfHash(sha256)
+	height, err := cac.trnHashes.IndexOfHash(sha256)
+	if err != nil {
+		fmt.Println("Error when: RetrieveTransHashToHeight(hash)")
+	}
+	return height, err
 }
 func (cac *concreteAppendableChain) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {
 	return cac.parentBlockOfTrans.ReadWordAt(transHeight)
@@ -624,4 +644,20 @@ func (cac *concreteAppendableChain) Sync() error {
 func (cac *concreteAppendableChain) SelfTestTransHashes() error {
 	return nil
 	//return cac.trnHashes.SelfTest()
+}
+
+func (cac *concreteAppendableChain) CountHashes() (blocks int64, transactions int64, addresses int64, err error) {
+	blocks, err = cac.blkHashes.CountHashes()
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	transactions, err = cac.trnHashes.CountHashes()
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	addresses, err = cac.addrHashes.CountHashes()
+	if err != nil {
+		return -1, -1, -1, err
+	}
+	return blocks, transactions, addresses, nil
 }

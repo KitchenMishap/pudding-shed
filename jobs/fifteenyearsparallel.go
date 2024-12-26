@@ -24,10 +24,19 @@ type preprocessTask struct {
 func (ppt *preprocessTask) Process() error {
 	var err error
 	ppt.jsonBlock, err = jsonblock.ParseJsonBlock(ppt.blockBytes)
+	if err != nil {
+		return err
+	}
 	jsonblock.PostJsonRemoveCoinbaseTxis(ppt.jsonBlock)
 	jsonblock.PostJsonCalculateSatoshis(ppt.jsonBlock)
-	jsonblock.PostJsonEncodeAddressHashes(ppt.jsonBlock)
-	jsonblock.PostJsonEncodeSha256s(ppt.jsonBlock)
+	err = jsonblock.PostJsonEncodeAddressHashes(ppt.jsonBlock)
+	if err != nil {
+		return err
+	}
+	err = jsonblock.PostJsonEncodeSha256s(ppt.jsonBlock)
+	if err != nil {
+		return err
+	}
 	return err
 }
 func (ppt *preprocessTask) SetError(err error) {
@@ -75,7 +84,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 	acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
 		[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
 		[]string{"size", "vsize", "weight"},
-		delegated, false, true)
+		delegated)
 	if err != nil {
 		return err
 	}

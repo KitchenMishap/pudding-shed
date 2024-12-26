@@ -12,10 +12,9 @@ import (
 // corereader.CoreReader implements jsonblock.IBlockJsonFetcher
 var _ jsonblock.IBlockJsonFetcher = (*CoreReader)(nil) // Check that implements
 
-var latestBlock = int64(0)
-
 type CoreReader struct {
-	httpClient http.Client
+	latestBlock int64
+	httpClient  http.Client
 }
 
 func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
@@ -61,8 +60,8 @@ func (cr *CoreReader) CountBlocks() (int64, error) {
 }
 
 func (cr *CoreReader) FetchBlockJsonBytes(height int64) ([]byte, error) {
-	if height < latestBlock {
-		print("Height ", height, " is less than latest block ", latestBlock)
+	if height < cr.latestBlock {
+		print("Height ", height, " is less than latest block ", cr.latestBlock)
 	}
 
 	hashHexString, err := cr.getHashHexByHeight(height)
@@ -87,7 +86,7 @@ func (cr *CoreReader) FetchBlockJsonBytes(height int64) ([]byte, error) {
 		return nil, err
 	}
 
-	latestBlock = height
+	cr.latestBlock = height
 
 	return jsonBytes, nil
 }

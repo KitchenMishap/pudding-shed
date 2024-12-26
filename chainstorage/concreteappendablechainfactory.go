@@ -50,8 +50,7 @@ var _ IAppendableChainFactoryWithIndexer = (*ConcreteAppendableChainCreator)(nil
 
 func NewConcreteAppendableChainCreator(
 	folder string, blkNeiNames []string, trnNeiNames []string,
-	transactionIndexingToBeDelegated bool, useMemForTransAddrHashes bool,
-	useUniformHashStores bool) (*ConcreteAppendableChainCreator, error) {
+	transactionIndexingToBeDelegated bool) (*ConcreteAppendableChainCreator, error) {
 	result := ConcreteAppendableChainCreator{}
 
 	result.blocksFolder = path.Join(folder, "Blocks")
@@ -62,60 +61,19 @@ func NewConcreteAppendableChainCreator(
 	result.parentsFolder = path.Join(folder, "Parents")
 
 	//																			Count at 15 years:
-	roomFor16milBlocks := int64(3) // 256^3 = 16,777,216 blocks					There were 824,197 blocks
 	roomFor4bilTrans := int64(4)   // 256^4 = 4,294,967,296 transactions		There were 947,337,057 transactions
 	roomFor1trilTxxs := int64(5)   // 256^5 = 1,099,511,627,776 txos or txis	There were 2,652,374,369 txos (including spent)
 	roomFor1trilAddrs := int64(5)  //	,,			,,			 addresses		There must be fewer addresses than txos
 	roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
 
-	// WARNING true will cost you 50GB memory!
-	// And trash your SSD if you don't have it
-	useMemFileForHashes := false
-	useAppendOptimized := true
-
-	var err error = nil
-
 	const gigabytesMem = 1
-	if useUniformHashStores {
-		result.blockHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
-			result.blocksFolder, "BlockHashes", 1000000, 2, gigabytesMem)
-	} else {
-		result.blockHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-			"Blocks", result.blocksFolder, 30, roomFor16milBlocks, 3, useMemFileForHashes, useAppendOptimized)
-	}
-	if err != nil {
-		return nil, err
-	}
+	result.blockHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
+		result.blocksFolder, "Hashes", gigabytesMem)
+	result.transactionHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
+		result.transactionsFolder, "Hashes", gigabytesMem)
+	result.addressHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
+		result.addressesFolder, "Hashes", gigabytesMem)
 
-	if useUniformHashStores {
-		result.transactionHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
-			result.transactionsFolder, "TransactionHashes", 2000000000, 2, gigabytesMem)
-		result.addressHashStoreCreator, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloader(
-			result.addressesFolder, "AddressHashes", 4000000000, 2, gigabytesMem)
-
-	} else if useMemForTransAddrHashes {
-		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(
-			"Transactions", result.transactionsFolder)
-		if err != nil {
-			return nil, err
-		}
-		result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreatorMemory(
-			"Addresses", result.addressesFolder)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		result.transactionHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-			"Transactions", result.transactionsFolder, 30, roomFor4bilTrans, 3, useMemFileForHashes, useAppendOptimized)
-		if err != nil {
-			return nil, err
-		}
-		result.addressHashStoreCreator, err = indexedhashes.NewConcreteHashStoreCreator(
-			"Addresses", result.addressesFolder, 32, roomFor1trilAddrs, 3, useMemFileForHashes, useAppendOptimized) // ToDo [  ] Calculate these parameters!
-		if err != nil {
-			return nil, err
-		}
-	}
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans, false)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs, false)
 	result.trnFirstTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxo", result.transactionsFolder, roomFor1trilTxxs, false)
@@ -175,7 +133,14 @@ func (cacc *ConcreteAppendableChainCreator) Create() error {
 	if err != nil {
 		return err
 	}
-	err = cacc.blkFirstTransWordFileCreator.CreateWordFile()
+	return cacc.CreateFromHashStores()
+}
+
+func (cacc *ConcreteAppendableChainCreator) CreateFromHashStores() error {
+	if cacc.blkFirstTransWordFileCreator.WordFileExists() {
+		return errors.New("AppendableChain already created from hash stores")
+	}
+	err := cacc.blkFirstTransWordFileCreator.CreateWordFile()
 	if err != nil {
 		return err
 	}

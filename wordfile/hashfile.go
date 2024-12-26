@@ -51,3 +51,12 @@ func (wf *HashFile) Close() error {
 func (wf *HashFile) Sync() error {
 	return wf.file.Sync()
 }
+
+func (wf *HashFile) AppendHash(val [32]byte) (int64, error) {
+	off := wf.hashCount
+	err := wf.WriteHashAt(val, off)
+	if err != nil {
+		return -1, err
+	}
+	return off, nil
+}
