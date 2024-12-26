@@ -36,13 +36,23 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		lastBlock = 876441 // 26 Dec 2024
 	}
 
-	println("Removing previous files...")
+	dateFormat := "Mon Jan 2 15:04:05"
+
+	fmt.Println(time.Now().Format(dateFormat) + "\t\tRemoving previous files...")
 	err := os.RemoveAll(path)
 	if err != nil {
 		return err
 	}
 
+	// This object gets blocks from Bitcoin Core one by one, but just holding
+	// the various hashes and nothing else
+	aReaderForHashes := corereader.NewPool(10)
+	var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
+
+	// ===============================
 	// FIRST we just gather the hashes
+	phase := "1 of 3"
+	phaseName := "Gather the hashes"
 
 	hcc := chainstorage.NewConcreteHashesChainCreator(path)
 	err = hcc.Create()
@@ -54,16 +64,15 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		return err
 	}
 
-	// This object gets blocks from Bitcoin Core one by one, but just holding
-	// the various hashes and nothing else
-	aReaderForHashes := corereader.NewPool(10)
-	var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
-
+	phaseStart := time.Now()
+	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
+	lastTime := time.Now()
 	for height := int64(0); height <= lastBlock; height++ {
 		if height%1000 == 0 {
 			t := time.Now()
-			fmt.Println(t.Format("Mon Jan 2 15:04:05"))
-			fmt.Println("Block ", height)
+			sline := progressString(dateFormat, height, 1000, lastBlock, "blocks", time.Now().Sub(lastTime))
+			fmt.Print(sline + "\r")
+			lastTime = t
 			if height%10000 == 0 {
 				err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
 				if err != nil {
@@ -84,36 +93,55 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 			return err
 		}
 	}
+	fmt.Println()
+
+	timeTaken := time.Now().Sub(phaseStart)
+	mins := timeTaken.Minutes()
+	sTimeUpdate := fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
+	fmt.Println(sTimeUpdate)
+
 	blocksCount, transactionsCount, addressesCount, err := hc.CountHashes()
 	hc.Close()
 	if err != nil {
 		return err
 	}
 
+	// ==========================
 	// SECOND we index the hashes
+	phase = "2 of 3"
+	phaseName = "Index the hashes"
 
+	phaseStart = time.Now()
+	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	sep := string(os.PathSeparator)
 	_, bpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", blocksCount, 2, 1)
 	_, tpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", transactionsCount, 2, 1)
 	_, apl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", addressesCount, 2, 1)
-	fmt.Println("Indexing the blocks...")
 	err = bpl.IndexTheHashes()
 	if err != nil {
 		return err
 	}
-	fmt.Println("Indexing the transactions...")
 	err = tpl.IndexTheHashes()
 	if err != nil {
 		return err
 	}
-	fmt.Println("Indexing the addresses...")
 	err = apl.IndexTheHashes()
 	if err != nil {
 		return err
 	}
-	fmt.Println("Done indexing")
 
+	timeTaken = time.Now().Sub(phaseStart)
+	mins = timeTaken.Minutes()
+	sTimeUpdate = fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
+	fmt.Println(sTimeUpdate)
+
+	// =======================================================================
 	// THIRD we go through the blockchain again, gathering main data this time
+	phase = "3 of 3"
+	phaseName = "Gather the blockchain"
+
+	phaseStart = time.Now()
+	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 
 	// We WILL need an indexer this time!
 	delegated := transactionIndexingMethod == "delegated"
@@ -156,8 +184,9 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	for height <= lastBlock {
 		if height%1000 == 0 {
 			t := time.Now()
-			fmt.Println(t.Format("Mon Jan 2 15:04:05"))
-			fmt.Println("Block ", height, " Transaction ", transactions)
+			sline := progressString(dateFormat, height, 1000, lastBlock, "blocks", time.Now().Sub(lastTime))
+			fmt.Print(sline + "\r")
+			lastTime = t
 			// The sync is just so we can see
 			// file sizes in explorer during processing
 			if height%10000 == 0 {
@@ -198,12 +227,32 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 			height = block.Height()
 		}
 	}
+	fmt.Println()
 	ac.Close()
 	if transactionIndexingMethod != "delegated" {
 		transactionIndexer.Close()
 	}
 	runtime.GC()
 	debug.FreeOSMemory()
-	println("Done Several Years")
+
+	timeTaken = time.Now().Sub(phaseStart)
+	mins = timeTaken.Minutes()
+	sTimeUpdate = fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
+	fmt.Println(sTimeUpdate)
+
+	fmt.Println("Done Several Years")
 	return nil
+}
+
+func progressString(dateFormat string,
+	index int64, step int64, target int64, units string,
+	lastDuration time.Duration) string {
+	sDate := time.Now().Format(dateFormat)
+	sProgress := fmt.Sprintf("%d %s of %d (%.1f%%)", index, units, target, 100.0*float32(index)/float32(target))
+	seconds := lastDuration.Seconds() * float64(target-index) / float64(step)
+	complete := time.Now().Add(time.Duration(seconds) * time.Second)
+	sComplete := complete.Format(dateFormat)
+	sExpected := fmt.Sprintf("Expect PHASE completion at %s", sComplete)
+	result := sDate + ": " + sProgress + "; " + sExpected
+	return result
 }

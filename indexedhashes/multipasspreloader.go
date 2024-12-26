@@ -257,7 +257,6 @@ func (mp *MultipassPreloader) CreateInitialFiles() error {
 }
 
 func (mp *MultipassPreloader) IndexTheHashes() error {
-	fmt.Println("Creating initial files")
 	err := mp.CreateInitialFiles()
 	if err != nil {
 		return err
@@ -270,7 +269,8 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 	passes := 1 + biggestAddressPlusOne/addressesPerPass
 
 	for pass := int64(0); pass < passes; pass++ {
-		fmt.Println("Pass ", pass, " of ", passes)
+		sline := "\r" + fmt.Sprintf("%s: Pass %d of %d", mp.creator.folderPath(), pass, passes)
+		fmt.Print(sline)
 		firstAddress := pass * addressesPerPass
 		addresses := addressesPerPass
 		if firstAddress+addresses > biggestAddressPlusOne {
@@ -281,22 +281,20 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Writing to BinStarts file")
 		err = passDetails.writeIntoBinStartsFile(mp)
 		if err != nil {
 			return err
 		}
-		fmt.Println("Writing to BinOverflows file")
 		err = passDetails.writeOverflowFiles(mp)
 		if err != nil {
 			return err
 		}
 	}
+	fmt.Println()
 	err = mp.binStartsFile.Close()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Done")
 	return nil
 }

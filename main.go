@@ -14,8 +14,7 @@ func main() {
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
 
-	// err := jobs.SeveralYearsPrimaries(16, "delegated")
-	err := jobs.SeveralYearsPrimaries(4, "delegated")
+	err := jobs.SeveralYearsPrimaries(2, "delegated")
 
 	// err := jobs.SeveralYearsParallel(16, "delegated")
 	// err := jobs.SeveralYearsParallel(4, "delegated")
@@ -49,7 +48,7 @@ func main() {
 		println(err.Error())
 		println("There was an error :-O")
 	}
-	println("End of main()")
+	fmt.Println("End of main()")
 	t = time.Now()
 	fmt.Println(t.Format("Mon Jan 2 15:04:05"))
 }
