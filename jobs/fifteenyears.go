@@ -16,25 +16,17 @@ import (
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	const path = "F:\\Data\\CurrentJob"
 
+	blocksEachYear := []int64{0, 32879, 100888, 160463, 215006, // Block heights at year 0..4
+		278460, 337312, 391569, 446472, 502401, // years 5..9
+		556874, 611138, 664332, 717044, 770225, // years 10..14
+		824204, 870000, 920000, 970000, 1020000} // years 16..19 are Extrapolated estimates
+	transactionsEachYear := []int64{0, 33100, 219927, 2134383, 10675169, // Transaction counts at year 0..4
+		20000000, 30000000, 40000000, 50000000, 60000000, // Estimates for time being
+		70000000, 80000000, 90000000, 100000000, 110000000, // years 10..14
+		120000000, 1136000000, 1200000000, 1300000000, 1400000000} // years 15..19
+
 	// Choose a number of blocks
-	lastBlock := int64(10000) // Default
-	if years == 1 {
-		lastBlock = 33000
-	} else if years == 2 {
-		lastBlock = 66000
-	} else if years == 3 {
-		lastBlock = 99000
-	} else if years == 4 {
-		lastBlock = 132000
-	} else if years == 6 {
-		lastBlock = 315360
-	} else if years == 7 {
-		lastBlock = 391000 // 7 years = mnemonic for 100 million transactions
-	} else if years == 15 {
-		lastBlock = 840000
-	} else if years == 16 {
-		lastBlock = 876441 // 26 Dec 2024
-	}
+	lastBlock := blocksEachYear[years] - 1
 
 	dateFormat := "Mon Jan 2 15:04:05"
 
@@ -64,23 +56,37 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		return err
 	}
 
+	progressInterval := 1 * time.Second
+
 	phaseStart := time.Now()
+	nextProgress := phaseStart.Add(progressInterval)
 	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
-	lastTime := time.Now()
+
+	blocksCount := int64(0)
+	transactionsCount := int64(0)
+	addressesCount := int64(0)
+	transactionsTarget := transactionsEachYear[years]
+	lastTrans := int64(0)
+
 	for height := int64(0); height <= lastBlock; height++ {
-		if height%1000 == 0 {
-			t := time.Now()
-			sline := progressString(dateFormat, height, 1000, lastBlock, "blocks", time.Now().Sub(lastTime))
-			fmt.Print(sline + "\r")
-			lastTime = t
-			if height%10000 == 0 {
-				err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
-				if err != nil {
-					return err
-				}
-				runtime.GC()
-				debug.FreeOSMemory()
+		for year := 0; year <= 19; year++ {
+			if height == blocksEachYear[year] {
+				fmt.Printf("\nBlocks: %d, transactions: %d\n", height, transactionsCount)
 			}
+		}
+		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+			nextProgress = time.Now().Add(progressInterval)
+			sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
+			fmt.Print(sLine + "\r")
+			lastTrans = transactionsCount
+		}
+		if height%1000 == 0 {
+			err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
+			if err != nil {
+				return err
+			}
+			runtime.GC()
+			debug.FreeOSMemory()
 		}
 		block, err := aOneBlockChainForHashes.SwitchBlock(height)
 		if err != nil {
@@ -92,6 +98,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		if err != nil {
 			return err
 		}
+		blocksCount, transactionsCount, addressesCount, err = hc.CountHashes()
 	}
 	fmt.Println()
 
@@ -100,7 +107,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	sTimeUpdate := fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
 	fmt.Println(sTimeUpdate)
 
-	blocksCount, transactionsCount, addressesCount, err := hc.CountHashes()
+	blocksCount, transactionsCount, addressesCount, err = hc.CountHashes()
 	hc.Close()
 	if err != nil {
 		return err
@@ -112,6 +119,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	phaseName = "Index the hashes"
 
 	phaseStart = time.Now()
+	nextProgress = phaseStart.Add(progressInterval)
 	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	sep := string(os.PathSeparator)
 	_, bpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", blocksCount, 2, 1)
@@ -182,21 +190,21 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	height := block.Height()
 	transactions := int64(0)
 	for height <= lastBlock {
-		if height%1000 == 0 {
-			t := time.Now()
-			sline := progressString(dateFormat, height, 1000, lastBlock, "blocks", time.Now().Sub(lastTime))
-			fmt.Print(sline + "\r")
-			lastTime = t
+		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+			nextProgress = time.Now().Add(progressInterval)
+			sLine := progressString(dateFormat, transactions, transactions-lastTrans, transactionsTarget, "transactions", progressInterval)
+			fmt.Print(sLine + "\r")
+			lastTrans = transactions
+		}
+		if height%10000 == 0 {
 			// The sync is just so we can see
 			// file sizes in explorer during processing
-			if height%10000 == 0 {
-				err := ac.Sync()
-				if err != nil {
-					return err
-				}
-				runtime.GC()
-				debug.FreeOSMemory()
+			err := ac.Sync()
+			if err != nil {
+				return err
 			}
+			runtime.GC()
+			debug.FreeOSMemory()
 		}
 		err = ac.AppendBlock(aOneBlockChain, block)
 		if err != nil {
