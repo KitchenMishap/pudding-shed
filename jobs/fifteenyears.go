@@ -13,17 +13,19 @@ import (
 	"time"
 )
 
+const readerThreads = 25
+const path = "F:\\Data\\CurrentJob"
+
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
-	const path = "F:\\Data\\CurrentJob"
 
 	blocksEachYear := []int64{0, 32879, 100888, 160463, 215006, // Block heights at year 0..4
 		278460, 337312, 391569, 446472, 502401, // years 5..9
 		556874, 611138, 664332, 717044, 770225, // years 10..14
 		824204, 870000, 920000, 970000, 1020000} // years 16..19 are Extrapolated estimates
 	transactionsEachYear := []int64{0, 33100, 219927, 2134383, 10675169, // Transaction counts at year 0..4
-		20000000, 30000000, 40000000, 50000000, 60000000, // Estimates for time being
-		70000000, 80000000, 90000000, 100000000, 110000000, // years 10..14
-		120000000, 1136000000, 1200000000, 1300000000, 1400000000} // years 15..19
+		30358181, 55676798, 101532619, 184473419, 288705840, // years 5..9
+		369960799, 489809099, 602400644, 699932865, 793116734, // years 10..14
+		947356729, 1136000000, 1200000000, 1300000000, 1400000000} // years 15..19 (Estimates from 16)
 
 	// Choose a number of blocks
 	lastBlock := blocksEachYear[years] - 1
@@ -38,7 +40,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 
 	// This object gets blocks from Bitcoin Core one by one, but just holding
 	// the various hashes and nothing else
-	aReaderForHashes := corereader.NewPool(10)
+	aReaderForHashes := corereader.NewPool(readerThreads)
 	var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
 
 	// ===============================
@@ -56,7 +58,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		return err
 	}
 
-	progressInterval := 1 * time.Second
+	progressInterval := 5 * time.Second
 
 	phaseStart := time.Now()
 	nextProgress := phaseStart.Add(progressInterval)
@@ -179,7 +181,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	aReader := corereader.NewPool(10)
+	aReader := corereader.NewPool(25)
 	var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
 
 	hBlock := aOneBlockChain.GenesisBlock()
