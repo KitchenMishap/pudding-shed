@@ -64,9 +64,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	nextProgress := phaseStart.Add(progressInterval)
 	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 
-	blocksCount := int64(0)
 	transactionsCount := int64(0)
-	addressesCount := int64(0)
 	transactionsTarget := transactionsEachYear[years]
 	lastTrans := int64(0)
 
@@ -100,7 +98,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		if err != nil {
 			return err
 		}
-		blocksCount, transactionsCount, addressesCount, err = hc.CountHashes()
+		_, transactionsCount, _, err = hc.CountHashes()
 	}
 	fmt.Println()
 
@@ -109,7 +107,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	sTimeUpdate := fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
 	fmt.Println(sTimeUpdate)
 
-	blocksCount, transactionsCount, addressesCount, err = hc.CountHashes()
+	_, transactionsCount, _, err = hc.CountHashes()
 	hc.Close()
 	if err != nil {
 		return err
@@ -120,13 +118,18 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	phase = "2 of 3"
 	phaseName = "Index the hashes"
 
+	// Don't panic... when these estimates are exceeded as the blockchain gets bigger, there is no major problem!
+	blocksCountEstimate := int64(1000000)   // There were 824,024 blocks after 15 years
+	transCountEstimate := int64(1000000000) // There were 947,337,057 transactions after 15 years
+	addrsCountEstimate := int64(3000000000) // There were 2,652,374,369 txos after 15 years, so there were fewer addresses
+
 	phaseStart = time.Now()
 	nextProgress = phaseStart.Add(progressInterval)
 	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	sep := string(os.PathSeparator)
-	_, bpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", blocksCount, 2, 1)
-	_, tpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", transactionsCount, 2, 1)
-	_, apl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", addressesCount, 2, 1)
+	_, bpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", blocksCountEstimate, 2, 1)
+	_, tpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", transCountEstimate, 2, 1)
+	_, apl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", addrsCountEstimate, 2, 1)
 	err = bpl.IndexTheHashes()
 	if err != nil {
 		return err
