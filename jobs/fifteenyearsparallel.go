@@ -7,7 +7,6 @@ import (
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
-	"os"
 	"runtime"
 	"runtime/debug"
 	"sync"
@@ -49,63 +48,9 @@ func (ppt *preprocessTask) GetError() error {
 	return ppt.err
 }
 
-func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
-	const path = "F:\\Data\\CurrentJob"
-	lastBlock := int64(10000) // Default
-	if years == 1 {
-		lastBlock = 33000
-	} else if years == 2 {
-		lastBlock = 66000
-	} else if years == 3 {
-		lastBlock = 99000
-	} else if years == 4 {
-		lastBlock = 132000
-	} else if years == 5 {
-		lastBlock = 165000
-	} else if years == 6 {
-		lastBlock = 315360
-	} else if years == 7 {
-		lastBlock = 391000 // 7 years = mnemonic for 100 million transactions
-	} else if years == 15 {
-		lastBlock = 840000 // Halving
-	} else if years == 16 {
-		lastBlock = 860530 // 09 Sep 2024
-	}
-
-	fmt.Println("Removing previous files...")
-	err := os.RemoveAll(path)
-	if err != nil {
-		return err
-	}
-
-	delegated := transactionIndexingMethod == "delegated"
-
-	fmt.Println("Creating appendable chain...")
-	acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
-		[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
-		[]string{"size", "vsize", "weight"},
-		delegated)
-	if err != nil {
-		return err
-	}
-	err = acc.Create()
-	if err != nil {
-		return err
-	}
-	ac, ind, err := acc.OpenWithIndexer()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Creating transaction indexer...")
-	var transactionIndexer transactionindexing.ITransactionIndexer = nil
-	if transactionIndexingMethod == "delegated" {
-		transactionIndexer = ind
-	} else if transactionIndexingMethod == "separate files" {
-		transactionIndexer = jsonblock.CreateOpenTransactionIndexerFiles(path)
-	} else {
-		panic("incorrect parameter " + transactionIndexingMethod)
-	}
+func PhaseThreeParallel(lastBlock int64,
+	ac chainstorage.IAppendableChain,
+	transactionIndexer transactionindexing.ITransactionIndexer) error {
 
 	readerPool := corereader.NewPool(1)
 	workerPool := concurrency.NewWorkerPool(20)
@@ -124,7 +69,7 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 
 	// A go routine to squirt all the block requests through readerPool
 	go func() {
-		for height := int64(0); height <= lastBlock+1; height++ {
+		for height := int64(0); height <= lastBlock; height++ {
 			task := corereader.NewTask(height, &haveReadChannel)
 			// Squirt it into the pool
 			statusMap.Store("startCoreReader", "WaitingBloated")
@@ -252,24 +197,25 @@ func SeveralYearsParallel(years int, transactionIndexingMethod string) error {
 					return true
 				})*/
 
-		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
-		if err != nil {
-			ac.Close()
-			return err
+		if height == lastBlock {
+			height++
+		} else {
+			hBlock, err = aOneBlockHolder.NextBlock(hBlock)
+			if err != nil {
+				ac.Close()
+				return err
+			}
+			block, err = aOneBlockHolder.BlockInterface(hBlock)
+			if err != nil {
+				ac.Close()
+				return err
+			}
+			height = block.Height()
 		}
-		block, err = aOneBlockHolder.BlockInterface(hBlock)
-		if err != nil {
-			ac.Close()
-			return err
-		}
-		height = block.Height()
 	}
 	ac.Close()
-	if transactionIndexingMethod != "delegated" {
-		transactionIndexer.Close()
-	}
 	runtime.GC()
 	debug.FreeOSMemory()
-	fmt.Println("Done Several Years")
+	fmt.Println("Done Several Years Parallel")
 	return nil
 }

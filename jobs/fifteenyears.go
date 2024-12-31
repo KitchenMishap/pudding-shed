@@ -184,69 +184,78 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	aReader := corereader.NewPool(25)
-	var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
-
-	hBlock := aOneBlockChain.GenesisBlock()
-	block, err := aOneBlockChain.BlockInterface(hBlock)
-	if err != nil {
-		return err
-	}
-	height := block.Height()
-	transactions := int64(0)
-	for height <= lastBlock {
-		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
-			nextProgress = time.Now().Add(progressInterval)
-			sLine := progressString(dateFormat, transactions, transactions-lastTrans, transactionsTarget, "transactions", progressInterval)
-			fmt.Print(sLine + "\r")
-			lastTrans = transactions
-		}
-		if height%10000 == 0 {
-			// The sync is just so we can see
-			// file sizes in explorer during processing
-			err := ac.Sync()
-			if err != nil {
-				return err
-			}
-			runtime.GC()
-			debug.FreeOSMemory()
-		}
-		err = ac.AppendBlock(aOneBlockChain, block)
+	const parallel = true
+	if parallel {
+		err = PhaseThreeParallel(lastBlock, ac, transactionIndexer)
 		if err != nil {
-			fmt.Println("Error when: AppendBlock(", block.Height(), ")")
-			ac.Close()
 			return err
 		}
+	} else {
 
-		count, _ := block.TransactionCount()
-		transactions += count
+		aReader := corereader.NewPool(25)
+		var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
 
-		// If we were to call NextBlock on the last block we're interested in, there would be an attempt
-		// to process transactions whose inputs come from transactions we haven't indexed.
-		if height == lastBlock {
-			height++ // Just increment so that the for loop ends
-		} else {
-			hBlock, err = aOneBlockChain.NextBlock(hBlock)
-			if err != nil {
-				ac.Close()
-				return err
-			}
-			block, err = aOneBlockChain.BlockInterface(hBlock)
-			if err != nil {
-				ac.Close()
-				fmt.Println("BlockInterface(", hBlock.Height(), ")")
-				return err
-			}
-			height = block.Height()
+		hBlock := aOneBlockChain.GenesisBlock()
+		block, err := aOneBlockChain.BlockInterface(hBlock)
+		if err != nil {
+			return err
 		}
+		height := block.Height()
+		transactions := int64(0)
+		for height <= lastBlock {
+			if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+				nextProgress = time.Now().Add(progressInterval)
+				sLine := progressString(dateFormat, transactions, transactions-lastTrans, transactionsTarget, "transactions", progressInterval)
+				fmt.Print(sLine + "\r")
+				lastTrans = transactions
+			}
+			if height%10000 == 0 {
+				// The sync is just so we can see
+				// file sizes in explorer during processing
+				err := ac.Sync()
+				if err != nil {
+					return err
+				}
+				runtime.GC()
+				debug.FreeOSMemory()
+			}
+			err = ac.AppendBlock(aOneBlockChain, block)
+			if err != nil {
+				fmt.Println("Error when: AppendBlock(", block.Height(), ")")
+				ac.Close()
+				return err
+			}
+
+			count, _ := block.TransactionCount()
+			transactions += count
+
+			// If we were to call NextBlock on the last block we're interested in, there would be an attempt
+			// to process transactions whose inputs come from transactions we haven't indexed.
+			if height == lastBlock {
+				height++ // Just increment so that the for loop ends
+			} else {
+				hBlock, err = aOneBlockChain.NextBlock(hBlock)
+				if err != nil {
+					ac.Close()
+					return err
+				}
+				block, err = aOneBlockChain.BlockInterface(hBlock)
+				if err != nil {
+					ac.Close()
+					fmt.Println("BlockInterface(", hBlock.Height(), ")")
+					return err
+				}
+				height = block.Height()
+			}
+		}
+		fmt.Println()
+		ac.Close()
+		if transactionIndexingMethod != "delegated" {
+			transactionIndexer.Close()
+		}
+		runtime.GC()
+		debug.FreeOSMemory()
 	}
-	fmt.Println()
-	ac.Close()
-	if transactionIndexingMethod != "delegated" {
-		transactionIndexer.Close()
-	}
-	runtime.GC()
-	debug.FreeOSMemory()
 
 	timeTaken = time.Now().Sub(phaseStart)
 	mins = timeTaken.Minutes()
