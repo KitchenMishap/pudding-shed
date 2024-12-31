@@ -7,14 +7,17 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // corereader.CoreReader implements jsonblock.IBlockJsonFetcher
 var _ jsonblock.IBlockJsonFetcher = (*CoreReader)(nil) // Check that implements
 
+var theTransport = http.Transport{ResponseHeaderTimeout: time.Hour, MaxConnsPerHost: 50, DisableKeepAlives: true}
+var theClient = http.Client{Transport: &theTransport}
+
 type CoreReader struct {
 	latestBlock int64
-	httpClient  http.Client
 }
 
 func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
@@ -23,8 +26,12 @@ func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
 	// Also recommended are -txindex -disablewallet
 	req := "http://127.0.0.1:8332/rest/blockhashbyheight/"
 	req += strconv.Itoa(int(height)) + ".hex"
-	resp, err := cr.httpClient.Get(req)
 
+	var resp *http.Response
+	var err error
+	{
+		resp, err = theClient.Get(req)
+	}
 	if err != nil {
 		println(err.Error())
 		println("getHashHexByHeight(): Could not GET from local bitcoin REST server")
@@ -42,8 +49,11 @@ func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
 
 func (cr *CoreReader) CountBlocks() (int64, error) {
 	req := "http://127.0.0.1:8332/rest/chaininfo.json"
-	resp, err := cr.httpClient.Get(req)
-
+	var resp *http.Response
+	var err error
+	{
+		resp, err = theClient.Get(req)
+	}
 	if err != nil {
 		return -1, err
 	}
@@ -73,7 +83,10 @@ func (cr *CoreReader) FetchBlockJsonBytes(height int64) ([]byte, error) {
 	req += hashHexString
 	req += ".json"
 
-	resp, err := cr.httpClient.Get(req)
+	var resp *http.Response
+	{
+		resp, err = theClient.Get(req)
+	}
 	if err != nil {
 		return nil, err
 	}

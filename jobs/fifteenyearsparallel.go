@@ -52,8 +52,8 @@ func PhaseThreeParallel(lastBlock int64,
 	ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer) error {
 
-	readerPool := corereader.NewPool(1)
-	workerPool := concurrency.NewWorkerPool(20)
+	readerPool := corereader.NewPool(30)
+	workerPool := concurrency.NewWorkerPool(30)
 
 	statusMap := sync.Map{}
 
