@@ -15,6 +15,7 @@ import (
 
 const readerThreads = 25
 const path = "F:\\Data\\CurrentJob"
+const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 
@@ -37,11 +38,6 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	if err != nil {
 		return err
 	}
-
-	// This object gets blocks from Bitcoin Core one by one, but just holding
-	// the various hashes and nothing else
-	aReaderForHashes := corereader.NewPool(readerThreads)
-	var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
 
 	// ===============================
 	// FIRST we just gather the hashes
@@ -68,13 +64,16 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	transactionsTarget := transactionsEachYear[years]
 	lastTrans := int64(0)
 
-	const parallel = true
 	if parallel {
 		err = PhaseOneParallel(lastBlock, hc)
 		if err != nil {
 			return err
 		}
 	} else {
+		// This object gets blocks from Bitcoin Core one by one, but just holding
+		// the various hashes and nothing else
+		aReaderForHashes := corereader.NewPool(readerThreads)
+		var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
 
 		for height := int64(0); height <= lastBlock; height++ {
 			for year := 0; year <= 19; year++ {

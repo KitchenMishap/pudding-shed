@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+const THREADS = 10
+const BLOATLIMIT = 10
+
 type preprocessTask struct {
 	blockBytes []byte
 	jsonBlock  *jsonblock.JsonBlockEssential
@@ -82,8 +85,8 @@ func (ppt *preprocessTaskHashes) GetError() error {
 }
 
 func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) error {
-	readerPool := corereader.NewPool(30)
-	workerPool := concurrency.NewWorkerPool(30)
+	readerPool := corereader.NewPool(THREADS)
+	workerPool := concurrency.NewWorkerPool(THREADS)
 	statusMap := sync.Map{}
 
 	// Going parallel now
@@ -91,7 +94,7 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 	// These two are much further downstream. But we create them here as here is the only good place
 	// for the cutoff valve when the sequencer becomes bloated!
 	sequencedChan := make(chan *jsonblock.JsonBlockHashes)
-	sequencer := concurrency.NewSequencerContainerHashes(0, 30, &sequencedChan)
+	sequencer := concurrency.NewSequencerContainerHashes(0, BLOATLIMIT, &sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)
@@ -108,11 +111,13 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 			readerPool.InChan <- task
 			statusMap.Store("startCoreReader", "Squirted")
 		}
+		fmt.Println("\nSquirted all requests into reader pool...")
 		statusMap.Store("startCoreReader", "FINISHING...")
 		close(readerPool.InChan)
 		readerPool.Flush()
 		close(haveReadChannel)
 		statusMap.Store("startCoreReader", "FINISHED")
+		fmt.Println("All block requests submitted...")
 	}()
 
 	// Once each block's []byte slice is available, we need to parse it
@@ -144,6 +149,7 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 		statusMap.Store("haveReadToWorker", "FINISHING...")
 		close(workerPool.InChan)
 		statusMap.Store("haveReadToWorker", "FINISHED")
+		fmt.Println("All blocks passed on to worker for parsing...")
 	}()
 
 	// Preprocessed blocks will now come through preprocessedChan
@@ -161,6 +167,7 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 		statusMap.Store("preprocessedToSequencer", "FINISHING...")
 		close(sequencer.InChan)
 		statusMap.Store("preprocessedToSequencer", "FINISHED")
+		fmt.Println("All blocks passed on to sequencer...")
 	}()
 
 	// Final destination for the sequenced blocks
@@ -174,9 +181,11 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 			aOneBlockHolder.InChan <- b
 			statusMap.Store("sequencedIntoHolder", "Squirted")
 		}
+		fmt.Println("All blocks passed out of sequencer...")
 		statusMap.Store("sequencedIntoHolder", "FINISHING...")
 		close(aOneBlockHolder.InChan)
 		statusMap.Store("sequencedIntoHolder", "FINISHED")
+		fmt.Println("All blocks passed on to holder...")
 	}()
 
 	hBlock := aOneBlockHolder.GenesisBlock()
@@ -244,8 +253,8 @@ func PhaseThreeParallel(lastBlock int64,
 	ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer) error {
 
-	readerPool := corereader.NewPool(30)
-	workerPool := concurrency.NewWorkerPool(30)
+	readerPool := corereader.NewPool(THREADS)
+	workerPool := concurrency.NewWorkerPool(THREADS)
 
 	statusMap := sync.Map{}
 
@@ -254,7 +263,7 @@ func PhaseThreeParallel(lastBlock int64,
 	// These two are much further downstream. But we create them here as here is the only good place
 	// for the cutoff valve when the sequencer becomes bloated!
 	sequencedChan := make(chan *jsonblock.JsonBlockEssential)
-	sequencer := concurrency.NewSequencerContainer(0, 30, &sequencedChan)
+	sequencer := concurrency.NewSequencerContainer(0, BLOATLIMIT, &sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)
