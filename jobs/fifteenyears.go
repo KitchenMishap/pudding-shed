@@ -68,39 +68,48 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	transactionsTarget := transactionsEachYear[years]
 	lastTrans := int64(0)
 
-	for height := int64(0); height <= lastBlock; height++ {
-		for year := 0; year <= 19; year++ {
-			if height == blocksEachYear[year] {
-				fmt.Printf("\nBlocks: %d, transactions: %d\n", height, transactionsCount)
+	const parallel = true
+	if parallel {
+		err = PhaseOneParallel(lastBlock, hc)
+		if err != nil {
+			return err
+		}
+	} else {
+
+		for height := int64(0); height <= lastBlock; height++ {
+			for year := 0; year <= 19; year++ {
+				if height == blocksEachYear[year] {
+					fmt.Printf("\nBlocks: %d, transactions: %d\n", height, transactionsCount)
+				}
 			}
-		}
-		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
-			nextProgress = time.Now().Add(progressInterval)
-			sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
-			fmt.Print(sLine + "\r")
-			lastTrans = transactionsCount
-		}
-		if height%1000 == 0 {
-			err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
+			if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+				nextProgress = time.Now().Add(progressInterval)
+				sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
+				fmt.Print(sLine + "\r")
+				lastTrans = transactionsCount
+			}
+			if height%1000 == 0 {
+				err = hc.Sync() // Sync is just so we can see file sizes increase in Explorer
+				if err != nil {
+					return err
+				}
+				runtime.GC()
+				debug.FreeOSMemory()
+			}
+			block, err := aOneBlockChainForHashes.SwitchBlock(height)
+			if err != nil {
+				hc.Close()
+				return err
+			}
+
+			err = hc.AppendHashes(block)
 			if err != nil {
 				return err
 			}
-			runtime.GC()
-			debug.FreeOSMemory()
+			_, transactionsCount, _, err = hc.CountHashes()
 		}
-		block, err := aOneBlockChainForHashes.SwitchBlock(height)
-		if err != nil {
-			hc.Close()
-			return err
-		}
-
-		err = hc.AppendHashes(block)
-		if err != nil {
-			return err
-		}
-		_, transactionsCount, _, err = hc.CountHashes()
+		fmt.Println()
 	}
-	fmt.Println()
 
 	timeTaken := time.Now().Sub(phaseStart)
 	mins := timeTaken.Minutes()
@@ -184,7 +193,6 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		panic("incorrect parameter " + transactionIndexingMethod)
 	}
 
-	const parallel = true
 	if parallel {
 		err = PhaseThreeParallel(lastBlock, ac, transactionIndexer)
 		if err != nil {
