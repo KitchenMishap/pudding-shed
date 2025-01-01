@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const THREADS = 10
+const THREADS = 15
 const BLOATLIMIT = 10
 
 type preprocessTask struct {
@@ -84,7 +84,17 @@ func (ppt *preprocessTaskHashes) GetError() error {
 	return ppt.err
 }
 
-func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) error {
+func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage.IAppendableHashesChain) error {
+	dateFormat := "Mon Jan 2 15:04:05"
+	phase := "1 of 3"
+	phaseName := "Gather the hashes"
+	progressInterval := 5 * time.Second
+	phaseStart := time.Now()
+	nextProgress := phaseStart.Add(progressInterval)
+	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
+	transactionsCount := int64(0)
+	lastTrans := int64(0)
+
 	readerPool := corereader.NewPool(THREADS)
 	workerPool := concurrency.NewWorkerPool(THREADS)
 	statusMap := sync.Map{}
@@ -190,22 +200,24 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 
 	hBlock := aOneBlockHolder.GenesisBlock()
 	height := int64(hBlock.J_height)
-	transactions := int64(0)
 	fmt.Println()
 	for height <= lastBlock {
-		if height%1000 == 0 {
-			t := time.Now()
-			fmt.Print(t.Format("Mon Jan 2 15:04:05"), "Block ", height, " Transaction ", transactions, "\r")
-			// The sync is just so we can see
-			// file sizes in explorer during processing
-			if height%10000 == 0 {
-				err := hc.Sync()
-				if err != nil {
-					return err
-				}
-				runtime.GC()
-				debug.FreeOSMemory()
+		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+			nextProgress = time.Now().Add(progressInterval)
+			sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
+			fmt.Print(sLine + "\r")
+			lastTrans = transactionsCount
+		}
+
+		// The sync is just so we can see
+		// file sizes in explorer during processing
+		if height%10000 == 0 {
+			err := hc.Sync()
+			if err != nil {
+				return err
 			}
+			runtime.GC()
+			debug.FreeOSMemory()
 		}
 
 		/*		i := 0
@@ -220,9 +232,7 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 			hc.Close()
 			return err
 		}
-
-		count := int64(len(hBlock.J_tx))
-		transactions += count
+		_, transactionsCount, _, err = hc.CountHashes()
 
 		/*		i = 0
 				statusMap.Range(func(key, value interface{}) bool {
@@ -242,6 +252,7 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 			height = int64(hBlock.J_height)
 		}
 	}
+	fmt.Println()
 	hc.Close()
 	runtime.GC()
 	debug.FreeOSMemory()
@@ -249,9 +260,19 @@ func PhaseOneParallel(lastBlock int64, hc chainstorage.IAppendableHashesChain) e
 	return nil
 }
 
-func PhaseThreeParallel(lastBlock int64,
+func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer) error {
+
+	dateFormat := "Mon Jan 2 15:04:05"
+	phase := "1 of 3"
+	phaseName := "Gather the hashes"
+	progressInterval := 5 * time.Second
+	phaseStart := time.Now()
+	nextProgress := phaseStart.Add(progressInterval)
+	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
+	transactionsCount := int64(0)
+	lastTrans := int64(0)
 
 	readerPool := corereader.NewPool(THREADS)
 	workerPool := concurrency.NewWorkerPool(THREADS)
@@ -357,22 +378,23 @@ func PhaseThreeParallel(lastBlock int64,
 		return err
 	}
 	height := block.Height()
-	transactions := int64(0)
 	fmt.Println()
 	for height <= lastBlock {
-		if height%1000 == 0 {
-			t := time.Now()
-			fmt.Print(t.Format("Mon Jan 2 15:04:05"), "Block ", height, " Transaction ", transactions, "\r")
-			// The sync is just so we can see
-			// file sizes in explorer during processing
-			if height%10000 == 0 {
-				err := ac.Sync()
-				if err != nil {
-					return err
-				}
-				runtime.GC()
-				debug.FreeOSMemory()
+		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
+			nextProgress = time.Now().Add(progressInterval)
+			sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
+			fmt.Print(sLine + "\r")
+			lastTrans = transactionsCount
+		}
+		// The sync is just so we can see
+		// file sizes in explorer during processing
+		if height%10000 == 0 {
+			err := ac.Sync()
+			if err != nil {
+				return err
 			}
+			runtime.GC()
+			debug.FreeOSMemory()
 		}
 
 		/*		i := 0
@@ -389,7 +411,7 @@ func PhaseThreeParallel(lastBlock int64,
 		}
 
 		count, _ := block.TransactionCount()
-		transactions += count
+		transactionsCount += count
 
 		/*		i = 0
 				statusMap.Range(func(key, value interface{}) bool {
@@ -414,6 +436,7 @@ func PhaseThreeParallel(lastBlock int64,
 			height = block.Height()
 		}
 	}
+	fmt.Println()
 	ac.Close()
 	runtime.GC()
 	debug.FreeOSMemory()
