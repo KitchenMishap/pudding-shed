@@ -7,8 +7,6 @@ import (
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
-	"runtime"
-	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -95,7 +93,7 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
-	readerPool := corereader.NewPool(THREADS)
+	readerPool := corereader.NewPool(THREADS, false)
 	workerPool := concurrency.NewWorkerPool(THREADS)
 	statusMap := sync.Map{}
 
@@ -216,8 +214,6 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 			if err != nil {
 				return err
 			}
-			runtime.GC()
-			debug.FreeOSMemory()
 		}
 
 		/*		i := 0
@@ -254,8 +250,6 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	}
 	fmt.Println()
 	hc.Close()
-	runtime.GC()
-	debug.FreeOSMemory()
 	fmt.Println("Done Several Years Parallel Phase 1")
 	return nil
 }
@@ -274,7 +268,7 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
-	readerPool := corereader.NewPool(THREADS)
+	readerPool := corereader.NewPool(THREADS, true)
 	workerPool := concurrency.NewWorkerPool(THREADS)
 
 	statusMap := sync.Map{}
@@ -393,8 +387,6 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 			if err != nil {
 				return err
 			}
-			runtime.GC()
-			debug.FreeOSMemory()
 		}
 
 		/*		i := 0
@@ -438,8 +430,6 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	}
 	fmt.Println()
 	ac.Close()
-	runtime.GC()
-	debug.FreeOSMemory()
-	fmt.Println("Done Several Years Parallel")
+	fmt.Println("Done Several Years Parallel Phase 3")
 	return nil
 }

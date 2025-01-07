@@ -2,7 +2,6 @@ package corereader
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"io"
 	"net/http"
@@ -14,11 +13,14 @@ import (
 // corereader.CoreReader implements jsonblock.IBlockJsonFetcher
 var _ jsonblock.IBlockJsonFetcher = (*CoreReader)(nil) // Check that implements
 
-var theTransport = http.Transport{ResponseHeaderTimeout: time.Hour, MaxConnsPerHost: 50, DisableKeepAlives: true}
-var theClient = http.Client{Transport: &theTransport}
+var theTransport1 = http.Transport{ResponseHeaderTimeout: time.Hour, MaxConnsPerHost: 15, DisableKeepAlives: true}
+var theClient1 = http.Client{Transport: &theTransport1}
+var theTransport2 = http.Transport{ResponseHeaderTimeout: time.Hour, MaxConnsPerHost: 15, DisableKeepAlives: true}
+var theClient2 = http.Client{Transport: &theTransport1}
 
 type CoreReader struct {
 	latestBlock int64
+	client      *http.Client
 }
 
 func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
@@ -29,18 +31,9 @@ func (cr *CoreReader) getHashHexByHeight(height int64) (string, error) {
 	req += strconv.Itoa(int(height)) + ".hex"
 
 	var resp *http.Response
-	retries := 5
 	var err error
-	{
-		resp, err = theClient.Get(req)
-		// This is hacky as I don't know why it occasionally fails
-		for err != nil && retries > 0 {
-			fmt.Println("Sleeping and retrying theClient.Get(req)...", 6-retries)
-			time.Sleep(1 * time.Second)
-			resp, err = theClient.Get(req)
-			retries--
-		}
-	}
+	resp, err = cr.client.Get(req)
+
 	if err != nil {
 		println(err.Error())
 		println("getHashHexByHeight(): Could not GET from local bitcoin REST server")
@@ -60,17 +53,7 @@ func (cr *CoreReader) CountBlocks() (int64, error) {
 	req := "http://127.0.0.1:8332/rest/chaininfo.json"
 	var resp *http.Response
 	var err error
-	retries := 5
-	{
-		resp, err = theClient.Get(req)
-		// This is hacky as I don't know why it occasionally fails
-		for err != nil && retries > 0 {
-			fmt.Println("Sleeping and retrying theClient.Get(req)...", 6-retries)
-			time.Sleep(1 * time.Second)
-			resp, err = theClient.Get(req)
-			retries--
-		}
-	}
+	resp, err = cr.client.Get(req)
 	if err != nil {
 		return -1, err
 	}
@@ -100,18 +83,8 @@ func (cr *CoreReader) FetchBlockJsonBytes(height int64) ([]byte, error) {
 	req += hashHexString
 	req += ".json"
 
-	retries := 5
 	var resp *http.Response
-	{
-		resp, err = theClient.Get(req)
-		// This is hacky as I don't know why it occasionally fails
-		for err != nil && retries > 0 {
-			fmt.Println("Sleeping and retrying theClient.Get(req)...", 6-retries)
-			time.Sleep(1 * time.Second)
-			resp, err = theClient.Get(req)
-			retries--
-		}
-	}
+	resp, err = cr.client.Get(req)
 	if err != nil {
 		return nil, err
 	}

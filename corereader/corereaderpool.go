@@ -8,13 +8,23 @@ import (
 // corereader.Pool implements jsonblock.IBlockJsonFetcher
 var _ jsonblock.IBlockJsonFetcher = (*Pool)(nil) // Check that implements
 
-func NewPool(poolSize int) *Pool {
+func NewPool(poolSize int, useSecondClient bool) *Pool {
 	result := Pool{}
 	result.InChan = make(chan *Task)
 	result.counter = CoreReader{}
+	if useSecondClient {
+		result.counter.client = &theClient2
+	} else {
+		result.counter.client = &theClient1
+	}
 	result.wg.Add(poolSize)
 	for i := 0; i < poolSize; i++ {
 		reader := CoreReader{}
+		if useSecondClient {
+			reader.client = &theClient2
+		} else {
+			reader.client = &theClient1
+		}
 		go result.worker(reader)
 	}
 	return &result

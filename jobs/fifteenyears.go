@@ -72,7 +72,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	} else {
 		// This object gets blocks from Bitcoin Core one by one, but just holding
 		// the various hashes and nothing else
-		aReaderForHashes := corereader.NewPool(readerThreads)
+		aReaderForHashes := corereader.NewPool(readerThreads, false)
 		var aOneBlockChainForHashes = jsonblock.CreateHashesBlockChain(aReaderForHashes)
 
 		for height := int64(0); height <= lastBlock; height++ {
@@ -199,7 +199,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 		}
 	} else {
 
-		aReader := corereader.NewPool(25)
+		aReader := corereader.NewPool(readerThreads, true)
 		var aOneBlockChain = jsonblock.CreateOneBlockChain(aReader, transactionIndexer)
 
 		hBlock := aOneBlockChain.GenesisBlock()
