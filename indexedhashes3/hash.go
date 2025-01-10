@@ -7,13 +7,19 @@ import (
 
 type Hash indexedhashes.Sha256
 
-func (h *Hash) toTruncatedHash(p *Params) truncatedHash {
-	byteStart := p.wholeBytesInBinNum()
-	return (*h)[byteStart:32]
+func (h *Hash) toTruncatedHash() truncatedHash {
+	result := [24]byte{}
+	copy(result[:], (*h)[8:32])
+	return result
 }
 
-func (h *Hash) toBinNum(p *Params) binNum {
-	LSBs64 := binary.LittleEndian.Uint64((*h)[0:8])
-	mask := uint64(0xFFFFFFFFFFFFFFFF) >> (64 - p.bitsPerBinNum)
-	return binNum(int64(LSBs64 & mask))
+func (h *Hash) toAbbreviatedHash() abbreviatedHash {
+	return abbreviatedHash(binary.LittleEndian.Uint64((*h)[0:8]))
+}
+
+func NewHashFromTruncatedHashAbbreviatedHash(t *truncatedHash, a abbreviatedHash) *Hash {
+	h := Hash{}
+	binary.LittleEndian.PutUint64(h[0:8], uint64(a))
+	copy((h)[8:32], (*t)[0:24])
+	return &h
 }

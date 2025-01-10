@@ -1,6 +1,7 @@
 package indexedhashes3
 
-// A sortNum is used for sorting truncatedHashes within a bin.
-// It is a particular 32 bits of a truncatedHash cast to a float64
+// A sortNum is used for sorting and searching hashes within a bin.
+// It can also be used to reconstruct a hash if you also have the truncatedHash and binNum.
+// It is the remainder when you divide the abbreviatedHash by the number of bins for this store.
 
-type sortNum float64
+type sortNum uint64

@@ -1,3 +1,3 @@
 package indexedhashes3
 
-type binNum int64
+type binNum uint64
