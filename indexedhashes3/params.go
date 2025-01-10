@@ -1,10 +1,11 @@
 package indexedhashes3
 
 type HashIndexingParams struct {
-	bitsPerHashIndex  int64 // A parameter
-	numberOfBins      int64
-	bytesPerBinEntry  int64
-	entriesInBinStart int64
+	bitsPerHashIndex        int64 // A parameter
+	numberOfBins            int64
+	bytesPerBinEntry        int64
+	entriesInBinStart       int64
+	digitsPerNumberedFolder int
 	// Derived values
 	bitsPerSortNum       int64
 	maskLsbsForHashIndex uint64
@@ -47,4 +48,8 @@ func (p *HashIndexingParams) MaskForHashIndex() uint64 {
 
 func (p *HashIndexingParams) MaskForSortNum() uint64 {
 	return p.maskLsbsForSortNum
+}
+
+func (p *HashIndexingParams) EntriesInBinStart() int64 {
+	return p.entriesInBinStart
 }

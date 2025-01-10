@@ -48,10 +48,10 @@ func NewNumberedFolders(fileDigits int, folderDigits int) NumberedFolders {
 	for i := 0; i < folderDigits; i++ {
 		numbered.bigitPlaceholderFolder += "x"
 	}
-	return numbered
+	return &numbered
 }
 
-func (nf numberedFolders) NumberToFoldersAndFile(num int64) (folders string, filename string, filenum int64) {
+func (nf *numberedFolders) NumberToFoldersAndFile(num int64) (folders string, filename string, filenum int64) {
 	bigitCount := 0
 	var bigitArray []string
 	// bigitArray[0] will be the least significant bigit
