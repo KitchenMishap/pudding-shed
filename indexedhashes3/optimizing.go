@@ -22,7 +22,7 @@ func GraphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
 			if lambda > 20 {
 				for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
 
-					entriesPerBinStart := xLimitBigEnoughForForPoissionCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
+					entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
 					bytes, overflows := estimateBytes(hashCountEstimate, numberOfBins, 24+bytesForHashIndexSortNum,
 						entriesPerBinStart, 2)
 

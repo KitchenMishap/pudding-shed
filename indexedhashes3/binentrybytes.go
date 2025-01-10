@@ -16,7 +16,7 @@ import "encoding/binary"
 
 type binEntryBytes []byte // The number of bytes in the slice is fixed for a given hash indexing store
 
-func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *Params) *binEntryBytes {
+func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) *binEntryBytes {
 	result := make([]byte, p.BytesPerBinEntry())
 	MS64Bits := uint64(hi) // Put hashIndex in the LSBs to start with
 	if hi >= 1<<p.BitsPerHashIndex() {
@@ -47,11 +47,11 @@ func (beb *binEntryBytes) getTruncatedHash() truncatedHash {
 	return result
 }
 
-func (beb *binEntryBytes) getMS64Bits(p *Params) uint64 {
+func (beb *binEntryBytes) getMS64Bits(p *HashIndexingParams) uint64 {
 	return binary.LittleEndian.Uint64((*beb)[p.BytesPerBinEntry()-8 : p.BytesPerBinEntry()])
 }
 
-func (beb *binEntryBytes) getHashIndexSortNum(p *Params) (hashIndex, sortNum) {
+func (beb *binEntryBytes) getHashIndexSortNum(p *HashIndexingParams) (hashIndex, sortNum) {
 	MS64Bits := beb.getMS64Bits(p)
 	MS64Bits >>= (64 - p.BitsPerHashIndex() - p.BitsPerSortNum())
 	sn := MS64Bits & p.MaskForSortNum()

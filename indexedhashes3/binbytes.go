@@ -15,7 +15,7 @@ func newEmptyBin() *bin {
 	return &result
 }
 
-func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *Params) {
+func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *HashIndexingParams) {
 	newEntry := newBinEntryBytes(th, hi, sn, p)
 	insertionPoint := b.findIndexBasedOnSortNum(sn, p)
 
@@ -36,7 +36,7 @@ func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *Par
 	}
 }
 
-func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *Params) hashIndex {
+func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams) hashIndex {
 	firstMatchingIndex := b.findIndexBasedOnSortNum(sn, p)
 	// Search sequentially from here until everything matches or sn does not match
 	for index := firstMatchingIndex; index < int64(len(*b)); index++ {
@@ -52,7 +52,7 @@ func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *Params) hashIndex {
 	return -1 // hash not present in bin
 }
 
-func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *Params) *Hash {
+func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Hash {
 	// No shortcut. Sequential search
 	for index := 0; index < len(*b); index++ {
 		hiFound, snFound := (*b)[index].getHashIndexSortNum(p)
@@ -71,7 +71,7 @@ func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *Params) *Hash {
 // This COULD be the first entry having that sortNum,
 // or it COULD be the index after the interval where sortNum is crossed.
 // If you need to know which of these is the case, you'll need to do a further check.
-func (b *bin) findIndexBasedOnSortNum(sn sortNum, p *Params) int64 {
+func (b *bin) findIndexBasedOnSortNum(sn sortNum, p *HashIndexingParams) int64 {
 	if len(*b) == 0 {
 		return 0
 	}
@@ -87,7 +87,7 @@ func (b *bin) findIndexBasedOnSortNum(sn sortNum, p *Params) int64 {
 // We are ultimately looking for the first index where sn(index-1) < sn, and sn(index) >= sn.
 // If newStart==newEnd then we have found that point and you should no longer iterate.
 // Note that if (endIndex+1, endIndex+1) is returned, then the index you want is beyond the searched sequence.
-func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *Params) (newStart int64, newEnd int64) {
+func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *HashIndexingParams) (newStart int64, newEnd int64) {
 	if startIndex == endIndex {
 		panic("homeInOnSortNum(): you should have already finished the iteration")
 	}
