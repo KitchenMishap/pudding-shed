@@ -18,8 +18,10 @@ func newOverflowFiles(folderPath string, p *HashIndexingParams) *overflowFiles {
 	return &result
 }
 
-func (of *overflowFiles) overflowFilepath(bn binNum) string {
+func (of *overflowFiles) overflowFolderpathFilepath(bn binNum) (folderpath string, filepath string) {
 	sep := string(os.PathSeparator)
 	folders, filename, _ := of.numberedFolders.NumberToFoldersAndFile(int64(bn))
-	return of.folderPath + sep + "BinOverflows" + sep + folders + sep + filename + ".bes"
+	folderpath = of.folderPath + sep + "BinOverflows" + sep + folders
+	filepath = folderpath + sep + filename + ".bes"
+	return folderpath, filepath
 }

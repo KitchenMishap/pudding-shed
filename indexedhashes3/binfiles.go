@@ -21,7 +21,7 @@ func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *
 		theBinBytes = theBinBytes[0 : p.BytesPerBinEntry()*(p.EntriesInBinStart()-zeroEntries)]
 	} else {
 		// Otherwise try to append any entries from overflow file
-		overflowsFilepath := ovf.overflowFilepath(bn)
+		_, overflowsFilepath := ovf.overflowFolderpathFilepath(bn)
 		overflowBytes, err := os.ReadFile(overflowsFilepath)
 		if err != nil {
 			// Do nothing when file doesn't exist
@@ -61,8 +61,12 @@ func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles
 			copy(overflowBytes[(entry-numEntriesBinStart)*p.BytesPerBinEntry():], b[entry])
 		}
 		// (now to file)
-		overflowFilepath := ovf.overflowFilepath(bn)
-		err := os.WriteFile(overflowFilepath, overflowBytes, 0644)
+		overflowFolderpath, overflowFilepath := ovf.overflowFolderpathFilepath(bn)
+		err := os.MkdirAll(overflowFolderpath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(overflowFilepath, overflowBytes, 0644)
 		if err != nil {
 			return err
 		}
