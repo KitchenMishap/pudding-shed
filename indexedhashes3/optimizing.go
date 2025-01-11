@@ -5,8 +5,8 @@ import "fmt"
 // For graphing and optimizing suitable parameters
 
 func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPerBinStart int64, maxBytesPerBinStart int64) {
-	//wholeBytesForHashIndex := bitsPerHashIndex / 8
-	for bitsForSortNum := int64(16); bitsForSortNum <= 32; bitsForSortNum++ {
+	const minLambda = float64(20)
+	for bitsForSortNum := int64(12); bitsForSortNum <= 32; bitsForSortNum++ {
 		// Assume bytes fully used
 		//bytesForHashIndexSortNum := wholeBytesForHashIndex + extraBytes
 		//bitsForSortNum := bytesForHashIndexSortNum*8 - bitsPerHashIndex
@@ -20,7 +20,7 @@ func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPer
 
 			lambda := float64(hashCountEstimate) / float64(numberOfBins)
 			// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
-			if lambda > 20 {
+			if lambda > minLambda {
 				for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
 
 					entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
