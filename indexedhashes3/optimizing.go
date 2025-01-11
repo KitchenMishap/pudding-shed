@@ -4,7 +4,7 @@ import "fmt"
 
 // For graphing and optimizing suitable parameters
 
-func GraphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
+func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPerBinStart int64, maxBytesPerBinStart int64) {
 	//wholeBytesForHashIndex := bitsPerHashIndex / 8
 	for bitsForSortNum := int64(16); bitsForSortNum <= 32; bitsForSortNum++ {
 		// Assume bytes fully used
@@ -19,6 +19,7 @@ func GraphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
 			numberOfBins := int64(mult * float64((int64(1) << bitsForSortNum)))
 
 			lambda := float64(hashCountEstimate) / float64(numberOfBins)
+			// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
 			if lambda > 20 {
 				for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
 
@@ -29,7 +30,7 @@ func GraphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
 					//bytesPerBinStart := 2 + entriesPerBinStart*(bytesForHashIndexSortNum+24)
 					bytesPerBinStart := 0 + entriesPerBinStart*(bytesForHashIndexSortNum+24)
 
-					if bytesPerBinStart == 4096 {
+					if bytesPerBinStart >= minBytesPerBinStart && bytesPerBinStart <= maxBytesPerBinStart {
 						fmt.Println("Bins:", numberOfBins, "\t%Overflows:", percentOverflows, "\tBinStartEntries:", entriesPerBinStart, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/100000000)/10.0, "GB", "\tOverflowFiles:", overflows)
 					}
 				}

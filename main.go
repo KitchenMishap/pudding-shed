@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/jobs"
 	"time"
 )
 
 func main() {
-
 	//																			Count at 15 years:
 	//roomFor16milBlocks := int64(3) // 256^3 = 16,777,216 blocks					There were 824,204 blocks
 	//roomFor4bilTrans := int64(4)   // 256^4 = 4,294,967,296 transactions		There were 947,337,057 transactions
@@ -17,9 +15,6 @@ func main() {
 	//roomFor1trilAddrs := int64(5) //	,,			,,			 addresses		There must be fewer addresses than txos
 	//roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
 
-	indexedhashes3.GraphGigabytes(32, 3000000000)
-
-	panic("Done")
 	/*
 		percentOverflows := 0.01
 		indexedhashes3.OptimizeAndInitializeParams("Blocks", 1000000, roomFor16milBlocks, 37164, percentOverflows)
