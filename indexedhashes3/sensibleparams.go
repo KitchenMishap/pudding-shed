@@ -8,7 +8,8 @@ const bitsFor2bilTrans = int64(31)  // 2^31 = 2,147,483,648 transactions	There w
 const bitsFor4bilAddrs = int64(32)  // 2^32 = 4,294,967,296 addresses		There must be fewer addresses than txos
 //																			(There were 2,652,374,369 txos, including spent)
 
-const hashCountEstimate16Years = int64(3000000000)
+const addressesEstimate16Years = int64(3000000000)
+const transactionsEstimate16Years = int64(1000000000)
 
 func Sensible16YearAddressHashParams() *HashIndexingParams {
 	// Run test Test16YearsAddressParams() to see how these numbers are arrived at
@@ -20,9 +21,27 @@ func Sensible16YearAddressHashParams() *HashIndexingParams {
 	//   not much lower at 129.6GB, but had 2 million overflow files)
 	return NewHashStoreParams(
 		bitsFor4bilAddrs,         // bitsPerHashIndex
-		hashCountEstimate16Years, // hashCountEstimate
+		addressesEstimate16Years, // hashCountEstimate
 		2,                        // digitsPerNumberedFolder
 		30702305,                 // numberOfBins (result of some optimization calculations)
 		128,                      // entriesInBinStart (result of some optimization calculations)
 		32)                       // bytesPerBinEntry (result of some optimization calculations)
+}
+
+func Sensible16YearsTransactionHashParams() *HashIndexingParams {
+	// Run test Test16YearsTransactionParams() to see how these numbers are arrived at
+	// The following values give:
+	// BytesPerBinStart = 4092 (might be a good idea to pad to file allocation unit 4096?!)
+	// OverflowFilesEstimate = 8560 (good, a nice balance as a million or so files take a very long time to copy)
+	// 0.1% of bins resorting to an overflow file
+	// Estimated hash store size on disk = 43.5GB (good, a nice balance. The minumum found for 4092 bytes was
+	//   not much lower at 40.8GB, but had nearly a million overflow files)
+	return NewHashStoreParams(
+		bitsFor2bilTrans,            // bitsPerHashIndex
+		transactionsEstimate16Years, // hashCountEstimate
+		2,                           // digitsPerNumberedFolder
+		9898557,                     // numberOfBins (result of some optimization calculations)
+		132,                         // entriesInBinStart (result of some optimization calculations)
+		31)                          // bytesPerBinEntry (result of some optimization calculations)
+
 }
