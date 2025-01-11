@@ -16,6 +16,9 @@ type ConcreteWordFileCreator struct {
 }
 
 func NewConcreteWordFileCreator(name string, folder string, wordSize int64, memShadowed bool) *ConcreteWordFileCreator {
+	if wordSize == 0 {
+		panic("must be at least one byte")
+	}
 	result := ConcreteWordFileCreator{}
 	result.name = name
 	result.folder = folder
@@ -137,7 +140,10 @@ func (wfc *ConcreteWordFileCreator) CreateWordFileFilledZeros(count int64) error
 	if err != nil {
 		return err
 	}
-	file.Truncate(count * wfc.wordSize)
+	err = file.Truncate(count * wfc.wordSize)
+	if err != nil {
+		return err
+	}
 
 	defer file.Close()
 

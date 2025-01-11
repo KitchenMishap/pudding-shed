@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/corereader"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"os"
@@ -126,18 +126,34 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	phase = "2 of 3"
 	phaseName = "Index the hashes"
 
-	// Don't panic... when these estimates are exceeded as the blockchain gets bigger, there is no major problem!
-	blocksCountEstimate := int64(1000000)   // There were 824,024 blocks after 15 years
-	transCountEstimate := int64(1000000000) // There were 947,337,057 transactions after 15 years
-	addrsCountEstimate := int64(3000000000) // There were 2,652,374,369 txos after 15 years, so there were fewer addresses
-
 	phaseStart = time.Now()
 	nextProgress = phaseStart.Add(progressInterval)
 	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	sep := string(os.PathSeparator)
-	_, bpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", blocksCountEstimate, 2, 1)
-	_, tpl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", transCountEstimate, 2, 1)
-	_, apl := indexedhashes.NewUniformHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", addrsCountEstimate, 2, 1)
+	var bParams *indexedhashes3.HashIndexingParams = nil
+	var tParams *indexedhashes3.HashIndexingParams = nil
+	var aParams *indexedhashes3.HashIndexingParams = nil
+	if years == 2 {
+		bParams = indexedhashes3.Sensible2YearsBlockHashParams()
+		tParams = indexedhashes3.Sensible2YearsTransactionHashParams()
+		aParams = indexedhashes3.Sensible2YearsAddressHashParams()
+	} else {
+		bParams = indexedhashes3.Sensible16YearsBlockHashParams()
+		tParams = indexedhashes3.Sensible16YearsTransactionHashParams()
+		aParams = indexedhashes3.Sensible16YearsAddressHashParams()
+	}
+	_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams)
+	if err != nil {
+		return err
+	}
+	_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams)
+	if err != nil {
+		return err
+	}
+	_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams)
+	if err != nil {
+		return err
+	}
 	err = bpl.IndexTheHashes()
 	if err != nil {
 		return err

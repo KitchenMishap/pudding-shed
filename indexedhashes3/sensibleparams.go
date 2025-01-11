@@ -14,7 +14,7 @@ const addressesEstimate16Years = int64(3000000000)
 const transactionsEstimate16Years = int64(1000000000)
 const blocksEstimate16Years = int64(1000000)
 
-func Sensible16YearAddressHashParams() *HashIndexingParams {
+func Sensible16YearsAddressHashParams() *HashIndexingParams {
 	// Run test Test16YearsAddressParams() to see how these numbers are arrived at
 	// The following values give:
 	// BytesPerBinStart = 4096 (good as file accesses will be aligned to hard disk allocation unit boundaries)
@@ -75,7 +75,7 @@ const blocksEstimate2Years = int64(100000)
 const transactionsEstimate2Years = int64(100000000)
 const addressesEstimate2Years = int64(200000000)
 
-func Sensible2YearAddressHashParams() *HashIndexingParams {
+func Sensible2YearsAddressHashParams() *HashIndexingParams {
 	// Run test Test2YearsAddressParams() to see how these numbers are arrived at
 	return NewHashStoreParams(
 		bitsFor200milAddrs,      // bitsPerHashIndex
@@ -86,7 +86,7 @@ func Sensible2YearAddressHashParams() *HashIndexingParams {
 		31)                      // bytesPerBinEntry (result of some optimization calculations)
 }
 
-func Sensible2YearTransactionHashParams() *HashIndexingParams {
+func Sensible2YearsTransactionHashParams() *HashIndexingParams {
 	// Run test Test2YearsTransactionParams() to see how these numbers are arrived at
 	return NewHashStoreParams(
 		bitsFor100milTrans,         // bitsPerHashIndex
@@ -97,7 +97,7 @@ func Sensible2YearTransactionHashParams() *HashIndexingParams {
 		30)                         // bytesPerBinEntry (result of some optimization calculations)
 }
 
-func Sensible2YearBlockHashParams() *HashIndexingParams {
+func Sensible2YearsBlockHashParams() *HashIndexingParams {
 	// Run test Test2YearsBlockParams() to see how these numbers are arrived at
 	return NewHashStoreParams(
 		bitsFor100ThouBlocks, // bitsPerHashIndex

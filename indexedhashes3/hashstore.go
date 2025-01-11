@@ -9,13 +9,28 @@ import (
 type hashStore struct {
 	params        *HashIndexingParams
 	overflowFiles *overflowFiles
-	binNumFile    wordfile.WordFile
+	binNumFile    wordfile.ReadWriteAtWordCounter
 	binStartsFile *os.File
 }
 
 // Compiler check that implements
 var _ indexedhashes.HashReader = (*hashStore)(nil)
 var _ indexedhashes.HashReadWriter = (*hashStore)(nil)
+
+func newHashStoreObject(params *HashIndexingParams, folderPath string,
+	binNumWordFileCreator wordfile.WordFileCreator,
+	binStartsFile *os.File) (*hashStore, error) {
+	result := hashStore{}
+	result.params = params
+	result.overflowFiles = newOverflowFiles(folderPath, params)
+	var err error
+	result.binNumFile, err = binNumWordFileCreator.OpenWordFile()
+	if err != nil {
+		return nil, err
+	}
+	result.binStartsFile = binStartsFile
+	return &result, nil
+}
 
 func (h hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 	hash3 := Hash(*hash)

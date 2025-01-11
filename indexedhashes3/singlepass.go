@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/testpoints"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"os"
 )
 
@@ -11,13 +12,17 @@ import (
 type singlePassDetails struct {
 	firstBinNum       int64
 	lastBinNumPlusOne int64
+	binNumsWordFile   wordfile.WriterAtWord
 	bins              []bin
 }
 
-func newSinglePassDetails(firstBinNum int64, binsCount int64) *singlePassDetails {
+func newSinglePassDetails(firstBinNum int64, binsCount int64, binNumsWordFile wordfile.WriterAtWord) *singlePassDetails {
 	result := singlePassDetails{}
 	result.firstBinNum = firstBinNum
 	result.lastBinNumPlusOne = firstBinNum + binsCount
+	if firstBinNum == 0 {
+		result.binNumsWordFile = binNumsWordFile
+	}
 	result.bins = make([]bin, binsCount)
 	for i := int64(0); i < binsCount; i++ {
 		result.bins[i] = newEmptyBin()
@@ -45,7 +50,10 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
 		hashCount := nBytes / 32
 		for index := 0; index < hashCount; index++ {
 			copy(hash[:], chunk[index*32:index*32+32])
-			spd.dealWithOneHash(hashIndex, &hash, mp)
+			err := spd.dealWithOneHash(hashIndex, &hash, mp)
+			if err != nil {
+				return err
+			}
 			hashIndex++
 		}
 		nBytes, _ = hashesFile.Read(chunk)
@@ -53,7 +61,7 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
 	return nil
 }
 
-func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *MultipassPreloader) {
+func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *MultipassPreloader) error {
 	// === TestPoint ===
 	// TestPoint for when inserting nth hash (but hit for nth block, nth transaction, and nth address)
 	if testpoints.TestPointBlockEnable && hi == testpoints.TestPointBlock {
@@ -63,9 +71,18 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 	hash3 := Hash(*hash)
 	abbr := hash3.toAbbreviatedHash()
 	bn := abbr.toBinNum(mp.params)
+
+	if spd.firstBinNum == 0 {
+		// First pass, store the binNum in a wordfile
+		err := spd.binNumsWordFile.WriteWordAt(int64(bn), hi)
+		if err != nil {
+			return err
+		}
+	}
+
 	// This single pass only deals with a certain range of bin numbers
 	if int64(bn) < spd.firstBinNum || int64(bn) >= spd.lastBinNumPlusOne {
-		return
+		return nil
 	}
 
 	th := hash3.toTruncatedHash()
@@ -76,10 +93,11 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 
 	// Is it in the bin already?
 	if theBin.lookupByHash(&th, sn, mp.params) != -1 {
-		return
+		return nil
 	}
 
 	theBin.insertBinEntry(sn, hashIndex(hi), &th, mp.params)
+	return nil
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {

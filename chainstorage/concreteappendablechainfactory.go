@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -66,13 +67,12 @@ func NewConcreteAppendableChainCreator(
 	roomFor1trilAddrs := int64(5)  //	,,			,,			 addresses		There must be fewer addresses than txos
 	roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
 
-	const gigabytesMem = 1
-	result.blockHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
-		result.blocksFolder, "Hashes", gigabytesMem)
-	result.transactionHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
-		result.transactionsFolder, "Hashes", gigabytesMem)
-	result.addressHashStoreCreator, _, _ = indexedhashes.NewUniformHashStoreCreatorAndPreloaderFromFile(
-		result.addressesFolder, "Hashes", gigabytesMem)
+	result.blockHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+		result.blocksFolder, "Hashes")
+	result.transactionHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+		result.transactionsFolder, "Hashes")
+	result.addressHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+		result.addressesFolder, "Hashes")
 
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans, false)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs, false)

@@ -13,7 +13,7 @@ type overflowFiles struct {
 func newOverflowFiles(folderPath string, p *HashIndexingParams) *overflowFiles {
 	result := overflowFiles{}
 	result.folderPath = folderPath
-	nf := numberedfolders.NewNumberedFolders(0, p.digitsPerNumberedFolder)
+	nf := numberedfolders.NewNumberedFolders(0, p.DigitsPerNumberedFolder())
 	result.numberedFolders = nf
 	return &result
 }

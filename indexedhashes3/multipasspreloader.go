@@ -2,22 +2,25 @@ package indexedhashes3
 
 import (
 	"fmt"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"os"
 )
 
 type MultipassPreloader struct {
-	params        *HashIndexingParams
-	folderPath    string
-	binStartsFile *os.File
-	bytesPerPass  int64
-	overflowFiles *overflowFiles
+	params          *HashIndexingParams
+	folderPath      string
+	binStartsFile   *os.File
+	binNumsWordFile wordfile.WriterAtWord
+	bytesPerPass    int64
+	overflowFiles   *overflowFiles
 }
 
-func NewMultipassPreloader(params *HashIndexingParams, folderPath string) *MultipassPreloader {
+func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNumsWordFile wordfile.WriterAtWord) *MultipassPreloader {
 	result := MultipassPreloader{}
 	result.params = params
 	result.folderPath = folderPath
 	result.binStartsFile = nil
+	result.binNumsWordFile = binNumsWordFile
 	result.bytesPerPass = 1024 * 1024 * 1024 // One Gigabyte (memory)
 	result.overflowFiles = newOverflowFiles(folderPath, params)
 	return &result
@@ -42,7 +45,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 			bins = mp.params.NumberOfBins() - firstBinNum
 		}
 
-		passDetails := newSinglePassDetails(firstBinNum, bins)
+		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile)
 		err = passDetails.readIn(mp)
 		if err != nil {
 			return err
@@ -54,6 +57,10 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		}
 	}
 	fmt.Println()
+	err = mp.binNumsWordFile.Close()
+	if err != nil {
+		return err
+	}
 	err = mp.binStartsFile.Close()
 	if err != nil {
 		return err
@@ -74,6 +81,16 @@ func (mp *MultipassPreloader) createInitialFiles() error {
 		return err
 	}
 	err = mp.binStartsFile.Truncate(binStartsFileSize)
+	if err != nil {
+		return err
+	}
+
+	bnFilePath := mp.folderPath + sep + "BinNums.int"
+	f, err := os.Create(bnFilePath)
+	if err != nil {
+		return err
+	}
+	err = f.Close()
 	if err != nil {
 		return err
 	}
