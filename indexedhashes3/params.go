@@ -2,6 +2,7 @@ package indexedhashes3
 
 type HashIndexingParams struct {
 	bitsPerHashIndex        int64 // A parameter
+	hashCountEstimate       int64 // A parameter
 	numberOfBins            int64
 	bytesPerBinEntry        int64
 	entriesInBinStart       int64
@@ -52,4 +53,8 @@ func (p *HashIndexingParams) MaskForSortNum() uint64 {
 
 func (p *HashIndexingParams) EntriesInBinStart() int64 {
 	return p.entriesInBinStart
+}
+
+func (p *HashIndexingParams) HashCountEstimate() int64 {
+	return p.hashCountEstimate
 }

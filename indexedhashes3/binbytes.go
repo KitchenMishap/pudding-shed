@@ -10,9 +10,9 @@ import (
 
 type bin []binEntryBytes
 
-func newEmptyBin() *bin {
+func newEmptyBin() bin {
 	result := bin(make([]binEntryBytes, 0))
-	return &result
+	return result
 }
 
 func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *HashIndexingParams) {
