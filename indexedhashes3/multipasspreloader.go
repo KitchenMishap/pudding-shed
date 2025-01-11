@@ -13,6 +13,16 @@ type MultipassPreloader struct {
 	overflowFiles *overflowFiles
 }
 
+func NewMultipassPreloader(params *HashIndexingParams, folderPath string) *MultipassPreloader {
+	result := MultipassPreloader{}
+	result.params = params
+	result.folderPath = folderPath
+	result.binStartsFile = nil
+	result.bytesPerPass = 1024 * 1024 * 1024 // One Gigabyte (memory)
+	result.overflowFiles = newOverflowFiles(folderPath, params)
+	return &result
+}
+
 func (mp *MultipassPreloader) IndexTheHashes() error {
 	err := mp.createInitialFiles()
 	if err != nil {
