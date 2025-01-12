@@ -26,7 +26,7 @@ func Sensible16YearsAddressHashParams() *HashIndexingParams {
 		bitsFor4bilAddrs,         // bitsPerHashIndex
 		addressesEstimate16Years, // hashCountEstimate
 		2,                        // digitsPerNumberedFolder
-		30702305,                 // numberOfBins (result of some optimization calculations)
+		30702304,                 // numberOfBins (result of some optimization calculations)
 		128,                      // entriesInBinStart (result of some optimization calculations)
 		32)                       // bytesPerBinEntry (result of some optimization calculations)
 }
@@ -43,7 +43,7 @@ func Sensible16YearsTransactionHashParams() *HashIndexingParams {
 		bitsFor2bilTrans,            // bitsPerHashIndex
 		transactionsEstimate16Years, // hashCountEstimate
 		2,                           // digitsPerNumberedFolder
-		9898557,                     // numberOfBins (result of some optimization calculations)
+		9898556,                     // numberOfBins (result of some optimization calculations)
 		132,                         // entriesInBinStart (result of some optimization calculations)
 		31)                          // bytesPerBinEntry (result of some optimization calculations)
 }
@@ -81,9 +81,9 @@ func Sensible2YearsAddressHashParams() *HashIndexingParams {
 		bitsFor200milAddrs,      // bitsPerHashIndex
 		addressesEstimate2Years, // hashCountEstimate
 		2,                       // digitsPerNumberedFolder
-		1855979,                 // numberOfBins (result of some optimization calculations)
-		132,                     // entriesInBinStart (result of some optimization calculations)
-		31)                      // bytesPerBinEntry (result of some optimization calculations)
+		781250,                  // numberOfBins (result of some optimization calculations)
+		305,                     // entriesInBinStart (result of some optimization calculations)
+		29)                      // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible2YearsTransactionHashParams() *HashIndexingParams {
@@ -92,9 +92,9 @@ func Sensible2YearsTransactionHashParams() *HashIndexingParams {
 		bitsFor100milTrans,         // bitsPerHashIndex
 		transactionsEstimate2Years, // hashCountEstimate
 		2,                          // digitsPerNumberedFolder
-		896532,                     // numberOfBins (result of some optimization calculations)
-		136,                        // entriesInBinStart (result of some optimization calculations)
-		30)                         // bytesPerBinEntry (result of some optimization calculations)
+		195312,                     // numberOfBins (result of some optimization calculations)
+		582,                        // entriesInBinStart (result of some optimization calculations)
+		29)                         // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible2YearsBlockHashParams() *HashIndexingParams {
@@ -103,7 +103,7 @@ func Sensible2YearsBlockHashParams() *HashIndexingParams {
 		bitsFor100ThouBlocks, // bitsPerHashIndex
 		blocksEstimate2Years, // hashCountEstimate
 		2,                    // digitsPerNumberedFolder
-		2068,                 // numberOfBins (result of some optimization calculations)
-		57,                   // entriesInBinStart (result of some optimization calculations)
+		390,                  // numberOfBins (result of some optimization calculations)
+		277,                  // entriesInBinStart (result of some optimization calculations)
 		28)                   // bytesPerBinEntry (result of some optimization calculations)
 }

@@ -41,7 +41,12 @@ func lambdaSmallEnoughForForPoissionCumulativeExceedsPercentageAtXLimit(percenta
 func xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda float64, percentage float64) (xLimitResult int64) {
 	fraction := 0.0
 	for x := int64(0); true; x++ {
-		fraction += poissonApproximation(lambda, float64(x))
+		poisson := poissonApproximation(lambda, float64(x))
+		if math.IsNaN(poisson) {
+			abc := 123
+			abc++
+		}
+		fraction += poisson
 		if fraction >= percentage/100.0 {
 			return x
 		}

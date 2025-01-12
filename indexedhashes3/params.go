@@ -28,6 +28,9 @@ type HashIndexingParams struct {
 // numberOfBins, entriesInBinStart, and bytesPerBinEntry are the subject of careful and complicated optimization.
 func NewHashStoreParams(bitsPerHashIndex int64, hashCountEstimate int64, digitsPerNumberedFolder int,
 	numberOfBins int64, entriesInBinStart int64, bytesPerBinEntry int64) *HashIndexingParams {
+	if numberOfBins%2 == 1 {
+		panic("number of bins must be even")
+	}
 	params := HashIndexingParams{}
 	params.BitsPerHashIndex_ = bitsPerHashIndex
 	params.HashCountEstimate_ = hashCountEstimate

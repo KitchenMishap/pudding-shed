@@ -6,32 +6,30 @@ import "fmt"
 
 func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPerBinStart int64, maxBytesPerBinStart int64) {
 	const minLambda = float64(20)
-	for bitsForSortNum := int64(12); bitsForSortNum <= 32; bitsForSortNum++ {
-		// Assume bytes fully used
-		//bytesForHashIndexSortNum := wholeBytesForHashIndex + extraBytes
-		//bitsForSortNum := bytesForHashIndexSortNum*8 - bitsPerHashIndex
-
+	for bitsForSortNum := int64(8); bitsForSortNum < 64; bitsForSortNum++ {
 		bits := bitsPerHashIndex + bitsForSortNum
 		bytesForHashIndexSortNum := ((bits - 1) / 8) + 1
 
 		// DON'T Assume sortNum bits fully used
-		for mult := 0.505; mult <= 1.0; mult += 0.005 {
-			numberOfBins := int64(mult * float64((int64(1) << bitsForSortNum)))
+		for mult := 1.0; mult <= 1.0; mult += 1.0 {
+			sortNumsPerBin := int64(mult * float64((int64(1) << bitsForSortNum)))
+			divider := sortNumsPerBin
+			numberOfBins := hashCountEstimate / divider
+			if numberOfBins%2 == 0 && numberOfBins > 0 {
+				lambda := float64(hashCountEstimate) / float64(numberOfBins)
+				// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
+				if lambda > minLambda {
+					for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
 
-			lambda := float64(hashCountEstimate) / float64(numberOfBins)
-			// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
-			if lambda > minLambda {
-				for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
+						entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
+						bytes, overflows := estimateBytes(hashCountEstimate, numberOfBins, 24+bytesForHashIndexSortNum,
+							entriesPerBinStart)
 
-					entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
-					bytes, overflows := estimateBytes(hashCountEstimate, numberOfBins, 24+bytesForHashIndexSortNum,
-						entriesPerBinStart, 2)
+						bytesPerBinStart := entriesPerBinStart * (bytesForHashIndexSortNum + 24)
 
-					//bytesPerBinStart := 2 + entriesPerBinStart*(bytesForHashIndexSortNum+24)
-					bytesPerBinStart := 0 + entriesPerBinStart*(bytesForHashIndexSortNum+24)
-
-					if bytesPerBinStart >= minBytesPerBinStart && bytesPerBinStart <= maxBytesPerBinStart {
-						fmt.Println("Bins:", numberOfBins, "\t%Overflows:", percentOverflows, "\tBinStartEntries:", entriesPerBinStart, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/100000000)/10.0, "GB", "\tOverflowFiles:", overflows)
+						if bytesPerBinStart >= minBytesPerBinStart && bytesPerBinStart <= maxBytesPerBinStart {
+							fmt.Println("Bins:", numberOfBins, "\t%Overflows:", percentOverflows, "\tBinStartEntries:", entriesPerBinStart, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/100000000)/10.0, "GB", "\tOverflowFiles:", overflows)
+						}
 					}
 				}
 			}
@@ -40,13 +38,16 @@ func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPer
 }
 
 func estimateBytes(hashCountEstimate int64,
-	numberOfBins int64, bytesPerBinEntry int64, entriesPerBinStart int64,
-	bytesToCountBinEntries int64) (bytes int64, overflows int64) {
+	numberOfBins int64, bytesPerBinEntry int64, entriesPerBinStart int64) (bytes int64, overflows int64) {
+	if numberOfBins%2 == 1 {
+		panic("numberOfBins must be even")
+	}
+	//divider := (uint64(1) << uint64(63)) / (uint64(numberOfBins) >> uint64(1))
+
 	bytes = int64(0)
 
 	// First the binstarts file
 	binBytes := int64(0)
-	binBytes += bytesToCountBinEntries                // The count at the start of the bin
 	binBytes += entriesPerBinStart * bytesPerBinEntry // The bin entries
 	bytes += binBytes * numberOfBins                  // Multiply by number of bins
 
