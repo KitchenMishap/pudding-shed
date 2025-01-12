@@ -79,6 +79,15 @@ func (b *bin) findIndexBasedOnSortNum(sn sortNum, p *HashIndexingParams) int64 {
 	}
 	startIndex := int64(0)
 	endIndex := int64(len(*b) - 1)
+
+	// Special case: if just one in sequence, but sn > sn in sequence...
+	if endIndex == startIndex {
+		_, snOnly := (*b)[startIndex].getHashIndexSortNum(p)
+		if sn > snOnly {
+			return startIndex + 1
+		}
+	}
+
 	for endIndex != startIndex {
 		startIndex, endIndex = b.homeInOnSortNum(startIndex, endIndex, sn, p)
 	}
