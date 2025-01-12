@@ -15,7 +15,7 @@ func newEmptyBin() bin {
 	return result
 }
 
-func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *HashIndexingParams) {
+func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *HashIndexingParams) int64 {
 	newEntry := newBinEntryBytes(th, hi, sn, p)
 	insertionPoint := b.findIndexBasedOnSortNum(sn, p)
 
@@ -23,7 +23,7 @@ func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *Has
 	// Alternative insertion algorithm:
 	if len(*b) == 0 {
 		// Special case if empty
-		*b = append(*b, *newEntry)
+		*b = append(*b, newEntry)
 	} else {
 		// First append a copy of the last item
 		*b = append(*b, (*b)[len(*b)-1])
@@ -32,8 +32,9 @@ func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *Has
 		copy((*b)[insertionPoint+1:], (*b)[insertionPoint:len(*b)-1])
 
 		// Finally drop in the inserted value
-		(*b)[insertionPoint] = *newEntry
+		(*b)[insertionPoint] = newEntry
 	}
+	return insertionPoint
 }
 
 func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams) hashIndex {
@@ -46,6 +47,7 @@ func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams)
 		}
 		thFound := (*b)[index].getTruncatedHash()
 		if thFound.equals(th) {
+			//fmt.Println("Found in ", index, "-th bin entry")
 			return hiFound
 		}
 	}

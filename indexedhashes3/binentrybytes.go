@@ -16,7 +16,7 @@ import "encoding/binary"
 
 type binEntryBytes []byte // The number of bytes in the slice is fixed for a given hash indexing store
 
-func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) *binEntryBytes {
+func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) binEntryBytes {
 	result := make([]byte, p.BytesPerBinEntry())
 	MS64Bits := uint64(hi) // Put hashIndex in the LSBs to start with
 	if hi >= 1<<p.BitsPerHashIndex() {
@@ -29,12 +29,12 @@ func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexin
 	MS64Bits |= uint64(sn)
 	// hashIndex followed by sortNum are currently packed into the LSBs
 	// Shift them to the MSBs
-	MS64Bits <<= 64 - (p.BitsPerHashIndex() + p.BitsPerSortNum())
+	MS64Bits <<= (64 - (p.BitsPerHashIndex() + p.BitsPerSortNum()))
 	// Write MS64Bits into the most significant bytes (LittleEndian) of the byte slice
 	binary.LittleEndian.PutUint64(result[p.BytesPerBinEntry()-8:p.BytesPerBinEntry()], MS64Bits)
 	// Write in (including overwrite some zero bytes) the truncated hash
 	copy(result[0:24], (*t)[0:24])
-	return (*binEntryBytes)(&result)
+	return (binEntryBytes)(result)
 }
 
 func (beb *binEntryBytes) getTruncatedHash() *truncatedHash {
