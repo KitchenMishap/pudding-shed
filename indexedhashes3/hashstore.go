@@ -56,7 +56,7 @@ func (h hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 		return -1, err
 	}
 
-	theBin.insertBinEntry(sn, hashIndex(hashesSoFar), &trunc, h.params)
+	theBin.insertBinEntry(sn, hashIndex(hashesSoFar), trunc, h.params)
 	err = saveBinToFiles(bn, theBin, h.binStartsFile, h.overflowFiles, h.params)
 	if err != nil {
 		return -1, err
@@ -79,7 +79,7 @@ func (h hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 		return -1, err
 	}
 
-	index := theBin.lookupByHash(&trunc, sn, h.params)
+	index := theBin.lookupByHash(trunc, sn, h.params)
 	return int64(index), nil
 }
 

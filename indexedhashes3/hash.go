@@ -7,10 +7,10 @@ import (
 
 type Hash indexedhashes.Sha256
 
-func (h *Hash) toTruncatedHash() truncatedHash {
-	result := [24]byte{}
+func (h *Hash) toTruncatedHash() *truncatedHash {
+	result := truncatedHash{}
 	copy(result[:], (*h)[8:32])
-	return result
+	return &result
 }
 
 func (h *Hash) toAbbreviatedHash() abbreviatedHash {

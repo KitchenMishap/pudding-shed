@@ -92,12 +92,12 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 	theBin := &(spd.bins[passBinNumber])
 
 	// Is it in the bin already?
-	if theBin.lookupByHash(&th, sn, mp.params) != -1 {
+	if theBin.lookupByHash(th, sn, mp.params) != -1 {
 		spd.checkThereAreNonEmptyBins()
 		return nil
 	}
 
-	theBin.insertBinEntry(sn, hashIndex(hi), &th, mp.params)
+	theBin.insertBinEntry(sn, hashIndex(hi), th, mp.params)
 	spd.checkThereAreNonEmptyBins()
 	return nil
 }

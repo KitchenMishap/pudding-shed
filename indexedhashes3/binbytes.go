@@ -45,7 +45,7 @@ func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams)
 			return -1 // hash not present in bin
 		}
 		thFound := (*b)[index].getTruncatedHash()
-		if thFound == *th {
+		if thFound.equals(th) {
 			return hiFound
 		}
 	}
@@ -59,7 +59,7 @@ func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Has
 		if hiFound == hi {
 			th := (*b)[index].getTruncatedHash()
 			ah := newAbbreviatedHashFromBinNumSortNum(bn, snFound, p)
-			h := NewHashFromTruncatedHashAbbreviatedHash(&th, ah)
+			h := NewHashFromTruncatedHashAbbreviatedHash(th, ah)
 			return h
 		}
 	}
