@@ -33,6 +33,9 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 	}
 
 	expectedEntriesPerBin := mp.params.HashCountEstimate() / mp.params.NumberOfBins()
+	if expectedEntriesPerBin == 0 {
+		expectedEntriesPerBin = 1
+	}
 	binsPerPass := mp.bytesPerPass / (mp.params.BytesPerBinEntry() * expectedEntriesPerBin)
 	passes := 1 + mp.params.NumberOfBins()/binsPerPass
 
@@ -50,6 +53,8 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		if err != nil {
 			return err
 		}
+
+		//passDetails.checkThereAreNonEmptyBins()
 
 		err := passDetails.writeFiles(mp)
 		if err != nil {
@@ -82,6 +87,7 @@ func (mp *MultipassPreloader) createInitialFiles() error {
 	}
 	err = mp.binStartsFile.Truncate(binStartsFileSize)
 	if err != nil {
+		fmt.Println("Couldn't make a ", binStartsFileSize/1024/1024, "MB file")
 		return err
 	}
 

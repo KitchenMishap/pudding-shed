@@ -245,6 +245,7 @@ func (mp *MultipassPreloader) CreateInitialFiles() error {
 	}
 	err = mp.binStartsFile.Truncate(int64(bsFileSize))
 	if err != nil {
+		fmt.Println("Couldn't make a ", bsFileSize/1024/1024, "MB file")
 		return err
 	}
 

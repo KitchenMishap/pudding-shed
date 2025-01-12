@@ -37,10 +37,6 @@ func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexin
 	return (*binEntryBytes)(&result)
 }
 
-func binEntryBytesFromBytes(b []byte) *binEntryBytes {
-	return (*binEntryBytes)(&b)
-}
-
 func (beb *binEntryBytes) getTruncatedHash() truncatedHash {
 	result := truncatedHash{}
 	copy(result[0:24], (*beb)[0:24])

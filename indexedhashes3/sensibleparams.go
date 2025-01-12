@@ -2,6 +2,8 @@ package indexedhashes3
 
 // Some sensible bitsPerHashIndex for 15 or 16 years, and for 2 years (for testing)
 
+const digitsPerNumberedFolder = 2
+
 // --------------------------------------------------------------------------
 // 15 or 16 years
 //
@@ -25,7 +27,7 @@ func Sensible16YearsAddressHashParams() *HashIndexingParams {
 	return NewHashStoreParams(
 		bitsFor4bilAddrs,         // bitsPerHashIndex
 		addressesEstimate16Years, // hashCountEstimate
-		2,                        // digitsPerNumberedFolder
+		digitsPerNumberedFolder,  // digitsPerNumberedFolder
 		30702304,                 // numberOfBins (result of some optimization calculations)
 		128,                      // entriesInBinStart (result of some optimization calculations)
 		32)                       // bytesPerBinEntry (result of some optimization calculations)
@@ -42,7 +44,7 @@ func Sensible16YearsTransactionHashParams() *HashIndexingParams {
 	return NewHashStoreParams(
 		bitsFor2bilTrans,            // bitsPerHashIndex
 		transactionsEstimate16Years, // hashCountEstimate
-		2,                           // digitsPerNumberedFolder
+		digitsPerNumberedFolder,     // digitsPerNumberedFolder
 		9898556,                     // numberOfBins (result of some optimization calculations)
 		132,                         // entriesInBinStart (result of some optimization calculations)
 		31)                          // bytesPerBinEntry (result of some optimization calculations)
@@ -58,7 +60,7 @@ func Sensible16YearsBlockHashParams() *HashIndexingParams {
 	return NewHashStoreParams(
 		bitsFor2bilTrans,            // bitsPerHashIndex
 		transactionsEstimate16Years, // hashCountEstimate
-		2,                           // digitsPerNumberedFolder
+		digitsPerNumberedFolder,     // digitsPerNumberedFolder
 		42926,                       // numberOfBins (result of some optimization calculations)
 		35,                          // entriesInBinStart (result of some optimization calculations)
 		29)                          // bytesPerBinEntry (result of some optimization calculations)
@@ -80,10 +82,10 @@ func Sensible2YearsAddressHashParams() *HashIndexingParams {
 	return NewHashStoreParams(
 		bitsFor200milAddrs,      // bitsPerHashIndex
 		addressesEstimate2Years, // hashCountEstimate
-		2,                       // digitsPerNumberedFolder
-		781250,                  // numberOfBins (result of some optimization calculations)
-		305,                     // entriesInBinStart (result of some optimization calculations)
-		29)                      // bytesPerBinEntry (result of some optimization calculations)
+		digitsPerNumberedFolder, // digitsPerNumberedFolder
+		268435456,               // numberOfBins (result of some optimization calculations)
+		10,                      // entriesInBinStart (result of some optimization calculations)
+		32)                      // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible2YearsTransactionHashParams() *HashIndexingParams {
@@ -91,19 +93,19 @@ func Sensible2YearsTransactionHashParams() *HashIndexingParams {
 	return NewHashStoreParams(
 		bitsFor100milTrans,         // bitsPerHashIndex
 		transactionsEstimate2Years, // hashCountEstimate
-		2,                          // digitsPerNumberedFolder
-		195312,                     // numberOfBins (result of some optimization calculations)
-		582,                        // entriesInBinStart (result of some optimization calculations)
-		29)                         // bytesPerBinEntry (result of some optimization calculations)
+		digitsPerNumberedFolder,    // digitsPerNumberedFolder
+		134217728,                  // numberOfBins (result of some optimization calculations)
+		10,                         // entriesInBinStart (result of some optimization calculations)
+		32)                         // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible2YearsBlockHashParams() *HashIndexingParams {
 	// Run test Test2YearsBlockParams() to see how these numbers are arrived at
 	return NewHashStoreParams(
-		bitsFor100ThouBlocks, // bitsPerHashIndex
-		blocksEstimate2Years, // hashCountEstimate
-		2,                    // digitsPerNumberedFolder
-		390,                  // numberOfBins (result of some optimization calculations)
-		277,                  // entriesInBinStart (result of some optimization calculations)
-		28)                   // bytesPerBinEntry (result of some optimization calculations)
+		bitsFor100ThouBlocks,    // bitsPerHashIndex
+		blocksEstimate2Years,    // hashCountEstimate
+		digitsPerNumberedFolder, // digitsPerNumberedFolder
+		131072,                  // numberOfBins (result of some optimization calculations)
+		100,                     // entriesInBinStart (result of some optimization calculations)
+		32)                      // bytesPerBinEntry (result of some optimization calculations)
 }

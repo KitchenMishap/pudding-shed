@@ -4,32 +4,39 @@ import "fmt"
 
 // For graphing and optimizing suitable parameters
 
-func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64, minBytesPerBinStart int64, maxBytesPerBinStart int64) {
+func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
 	const minLambda = float64(20)
-	for bitsForSortNum := int64(8); bitsForSortNum < 64; bitsForSortNum++ {
+	for bitsForSortNum := int64(8); bitsForSortNum <= 64-bitsPerHashIndex; bitsForSortNum++ {
 		bits := bitsPerHashIndex + bitsForSortNum
 		bytesForHashIndexSortNum := ((bits - 1) / 8) + 1
 
 		// DON'T Assume sortNum bits fully used
 		for mult := 1.0; mult <= 1.0; mult += 1.0 {
-			sortNumsPerBin := int64(mult * float64((int64(1) << bitsForSortNum)))
+			sortNumsPerBin := int64(mult * float64(int64(1)<<bitsForSortNum))
 			divider := sortNumsPerBin
-			numberOfBins := hashCountEstimate / divider
-			if numberOfBins%2 == 0 && numberOfBins > 0 {
-				lambda := float64(hashCountEstimate) / float64(numberOfBins)
-				// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
-				if lambda > minLambda {
-					for percentOverflows := 10.0; percentOverflows >= 0.01; percentOverflows /= 10.0 {
+			if divider%2 == 0 {
+				numberOfBins := int64((uint64(1) << uint64(63)) / (uint64(divider) >> 1))
+				if numberOfBins%2 == 0 && numberOfBins > 0 {
+					lambda := float64(hashCountEstimate) / float64(numberOfBins)
+					// For lambda <= 20, Poission distribution wouldn't be adequately modelled by Normal distribution
+					if lambda > minLambda {
+						for percentOverflows := 10.0; percentOverflows >= 0.000001; percentOverflows /= 10.0 {
 
-						entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
-						bytes, overflows := estimateBytes(hashCountEstimate, numberOfBins, 24+bytesForHashIndexSortNum,
-							entriesPerBinStart)
+							entriesPerBinStart := xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda, 100.0-percentOverflows)
+							bytes, overflows := estimateBytes(hashCountEstimate, numberOfBins, 24+bytesForHashIndexSortNum,
+								entriesPerBinStart)
 
-						bytesPerBinStart := entriesPerBinStart * (bytesForHashIndexSortNum + 24)
+							bytesPerBinStart := entriesPerBinStart * (bytesForHashIndexSortNum + 24)
 
-						if bytesPerBinStart >= minBytesPerBinStart && bytesPerBinStart <= maxBytesPerBinStart {
-							fmt.Println("Bins:", numberOfBins, "\t%Overflows:", percentOverflows, "\tBinStartEntries:", entriesPerBinStart, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/100000000)/10.0, "GB", "\tOverflowFiles:", overflows)
+							if entriesPerBinStart > 0 {
+								fmt.Println("numberOfBins:", numberOfBins, "\tentriesInBinStart:", entriesPerBinStart, "\tbytesPerBinEntry:", bytesPerBinStart/entriesPerBinStart, "\t%Overflows:", percentOverflows, "\tOverflowFiles:", overflows, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/1000000)/1000.0, "GB")
+							}
 						}
+					} else {
+						// Min lambda not met. Many items unknown, but number of bins still useful
+						entriesPerBinStart := int64(10) // Arbitrary small number
+						bytesPerBinStart := entriesPerBinStart * (bytesForHashIndexSortNum + 24)
+						fmt.Println("numberOfBins:", numberOfBins, "\tentriesInBinStart ARBITRARY:", entriesPerBinStart, "\tbytesPerBinEntry:", bytesPerBinStart/entriesPerBinStart, "\t%Overflows: ???", "\tOverflowFiles: ???", "\tBytesPerBinStart: ", bytesPerBinStart, "\t???GB")
 					}
 				}
 			}
