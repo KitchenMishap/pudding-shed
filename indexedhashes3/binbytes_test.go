@@ -27,7 +27,7 @@ func TestInsert(t *testing.T) {
 	}
 
 	n := b.lookupByHash(&tr, sn, params)
-	if n != 0 {
-		t.Error("inserted bin, lookup not 0")
+	if n != hi {
+		t.Error("inserted bin, lookup not same")
 	}
 }
