@@ -2,6 +2,8 @@ package indexedhashes3
 
 import "encoding/binary"
 
+// The following comment is WRONG ToDo
+
 // binEntryBytes is a byte slice whose size is fixed for a given hash indexing store, somewhere between 24 and 32 bytes.
 // The 24 LSBytes are the truncatedHash (least significant 24 bytes of the full hash).
 // The 8 MSBytes are called the MS64Bits and are obtained as a uint64.
@@ -18,23 +20,33 @@ type binEntryBytes []byte // The number of bytes in the slice is fixed for a giv
 
 func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) binEntryBytes {
 	result := make([]byte, p.BytesPerBinEntry())
-	MS64Bits := uint64(hi) // Put hashIndex in the LSBs to start with
-	if hi >= 1<<p.BitsPerHashIndex() {
-		panic("hashIndex doesn't fit ths number of bits")
-	}
-	MS64Bits <<= p.BitsPerSortNum() // Shift left to make room for SortNum
-	if sn >= 1<<p.BitsPerSortNum() {
-		panic("sortNum doesn't fit ths number of bits")
-	}
-	MS64Bits |= uint64(sn)
-	// hashIndex followed by sortNum are currently packed into the LSBs
-	// Shift them to the MSBs
-	MS64Bits <<= (64 - (p.BitsPerHashIndex() + p.BitsPerSortNum()))
-	// Write MS64Bits into the most significant bytes (LittleEndian) of the byte slice
-	binary.LittleEndian.PutUint64(result[p.BytesPerBinEntry()-8:p.BytesPerBinEntry()], MS64Bits)
-	// Write in (including overwrite some zero bytes) the truncated hash
+
+	// Write in the truncated hash
 	copy(result[0:24], (*t)[0:24])
-	return (binEntryBytes)(result)
+
+	// Write the hash index
+	byteCount1 := p.BytesPerHashIndex()
+	bytesForHashIndex := [8]byte{}
+	binary.LittleEndian.PutUint64(bytesForHashIndex[0:8], uint64(hi))
+	for i := byteCount1; i < 8; i++ {
+		if bytesForHashIndex[i] != 0 {
+			panic("hash index didn't fit into bytes")
+		}
+	}
+	copy(result[24:24+byteCount1], bytesForHashIndex[0:byteCount1])
+
+	//Write the sort num
+	byteCount2 := p.BytesPerSortNum()
+	bytesForSortNum := [8]byte{}
+	binary.LittleEndian.PutUint64(bytesForSortNum[0:8], uint64(sn))
+	for i := byteCount2; i < 8; i++ {
+		if bytesForHashIndex[i] != 0 {
+			panic("sort num didn't fit into bytes")
+		}
+	}
+	copy(result[24+byteCount1:24+byteCount1+byteCount2], bytesForSortNum[0:byteCount2])
+
+	return result
 }
 
 func (beb *binEntryBytes) getTruncatedHash() *truncatedHash {
@@ -43,14 +55,15 @@ func (beb *binEntryBytes) getTruncatedHash() *truncatedHash {
 	return &result
 }
 
-func (beb *binEntryBytes) getMS64Bits(p *HashIndexingParams) uint64 {
-	return binary.LittleEndian.Uint64((*beb)[p.BytesPerBinEntry()-8 : p.BytesPerBinEntry()])
-}
-
 func (beb *binEntryBytes) getHashIndexSortNum(p *HashIndexingParams) (hashIndex, sortNum) {
-	MS64Bits := beb.getMS64Bits(p)
-	MS64Bits >>= (64 - p.BitsPerHashIndex() - p.BitsPerSortNum())
-	sn := MS64Bits & p.MaskForSortNum()
-	MS64Bits >>= p.BitsPerSortNum()
-	return hashIndex(MS64Bits & p.MaskForHashIndex()), sortNum(sn)
+	hashIndexBytes := [8]byte{}
+	sortNumBytes := [8]byte{}
+
+	hiByteCount := p.BytesPerHashIndex()
+	snByteCount := p.BytesPerSortNum()
+	copy((*beb)[24:24+hiByteCount], hashIndexBytes[0:hiByteCount])
+	copy((*beb)[24+hiByteCount:24+hiByteCount+snByteCount], sortNumBytes[0:snByteCount])
+	hi := binary.LittleEndian.Uint64(hashIndexBytes[0:8])
+	sn := binary.LittleEndian.Uint64(sortNumBytes[0:8])
+	return hashIndex(hi), sortNum(sn)
 }

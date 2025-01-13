@@ -31,7 +31,7 @@ func graphGigabytes(bitsPerHashIndex int64, hashCountEstimate int64) {
 						bytesPerBinStart := entriesPerBinStart * bytesPerBinEntry
 
 						if entriesPerBinStart > 0 {
-							fmt.Println("numberOfBins:", numberOfBins, "\tentriesInBinStart:", entriesPerBinStart, "\tbytesPerBinEntry:", bytesPerBinStart/entriesPerBinStart, "\t%Overflows:", percentOverflows, "\tOverflowFiles:", overflows, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/1000000)/1000.0, "GB")
+							fmt.Println("numberOfBins:", numberOfBins, "\tentriesInBinStart:", entriesPerBinStart, "bytesPerSortNum:", bitsForSortNum/8, "\tbytesPerBinEntry:", bytesPerBinStart/entriesPerBinStart, "\t%Overflows:", percentOverflows, "\tOverflowFiles:", overflows, "\tBytesPerBinStart:", bytesPerBinStart, "\t", float64(bytes/1000000)/1000.0, "GB")
 						}
 					}
 				} else {

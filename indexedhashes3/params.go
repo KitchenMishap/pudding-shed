@@ -9,25 +9,23 @@ type HashIndexingParams struct {
 	NumberOfBins_ int64 `json:"numberOfBins"`
 	// A parameter, perhaps optimized to result in 4096 binstart bytes per bin
 	EntriesInBinStart_ int64 `json:"entriesInBinStart"`
-	// A parameter, used to calculate bitsPerSortNum, 32 is a likely candidate
-	BytesPerBinEntry_ int64 `json:"bytesPerBinEntry"`
 	// A parameter, used to arrange overflow files into a sensible number of folders
 	DigitsPerNumberedFolder_ int `json:"digitsPerNumberedFolder"`
+	// A parameter
+	BytesPerSortNum_ int64 `json:"bytesPerSortNum"`
 
 	// Derived values, not stored to JSON
-	bitsPerSortNum       int64  `json:"-"`
-	bytesRoomForBinNum   int64  `json:"-"`
-	maskLsbsForHashIndex uint64 `json:"-"`
-	maskLsbsForSortNum   uint64 `json:"-"`
-	divider              uint64 `json:"-"`
+	bytesRoomForBinNum int64  `json:"-"`
+	divider            uint64 `json:"-"`
+	bytesPerBinEntry   int64  `json:"-"`
 }
 
 // bitsPerHashIndex is critical, you will only ever be able to add as many hashes whose count fits in these bits.
 // hashCountEstimate is not critical, you CAN exceed this number by appending more.
 // digitsPerNumberedFolder is a matter of taste, but 2 is a very good balance.
-// numberOfBins, entriesInBinStart, and bytesPerBinEntry are the subject of careful and complicated optimization.
+// numberOfBins, entriesInBinStart, bytesPerSortNum are the subject of careful and complicated optimization.
 func NewHashStoreParams(bitsPerHashIndex int64, hashCountEstimate int64, digitsPerNumberedFolder int,
-	numberOfBins int64, entriesInBinStart int64, bytesPerBinEntry int64) *HashIndexingParams {
+	numberOfBins int64, entriesInBinStart int64, bytesPerSortNum int64) *HashIndexingParams {
 	if numberOfBins%2 == 1 {
 		panic("number of bins must be even")
 	}
@@ -36,7 +34,7 @@ func NewHashStoreParams(bitsPerHashIndex int64, hashCountEstimate int64, digitsP
 	params.HashCountEstimate_ = hashCountEstimate
 	params.NumberOfBins_ = numberOfBins
 	params.EntriesInBinStart_ = entriesInBinStart
-	params.BytesPerBinEntry_ = bytesPerBinEntry
+	params.BytesPerSortNum_ = bytesPerSortNum
 	params.DigitsPerNumberedFolder_ = digitsPerNumberedFolder
 
 	params.calculateDerivedValues()
@@ -52,33 +50,22 @@ func (p *HashIndexingParams) calculateDerivedValues() {
 			break
 		}
 	}
-	bitsForHashIndexAndSortNum := p.BytesPerBinEntry_*8 - 192 // 192 bits for truncated hash
-	p.bitsPerSortNum = bitsForHashIndexAndSortNum - p.BitsPerHashIndex_
-	p.maskLsbsForHashIndex = uint64(1)<<p.BitsPerHashIndex_ - 1
-	p.maskLsbsForSortNum = uint64(1)<<p.bitsPerSortNum - 1
 	p.divider = (uint64(1) << uint64(63)) / (uint64(p.NumberOfBins_) >> uint64(1))
+	p.bytesPerBinEntry = 24 + p.BytesPerSortNum_ + p.BytesPerHashIndex()
 }
+
+func (p *HashIndexingParams) BytesPerHashIndex() int64 { return (p.BitsPerHashIndex_-1)/8 + 1 }
+
+func (p *HashIndexingParams) BytesPerSortNum() int64 { return p.BytesPerSortNum_ }
 
 func (p *HashIndexingParams) NumberOfBins() int64 {
 	return p.NumberOfBins_
 }
 
-func (p *HashIndexingParams) BytesPerBinEntry() int64 { return p.BytesPerBinEntry_ }
+func (p *HashIndexingParams) BytesPerBinEntry() int64 { return p.bytesPerBinEntry }
 
 func (p *HashIndexingParams) BitsPerHashIndex() int64 {
 	return p.BitsPerHashIndex_
-}
-
-func (p *HashIndexingParams) BitsPerSortNum() int64 {
-	return p.bitsPerSortNum
-}
-
-func (p *HashIndexingParams) MaskForHashIndex() uint64 {
-	return p.maskLsbsForHashIndex
-}
-
-func (p *HashIndexingParams) MaskForSortNum() uint64 {
-	return p.maskLsbsForSortNum
 }
 
 func (p *HashIndexingParams) EntriesInBinStart() int64 {
