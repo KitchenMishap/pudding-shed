@@ -61,8 +61,8 @@ func (beb *binEntryBytes) getHashIndexSortNum(p *HashIndexingParams) (hashIndex,
 
 	hiByteCount := p.BytesPerHashIndex()
 	snByteCount := p.BytesPerSortNum()
-	copy((*beb)[24:24+hiByteCount], hashIndexBytes[0:hiByteCount])
-	copy((*beb)[24+hiByteCount:24+hiByteCount+snByteCount], sortNumBytes[0:snByteCount])
+	copy(hashIndexBytes[0:hiByteCount], (*beb)[24:24+hiByteCount])
+	copy(sortNumBytes[0:snByteCount], (*beb)[24+hiByteCount:24+hiByteCount+snByteCount])
 	hi := binary.LittleEndian.Uint64(hashIndexBytes[0:8])
 	sn := binary.LittleEndian.Uint64(sortNumBytes[0:8])
 	return hashIndex(hi), sortNum(sn)

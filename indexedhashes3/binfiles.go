@@ -75,7 +75,7 @@ func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles
 	binStartByteCount := numEntriesBinStart * p.BytesPerBinEntry()
 	binStartBytes := make([]byte, binStartByteCount)
 	for entry := int64(0); entry < numEntriesBinStart; entry++ {
-		copy(binStartBytes[entry*p.BytesPerBinEntry():], b[entry])
+		copy(binStartBytes[entry*p.BytesPerBinEntry():], b[entry][:])
 	}
 	_, err := binStartsFile.WriteAt(binStartBytes, int64(bn)*p.EntriesInBinStart()*p.BytesPerBinEntry())
 	return err

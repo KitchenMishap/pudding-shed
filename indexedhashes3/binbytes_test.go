@@ -52,6 +52,13 @@ func TestInsert12(t *testing.T) {
 	if len(b) != 1 {
 		t.Error("inserted bin, size not 1")
 	}
+	hi2, sn2 := b[0].getHashIndexSortNum(params)
+	if hi2 != hi {
+		t.Error("inserted bin entry, hashIndex doesn't match")
+	}
+	if sn2 != sn {
+		t.Error("inserted bin entry, sortNum doesn't match")
+	}
 
 	hi = hashIndex(12346)
 	sn = sortNum(23457)
