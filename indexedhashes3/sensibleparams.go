@@ -28,9 +28,9 @@ func Sensible16YearsAddressHashParams() *HashIndexingParams {
 		bitsFor4bilAddrs,         // bitsPerHashIndex
 		addressesEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,  // digitsPerNumberedFolder
-		30702304,                 // numberOfBins (result of some optimization calculations)
-		128,                      // entriesInBinStart (result of some optimization calculations)
-		32)                       // bytesPerBinEntry (result of some optimization calculations)
+		16777216,                 // numberOfBins (result of some optimization calculations)
+		210,                      // entriesInBinStart (result of some optimization calculations)
+		5)                        // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible16YearsTransactionHashParams() *HashIndexingParams {
@@ -45,9 +45,9 @@ func Sensible16YearsTransactionHashParams() *HashIndexingParams {
 		bitsFor2bilTrans,            // bitsPerHashIndex
 		transactionsEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,     // digitsPerNumberedFolder
-		9898556,                     // numberOfBins (result of some optimization calculations)
-		132,                         // entriesInBinStart (result of some optimization calculations)
-		31)                          // bytesPerBinEntry (result of some optimization calculations)
+		16777216,                    // numberOfBins (result of some optimization calculations)
+		78,                          // entriesInBinStart (result of some optimization calculations)
+		5)                           // bytesPerBinEntry (result of some optimization calculations)
 }
 
 func Sensible16YearsBlockHashParams() *HashIndexingParams {
@@ -61,9 +61,9 @@ func Sensible16YearsBlockHashParams() *HashIndexingParams {
 		bitsFor2bilTrans,            // bitsPerHashIndex
 		transactionsEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,     // digitsPerNumberedFolder
-		42926,                       // numberOfBins (result of some optimization calculations)
-		35,                          // entriesInBinStart (result of some optimization calculations)
-		29)                          // bytesPerBinEntry (result of some optimization calculations)
+		256,                         // numberOfBins (result of some optimization calculations)
+		4052,                        // entriesInBinStart (result of some optimization calculations)
+		7)                           // bytesPerBinEntry (result of some optimization calculations)
 }
 
 // 2 years (for testing)

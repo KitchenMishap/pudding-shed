@@ -141,18 +141,28 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	go func() {
 		for obj := range haveReadChannel {
 			statusMap.Store("haveReadToWorker", "transferring")
-			byts := obj.ResultBytes
-			tsk := preprocessTaskHashes{}
-			tsk.blockBytes = byts
-			tsk.outChan = &preprocessedChan
+			err := obj.ResultErr
+			if err != nil {
+				fmt.Println()
+				fmt.Println(err.Error())
+				fmt.Println("Requesting again...")
+				height := obj.BlockHeight
+				task := corereader.NewTask(height, &haveReadChannel)
+				readerPool.InChan <- task
+			} else {
+				byts := obj.ResultBytes
+				tsk := preprocessTaskHashes{}
+				tsk.blockBytes = byts
+				tsk.outChan = &preprocessedChan
 
-			// This is NOT a good place to sequencer.WaitForNotBloated()
-			// A good place for doing so MUST be somewhere where the items
-			// are still in sequence!
+				// This is NOT a good place to sequencer.WaitForNotBloated()
+				// A good place for doing so MUST be somewhere where the items
+				// are still in sequence!
 
-			statusMap.Store("haveReadToWorker", "squirting")
-			workerPool.InChan <- &tsk
-			statusMap.Store("haveReadToWorker", "squirted")
+				statusMap.Store("haveReadToWorker", "squirting")
+				workerPool.InChan <- &tsk
+				statusMap.Store("haveReadToWorker", "squirted")
+			}
 		}
 		statusMap.Store("haveReadToWorker", "FINISHING...")
 		close(workerPool.InChan)
@@ -315,18 +325,28 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	go func() {
 		for obj := range haveReadChannel {
 			statusMap.Store("haveReadToWorker", "transferring")
-			byts := obj.ResultBytes
-			tsk := preprocessTask{}
-			tsk.blockBytes = byts
-			tsk.outChan = &preprocessedChan
+			err := obj.ResultErr
+			if err != nil {
+				fmt.Println()
+				fmt.Println(err.Error())
+				fmt.Println("Requesting again...")
+				height := obj.BlockHeight
+				task := corereader.NewTask(height, &haveReadChannel)
+				readerPool.InChan <- task
+			} else {
+				byts := obj.ResultBytes
+				tsk := preprocessTask{}
+				tsk.blockBytes = byts
+				tsk.outChan = &preprocessedChan
 
-			// This is NOT a good place to sequencer.WaitForNotBloated()
-			// A good place for doing so MUST be somewhere where the items
-			// are still in sequence!
+				// This is NOT a good place to sequencer.WaitForNotBloated()
+				// A good place for doing so MUST be somewhere where the items
+				// are still in sequence!
 
-			statusMap.Store("haveReadToWorker", "squirting")
-			workerPool.InChan <- &tsk
-			statusMap.Store("haveReadToWorker", "squirted")
+				statusMap.Store("haveReadToWorker", "squirting")
+				workerPool.InChan <- &tsk
+				statusMap.Store("haveReadToWorker", "squirted")
+			}
 		}
 		statusMap.Store("haveReadToWorker", "FINISHING...")
 		close(workerPool.InChan)
