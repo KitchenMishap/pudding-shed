@@ -178,9 +178,15 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	go func() {
 		statusMap.Store("preprocessedToSequencer", "Starting")
 		for blk := range preprocessedChan {
-			statusMap.Store("preprocessedToSequencer", "Squirting")
-			sequencer.InChan <- blk.jsonBlock
-			statusMap.Store("preprocessedToSequencer", "Squirted")
+			if blk.err != nil {
+				fmt.Println()
+				fmt.Println(blk.err.Error())
+				panic("error preprocessing block")
+			} else {
+				statusMap.Store("preprocessedToSequencer", "Squirting")
+				sequencer.InChan <- blk.jsonBlock
+				statusMap.Store("preprocessedToSequencer", "Squirted")
+			}
 		}
 		statusMap.Store("preprocessedToSequencer", "FINISHING...")
 		close(sequencer.InChan)
@@ -361,9 +367,15 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	go func() {
 		statusMap.Store("preprocessedToSequencer", "Starting")
 		for blk := range preprocessedChan {
-			statusMap.Store("preprocessedToSequencer", "Squirting")
-			sequencer.InChan <- blk.jsonBlock
-			statusMap.Store("preprocessedToSequencer", "Squirted")
+			if blk.err != nil {
+				fmt.Println()
+				fmt.Println(blk.err.Error())
+				panic("error preprocessing block")
+			} else {
+				statusMap.Store("preprocessedToSequencer", "Squirting")
+				sequencer.InChan <- blk.jsonBlock
+				statusMap.Store("preprocessedToSequencer", "Squirted")
+			}
 		}
 		statusMap.Store("preprocessedToSequencer", "FINISHING...")
 		close(sequencer.InChan)
