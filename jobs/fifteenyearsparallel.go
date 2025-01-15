@@ -7,6 +7,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
+	"os"
 	"sync"
 	"time"
 )
@@ -23,7 +24,23 @@ type preprocessTask struct {
 
 func (ppt *preprocessTask) Process() error {
 	var err error
-	ppt.jsonBlock, err = jsonblock.ParseJsonBlock(ppt.blockBytes)
+	// We seem to get errors when running heavily concurrently.
+	// Lets try some retries to shake things up.
+	for retries := 0; retries < 5; retries++ {
+		ppt.jsonBlock, err = jsonblock.ParseJsonBlock(ppt.blockBytes)
+		if err == nil {
+			if retries != 0 {
+				fmt.Println("Succeeded json parse on retry ", retries)
+			}
+			break
+		} else {
+			if retries == 0 {
+				fmt.Println("\nJson parse error:", err.Error())
+				fmt.Println("Failed json parse on first try... retrying")
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -58,7 +75,24 @@ type preprocessTaskHashes struct {
 
 func (ppt *preprocessTaskHashes) Process() error {
 	var err error
-	ppt.jsonBlock, err = jsonblock.ParseJsonBlockHashes(ppt.blockBytes)
+
+	// We seem to get errors when running heavily concurrently.
+	// Lets try some retries to shake things up.
+	for retries := 0; retries < 5; retries++ {
+		ppt.jsonBlock, err = jsonblock.ParseJsonBlockHashes(ppt.blockBytes)
+		if err == nil {
+			if retries != 0 {
+				fmt.Println("Succeeded json parse on retry ", retries)
+			}
+			break
+		} else {
+			if retries == 0 {
+				fmt.Println("\nJson parse error:", err.Error())
+				fmt.Println("Failed json parse on first try... retrying")
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -95,6 +129,7 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 
 	readerPool := corereader.NewPool(THREADS, false)
 	workerPool := concurrency.NewWorkerPool(THREADS)
+	//workerPool := concurrency.NewWorkerPool(1)
 	statusMap := sync.Map{}
 
 	// Going parallel now
@@ -181,7 +216,10 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 			if blk.err != nil {
 				fmt.Println()
 				fmt.Println(blk.err.Error())
-				panic("error preprocessing block")
+				file, _ := os.Create("ErrorBlock.json")
+				file.Write(blk.blockBytes)
+				file.Close()
+				panic("error preprocessing block, block written to ErrorBlock.json")
 			} else {
 				statusMap.Store("preprocessedToSequencer", "Squirting")
 				sequencer.InChan <- blk.jsonBlock
@@ -286,6 +324,7 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 
 	readerPool := corereader.NewPool(THREADS, true)
 	workerPool := concurrency.NewWorkerPool(THREADS)
+	//workerPool := concurrency.NewWorkerPool(1)
 
 	statusMap := sync.Map{}
 
@@ -370,7 +409,10 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 			if blk.err != nil {
 				fmt.Println()
 				fmt.Println(blk.err.Error())
-				panic("error preprocessing block")
+				file, _ := os.Create("ErrorBlock.json")
+				file.Write(blk.blockBytes)
+				file.Close()
+				panic("error preprocessing block, block written to ErrorBlock.json")
 			} else {
 				statusMap.Store("preprocessedToSequencer", "Squirting")
 				sequencer.InChan <- blk.jsonBlock
