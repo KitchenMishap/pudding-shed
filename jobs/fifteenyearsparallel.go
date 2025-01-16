@@ -128,8 +128,8 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	lastTrans := int64(0)
 
 	readerPool := corereader.NewPool(THREADS, false)
-	workerPool := concurrency.NewWorkerPool(THREADS)
-	//workerPool := concurrency.NewWorkerPool(1)
+	//workerPool := concurrency.NewWorkerPool(THREADS)
+	workerPool := concurrency.NewWorkerPool(1)
 	statusMap := sync.Map{}
 
 	// Going parallel now
@@ -323,8 +323,8 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	lastTrans := int64(0)
 
 	readerPool := corereader.NewPool(THREADS, true)
-	workerPool := concurrency.NewWorkerPool(THREADS)
-	//workerPool := concurrency.NewWorkerPool(1)
+	//workerPool := concurrency.NewWorkerPool(THREADS)
+	workerPool := concurrency.NewWorkerPool(1)
 
 	statusMap := sync.Map{}
 
