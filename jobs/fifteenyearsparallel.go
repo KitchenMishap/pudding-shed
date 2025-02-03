@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const THREADS = 15
+const THREADS = 30
 const BLOATLIMIT = 10
 
 type preprocessTask struct {
