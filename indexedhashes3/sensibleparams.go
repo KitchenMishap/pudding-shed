@@ -46,7 +46,7 @@ func Sensible16YearsTransactionHashParams() *HashIndexingParams {
 		transactionsEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,     // digitsPerNumberedFolder
 		16777216,                    // numberOfBins (result of some optimization calculations)
-		78,                          // entriesInBinStart (result of some optimization calculations)
+		83,                          // entriesInBinStart (result of some optimization calculations)
 		5)                           // bytesPerBinEntry (result of some optimization calculations)
 }
 

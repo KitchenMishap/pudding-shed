@@ -14,7 +14,7 @@ import (
 )
 
 const readerThreads = 25
-const path = "F:\\Data\\CurrentJob"
+const path = "F:\\Data\\SecondJob"
 const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
@@ -26,7 +26,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	transactionsEachYear := []int64{0, 33100, 219927, 2134383, 10675169, // Transaction counts at year 0..4
 		30358181, 55676798, 101532619, 184473419, 288705840, // years 5..9
 		369960799, 489809099, 602400644, 699932865, 793116734, // years 10..14
-		947356729, 1136000000, 1200000000, 1300000000, 1400000000} // years 15..19 (Estimates from 16)
+		947356729, 1139137995, 1200000000, 1300000000, 1400000000} // years 15..19 (Estimates from 16)
 
 	// Choose a number of blocks
 	lastBlock := blocksEachYear[years] - 1
