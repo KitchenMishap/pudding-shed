@@ -1,9 +1,12 @@
 package indexedhashes3
 
 import (
+	"errors"
 	"fmt"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"os"
+	"strconv"
 )
 
 type MultipassPreloader struct {
@@ -71,6 +74,71 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		return err
 	}
 
+	return nil
+}
+
+func (mp *MultipassPreloader) TestTheHashes() error {
+	{
+		sep := string(os.PathSeparator)
+		binStartsFile, err := os.Open(mp.folderPath + sep + "BinStarts.bes")
+		if err != nil {
+			return err
+		}
+		wfc := wordfile.NewConcreteWordFileCreator("BinNums", mp.folderPath, mp.params.bytesRoomForBinNum, false)
+		hs, err := newHashStoreObject(mp.params, mp.folderPath, wfc, binStartsFile)
+		if err != nil {
+			return err
+		}
+
+		hashesFilepath := mp.folderPath + sep + "Hashes.hsh"
+		hashesFile, err := os.Open(hashesFilepath)
+		if err != nil {
+			return err
+		}
+		defer hashesFile.Close()
+
+		hashIndex := int64(0)
+		hash := [32]byte{}
+		chunk := make([]byte, 4096) // We read up to 4096 bytes at a time
+		nBytes, _ := hashesFile.Read(chunk)
+		for nBytes > 0 {
+			if nBytes%32 != 0 {
+				return errors.New("invalid hash file length")
+			}
+			hashCount := nBytes / 32
+			for index := 0; index < hashCount; index++ {
+				copy(hash[:], chunk[index*32:index*32+32])
+				err := mp.testOneHash(hs, hashIndex, hash)
+				if err != nil {
+					return err
+				}
+				hashIndex++
+			}
+			nBytes, _ = hashesFile.Read(chunk)
+		}
+		return nil
+	}
+}
+
+func (mp *MultipassPreloader) testOneHash(hs indexedhashes.HashReader, hashIndex int64, hash indexedhashes.Sha256) error {
+	foundHash := indexedhashes.Sha256{}
+	err := hs.GetHashAtIndex(hashIndex, &foundHash)
+	if err != nil {
+		return err
+	}
+	foundIndex, err := hs.IndexOfHash(&hash)
+	if err != nil {
+		return err
+	}
+	if foundHash != hash {
+		fmt.Println("found hash does not match hash at index " + strconv.FormatInt(hashIndex, 10))
+	}
+	if foundIndex == -1 {
+		return errors.New("hash not found at index " + strconv.FormatInt(hashIndex, 10))
+	}
+	if foundIndex != hashIndex {
+		fmt.Println("hash at index " + strconv.FormatInt(hashIndex, 10) + " found at " + strconv.FormatInt(foundIndex, 10) + " instead")
+	}
 	return nil
 }
 

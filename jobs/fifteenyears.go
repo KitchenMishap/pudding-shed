@@ -172,6 +172,19 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string) error {
 	sTimeUpdate = fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)
 	fmt.Println(sTimeUpdate)
 
+	/*
+		fmt.Println("Testing Block hashes:")
+		err = bpl.TestTheHashes()
+		if err != nil {
+			return err
+		}
+		fmt.Println("Testing Transaction hashes:")
+		err = tpl.TestTheHashes()
+		if err != nil {
+			return err
+		}
+	*/
+
 	// =======================================================================
 	// THIRD we go through the blockchain again, gathering main data this time
 	phase = "3 of 3"

@@ -59,18 +59,20 @@ func estimateBytes(hashCountEstimate int64,
 	// Then the overflow files
 	averageBinEntriesPerBin := float64(hashCountEstimate) / float64(numberOfBins)
 	lambda := averageBinEntriesPerBin
-	overflows = 0
-	for overflow := int64(1); overflow <= 20; overflow++ {
+	overflowsFloat := 0.0
+	for overflow := int64(1); overflow <= 50; overflow++ {
 		// Chance of any particular bin overflowing by 'overflow' entries
 		chance := poissonApproximation(lambda, float64(entriesPerBinStart+overflow))
-		// Likely number of bins to overflow by 'overflow' entries
-		likely := int64(chance * float64(numberOfBins))
-		overflows += likely
+		//chance := poissonExact(lambda, entriesPerBinStart+overflow)	Can't use as interim numbers get silly
+
+		// Likely number of bins to overflow by exactly 'overflow' entries
+		likely := chance * float64(numberOfBins)
+		overflowsFloat += likely
 		// file size of such an overflow file
 		size := overflow * bytesPerBinEntry
 		allocationSize := int64(4096)
 		sizeOnDisk := (int64(float64(size)/float64(allocationSize)) + 1) * allocationSize
-		bytes += sizeOnDisk * likely
+		bytes += sizeOnDisk * int64(likely)
 	}
 
 	// Then the (new) hash index to bin index file
@@ -84,5 +86,6 @@ func estimateBytes(hashCountEstimate int64,
 	}
 	bytes += hashCountEstimate * bytesNeeded
 
+	overflows = int64(overflowsFloat)
 	return bytes, overflows
 }

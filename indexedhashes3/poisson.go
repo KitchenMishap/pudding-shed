@@ -15,6 +15,14 @@ func normalDistribution(mu float64, sigma float64, x float64) float64 {
 	return math.Exp(-(x-mu)*(x-mu)/(2*sigmaSquared)) / math.Sqrt(2*math.Pi*sigmaSquared)
 }
 
+func poissonExact(lambda float64, k int64) float64 {
+	kFactorial := float64(1.0)
+	for i := int64(1); i <= k; i++ {
+		kFactorial *= float64(i)
+	}
+	return math.Pow(lambda, float64(k)) * math.Exp(-lambda) / kFactorial
+}
+
 func lambdaSmallEnoughForForPoissionCumulativeExceedsPercentageAtXLimit(percentage float64, xLimit int64) (lambdaResult int64, percentAchieved float64) {
 	// Start with lambda = xLimit to give about 50% percentage
 	// (The peak of the Poisson distribution is positioned horizontally at the top limit xLimit,

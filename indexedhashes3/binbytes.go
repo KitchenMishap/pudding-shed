@@ -54,6 +54,9 @@ func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams)
 	return -1 // hash not present in bin
 }
 
+// Because there are a (very) few repeated transaction hashes on the blockchain, our method
+// currently cannot find some of those repeated hashes by index. In that circumstance,
+// we return a hash of all zeroes!
 func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Hash {
 	// No shortcut. Sequential search
 	for index := 0; index < len(*b); index++ {
@@ -65,7 +68,9 @@ func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Has
 			return h
 		}
 	}
-	panic("should always be able to find a hash by index")
+	// Looks like we've got one of those repeated hash situations!
+	exceptionalZeroHash := Hash{}
+	return &exceptionalZeroHash
 }
 
 // Finds the first index for which sn(index-1) < sn, and sn(index) >= sn.

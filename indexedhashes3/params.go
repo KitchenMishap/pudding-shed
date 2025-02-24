@@ -51,6 +51,7 @@ func (p *HashIndexingParams) calculateDerivedValues() {
 		}
 	}
 	p.divider = (uint64(1) << uint64(63)) / (uint64(p.NumberOfBins_) >> uint64(1))
+	// 24 is the number of bytes in a truncated hash
 	p.bytesPerBinEntry = 24 + p.BytesPerSortNum_ + p.BytesPerHashIndex()
 }
 

@@ -5,7 +5,7 @@ package indexedhashes3
 type abbreviatedHash uint64
 
 func newAbbreviatedHashFromBinNumSortNum(bn binNum, sn sortNum, p *HashIndexingParams) abbreviatedHash {
-	return abbreviatedHash(uint64(int64(bn))*p.Divider() + uint64(sn))
+	return abbreviatedHash(uint64(bn)*p.Divider() + uint64(sn))
 }
 
 func (ah *abbreviatedHash) toBinNum(p *HashIndexingParams) binNum {
@@ -15,5 +15,5 @@ func (ah *abbreviatedHash) toBinNum(p *HashIndexingParams) binNum {
 
 func (ah *abbreviatedHash) toSortNum(p *HashIndexingParams) sortNum {
 	// Remainder
-	return sortNum(float64(uint64(*ah) % p.Divider()))
+	return sortNum(uint64(*ah) % p.Divider())
 }

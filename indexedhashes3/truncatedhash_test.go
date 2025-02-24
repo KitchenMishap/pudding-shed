@@ -16,6 +16,6 @@ func TestEquals(t *testing.T) {
 		t.Error("truncated equals failed")
 	}
 	if tra.equals(&trc) == true {
-		t.Error("truncated not equal filed")
+		t.Error("truncated not equal failed")
 	}
 }
