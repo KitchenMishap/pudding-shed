@@ -14,7 +14,7 @@ import (
 )
 
 const readerThreads = 25
-const path = "F:\\Data\\SecondJob"
+const path = "F:\\Data\\TwoYear"
 const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
@@ -134,6 +134,11 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("For some reason I seem to want you to restart Bitcoin Core...")
+		fmt.Println("Please restart Bitcoin Core and press ENTER here:")
+		fmt.Scanln()
+		fmt.Println("Thank you.")
 	}
 
 	// ==========================
