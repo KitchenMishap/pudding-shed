@@ -489,6 +489,16 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 	}
 	addressEncountered := (fileCount > addressHeight)
 
+	if addressEncountered {
+		abc := 123
+		abc++ // Breakpoint here to find first re-used address in the blockchain
+		// Transaction f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16
+		// contains the first address re-use in the blockchain. It is transaction index 171, and is in block 170.
+		// It is a block reward going to two txos. txoHeight is 172, and addressHeight is 9 (the previous occurrence
+		// of the address). It is NOT TRUE that "From here on, addressHeight should always be less than txoHeight."
+		// It is not true, because the initial list of address hashes is not a list of unique hashes.
+	}
+
 	// If we've not encountered an address, this is the first txo that uses it
 	if !addressEncountered {
 		err = cac.addrFirstTxo.WriteWordAt(txoHeight, addressHeight)
