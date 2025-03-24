@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/jobs"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"time"
 )
 
@@ -30,4 +31,21 @@ func main() {
 	fmt.Println("End of main()")
 	t = time.Now()
 	fmt.Println(t.Format("Mon Jan 2 15:04:05"))
+
+	wfc := wordfile.NewConcreteWordFileCreator("firsttxo", "F:\\Data\\TwoYear\\Addresses", 5, false)
+	wf, err := wfc.OpenWordFileReadOnly()
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	val, err := wf.ReadWordAt(264249)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	if val == 0 {
+		panic("First txo of address 264249 should be non zero")
+	}
+	wf.Close()
+
 }

@@ -483,6 +483,11 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 	if addressHeight == -1 {
 		return -1, errors.New("hash of address should already be known")
 	}
+
+	if testpoints.TestPointAddressIndexEnable && addressHeight == testpoints.TestPointAddressIndex {
+		fmt.Println("TESTPOINT: ConcreteAppendableChain.appendTxo(): Dealing with address index ", addressHeight)
+	}
+
 	fileCount, err := cac.addrFirstTxo.CountWords()
 	if err != nil {
 		return -1, err
@@ -504,6 +509,21 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 		err = cac.addrFirstTxo.WriteWordAt(txoHeight, addressHeight)
 		if err != nil {
 			return -1, err
+		}
+
+		const TestHere = true
+		// We've been finding that that the val just written ends up zero later.
+		// Let's look at it right now!
+		if TestHere && addressHeight == testpoints.TestPointAddressIndex {
+			val, err := cac.addrFirstTxo.ReadWordAt(addressHeight)
+			if err != nil {
+				return -1, err
+			}
+			if val != txoHeight {
+				panic("Value just written reads back as different")
+			} else if val == 0 {
+				panic("Didn't expect value written to be zero")
+			}
 		}
 	} else {
 		// We've seen this address before. Add this txo to the address's list of additional txos
