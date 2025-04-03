@@ -16,7 +16,7 @@ func TestMain(m *testing.M) {
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
 
-	err := jobs.SeveralYearsPrimaries(16, "delegated", false, false, true)
+	err := jobs.SeveralYearsPrimaries(16, "delegated", true, true, true)
 
 	if err != nil {
 		println(err.Error())

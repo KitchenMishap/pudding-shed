@@ -14,7 +14,7 @@ import (
 )
 
 const readerThreads = 25
-const path = "F:\\Data\\TwoYear"
+const path = "F:\\Data\\888888Blocks"
 const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
@@ -22,7 +22,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 	blocksEachYear := []int64{0, 32879, 100888, 160463, 215006, // Block heights at year 0..4
 		278460, 337312, 391569, 446472, 502401, // years 5..9
 		556874, 611138, 664332, 717044, 770225, // years 10..14
-		824204, 877669, 920000, 970000, 1020000} // years 16..19 are Extrapolated estimates
+		824204, 877669, 888888, 970000, 1020000} // years 16..19 are Extrapolated estimates
 	transactionsEachYear := []int64{0, 33100, 219927, 2134383, 10675169, // Transaction counts at year 0..4
 		30358181, 55676798, 101532619, 184473419, 288705840, // years 5..9
 		369960799, 489809099, 602400644, 699932865, 793116734, // years 10..14
