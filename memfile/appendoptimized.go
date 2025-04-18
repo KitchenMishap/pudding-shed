@@ -2,6 +2,7 @@ package memfile
 
 import (
 	"bufio"
+	"io"
 	"os"
 )
 
@@ -73,6 +74,10 @@ func (a *appendOptimizedFile) WriteAt(p []byte, off int64) (n int, err error) {
 		// Previous operation was not append. But what about this operation?
 		if off == a.totalSize {
 			// Yes it is an append, set up a buffer and use it
+			// The following line (commented for now) is
+			// the fix I needed to resolve problems encountered
+			// in Cheltenham (nad previous problems too!)
+			a.file.Seek(0, io.SeekEnd)
 			a.bufferedWriter = bufio.NewWriter(a.file)
 			nWritten, err := a.bufferedWriter.Write(p)
 			if err != nil {
