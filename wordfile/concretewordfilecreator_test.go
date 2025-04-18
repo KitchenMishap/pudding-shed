@@ -6,12 +6,16 @@ import (
 	"testing"
 )
 
+// Test Fails!
+
 func TestConcreteWordFileCreatorNonOptimized(t *testing.T) {
 	helperConcreteWordFileCreator(t, false)
+	helperConcreteWordFileCreator2(t, false)
 }
 
 func TestConcreteWordFileCreatorAppendOptimized(t *testing.T) {
 	helperConcreteWordFileCreator(t, true)
+	helperConcreteWordFileCreator2(t, true)
 }
 
 func helperConcreteWordFileCreator(t *testing.T, appendOptimize bool) {
@@ -96,4 +100,49 @@ func helperConcreteWordFileCreator(t *testing.T, appendOptimize bool) {
 	if exists {
 		t.Error("File should not exist")
 	}
+}
+
+func helperConcreteWordFileCreator2(t *testing.T, appendOptimize bool) {
+	// RecordFileCreator
+	rfc := NewConcreteWordFileCreator("recordfile", "Temp_Testing", 4, appendOptimize)
+	// Create one record of zeroes
+	rfc.CreateWordFileFilledZeros(1)
+
+	// Is it zeroes?
+	rf, err := rfc.OpenWordFile()
+	val, err := rf.ReadWordAt(0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if val != 0 {
+		t.Error("field should be zero")
+		return
+	}
+
+	// Write the 234 to record 0
+	err = rf.WriteWordAt(234, 0)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	// Write 235 to record 1
+	err = rf.WriteWordAt(235, 1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Read back from record 1
+	val, err = rf.ReadWordAt(1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if val != 235 {
+		t.Error("field should be 235")
+		return
+	}
+
+	rf.Close()
 }
