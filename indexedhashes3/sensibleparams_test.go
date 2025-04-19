@@ -20,7 +20,7 @@ func Test2YearsAddressParams(t *testing.T) {
 	// At time of writing, based on the printed outputs of this call, we choose:
 	// numberOfBins = 65536, entriesInBinStart = 9, bytesPerSortNum = 6.
 	// (see Sensible2YearsAddressHashParams() where these values are set)
-	// This gives IN THEORY a prediction of 636 overflow files (1%).
+	// This gives IN THEORY a prediction of 636 overflow files (1%) with 0.022 GB.
 	graphGigabytes(bitsFor269kAddrs, addressesEstimate2Years)
 }
 func Test2YearsTransactionParams(t *testing.T) {
