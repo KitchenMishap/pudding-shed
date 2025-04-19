@@ -21,6 +21,8 @@ func Test2YearsAddressParams(t *testing.T) {
 	// numberOfBins = 65536, entriesInBinStart = 9, bytesPerSortNum = 6.
 	// (see Sensible2YearsAddressHashParams() where these values are set)
 	// This gives IN THEORY a prediction of 636 overflow files (1%) with 0.022 GB.
+	// IN PRACTISE we end up with only 36 overflow files, with 0.020 GB.
+	// We GUESS/HOPE that the difference is due to the re-use of some addresses in the actual blockchain.
 	graphGigabytes(bitsFor269kAddrs, addressesEstimate2Years)
 }
 func Test2YearsTransactionParams(t *testing.T) {
