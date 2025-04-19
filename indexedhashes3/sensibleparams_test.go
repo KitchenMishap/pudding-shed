@@ -18,7 +18,7 @@ func Test16YearsBlockParams(t *testing.T) {
 // Functions to optimize and print params for 2 Years of bitcoin (for testing)
 func Test2YearsAddressParams(t *testing.T) {
 	// We don't get any 4096 byte results, so we use 4092 (132 * 31 bytes)
-	graphGigabytes(bitsFor200milAddrs, addressesEstimate2Years)
+	graphGigabytes(bitsFor269kAddrs, addressesEstimate2Years)
 }
 func Test2YearsTransactionParams(t *testing.T) {
 	// We don't get any 4096 byte results, so we use 4092 (132 * 31 bytes)

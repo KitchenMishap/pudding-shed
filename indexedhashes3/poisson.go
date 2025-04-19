@@ -23,6 +23,21 @@ func poissonExact(lambda float64, k int64) float64 {
 	return math.Pow(lambda, float64(k)) * math.Exp(-lambda) / kFactorial
 }
 
+func poissonBest(lambda float64, k int64) float64 {
+	// Google AI overview
+	// The largest value of 'k' for which k! (k factorial) can be precisely represented as a double-precision floating-point number is 170.
+	// So we put a limit at k=75 (say) (We GUESS that very high values of kLimit will produce other inaccuraies)
+	kLimit := int64(75)
+	// Below this limit we can use the Poissom Exact formula
+	if k < kLimit {
+		return poissonExact(lambda, k)
+	} else {
+		// Above this limit we have to resort to the approximation, aa k factorial is too big for a double
+		return poissonApproximation(lambda, float64(k))
+	}
+
+}
+
 func lambdaSmallEnoughForForPoissionCumulativeExceedsPercentageAtXLimit(percentage float64, xLimit int64) (lambdaResult int64, percentAchieved float64) {
 	// Start with lambda = xLimit to give about 50% percentage
 	// (The peak of the Poisson distribution is positioned horizontally at the top limit xLimit,
@@ -38,7 +53,7 @@ func lambdaSmallEnoughForForPoissionCumulativeExceedsPercentageAtXLimit(percenta
 		// Fraction is the cumulative sum of the Poisson Distribution up to xLimit
 		fraction = 0.0
 		for x := int64(0); x < xLimit; x++ {
-			fraction += poissonApproximation(float64(lambda), float64(x))
+			fraction += poissonBest(float64(lambda), x)
 		}
 	}
 	lambdaResult = lambda
@@ -49,7 +64,7 @@ func lambdaSmallEnoughForForPoissionCumulativeExceedsPercentageAtXLimit(percenta
 func xLimitBigEnoughForForPoissonCumulativeExceedsPercentageAtX(lambda float64, percentage float64) (xLimitResult int64) {
 	fraction := 0.0
 	for x := int64(0); true; x++ {
-		poisson := poissonApproximation(lambda, float64(x))
+		poisson := poissonBest(lambda, x)
 		if math.IsNaN(poisson) {
 			abc := 123
 			abc++

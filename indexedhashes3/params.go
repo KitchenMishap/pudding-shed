@@ -34,6 +34,9 @@ func NewHashStoreParams(bitsPerHashIndex int64, hashCountEstimate int64, digitsP
 	params.HashCountEstimate_ = hashCountEstimate
 	params.NumberOfBins_ = numberOfBins
 	params.EntriesInBinStart_ = entriesInBinStart
+	if bytesPerSortNum > 8 {
+		panic("bytesPerSortNum must be <= 8")
+	}
 	params.BytesPerSortNum_ = bytesPerSortNum
 	params.DigitsPerNumberedFolder_ = digitsPerNumberedFolder
 

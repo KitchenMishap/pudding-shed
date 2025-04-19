@@ -22,7 +22,7 @@ func main() {
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
 
-	err := jobs.SeveralYearsPrimaries(17, "delegated", true, true, true)
+	err := jobs.SeveralYearsPrimaries(2, "delegated", true, true, true)
 
 	if err != nil {
 		println(err.Error())

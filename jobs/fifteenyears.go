@@ -14,7 +14,7 @@ import (
 )
 
 const readerThreads = 25
-const path = "F:\\Data\\888888Blocks"
+const path = "E:\\TwoYear"
 const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {

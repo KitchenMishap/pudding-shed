@@ -70,21 +70,22 @@ func Sensible16YearsBlockHashParams() *HashIndexingParams {
 // ------------------------------------------------------------------------- Count at 2 years:
 const bitsFor100ThouBlocks = int64(17) // 2^17 = 131,072 blocks              There were 100888 blocks
 const bitsFor100milTrans = int64(27)   // 2^27 = 134,217,728 transactions    We guess unreliably 100,000,000 transactions
-const bitsFor200milAddrs = int64(28)   // 2^28 = 268,435,456 addresses       We guess unreliably 200,000,000 addresses
+const bitsFor269kAddrs = int64(19)     // 2^19 = 524288 addresses
 // (There were ??? txos, including spent)
 
 const blocksEstimate2Years = int64(100000)
 const transactionsEstimate2Years = int64(100000000)
-const addressesEstimate2Years = int64(200000000)
+const addressesEstimate2Years = int64(269406) // Based on size of hashes.hsh file for 2 years
+// This is an OVERESTIMATE due to repeated address use
 
 func Sensible2YearsAddressHashParams() *HashIndexingParams {
 	// Run test Test2YearsAddressParams() to see how these numbers are arrived at
 	return NewHashStoreParams(
-		bitsFor200milAddrs,      // bitsPerHashIndex
+		bitsFor269kAddrs,        // bitsPerHashIndex
 		addressesEstimate2Years, // hashCountEstimate
 		digitsPerNumberedFolder, // digitsPerNumberedFolder
 		65536,                   // numberOfBins (result of some optimization calculations)
-		3180,                    // entriesInBinStart (result of some optimization calculations)
+		9,                       // entriesInBinStart (result of some optimization calculations)
 		6)                       // bytesPerBinEntry (result of some optimization calculations)
 }
 
