@@ -4,14 +4,26 @@ import "testing"
 
 // Functions to optimize and print params for 16 Years of bitcoin
 func Test16YearsAddressParams(t *testing.T) {
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// numberOfBins = 16777216, entriesInBinStart = 229, bytesPerSortNum = 5.
+	// (see Sensible16YearsAddressHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 1257 overflow files (0.01%) with 138.79 GB.
+	// Watch this space for actual result!
 	graphGigabytes(bitsFor4bilAddrs, addressesEstimate16Years)
 }
 func Test16YearsTransactionParams(t *testing.T) {
-	// We don't get any 4096 byte results, so we use 4092 (132 * 31 bytes)
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// numberOfBins = 16777216, entriesInBinStart = 84, bytesPerSortNum = 5.
+	// (see Sensible16YearsTransactionHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 16,277 overflow files (0.1%) with 50.549 GB.
+	// Watch this space for actual result!
 	graphGigabytes(bitsFor2bilTrans, transactionsEstimate16Years)
 }
 func Test16YearsBlockParams(t *testing.T) {
-	// We don't get anywhere near 4096 byte results, so we use 1015 (35 * 29 bytes)
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// numberOfBins = 65536, entriesInBinStart = 29, bytesPerSortNum = 6.
+	// (see Sensible16YearsBlockHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 36 overflow files (0.1%) with 0.065 GB.
 	graphGigabytes(bitsFor2milBlocks, blocksEstimate16Years)
 }
 
