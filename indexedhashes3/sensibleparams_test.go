@@ -26,8 +26,20 @@ func Test2YearsAddressParams(t *testing.T) {
 	graphGigabytes(bitsFor269kAddrs, addressesEstimate2Years)
 }
 func Test2YearsTransactionParams(t *testing.T) {
-	graphGigabytes(bitsFor100milTrans, transactionsEstimate2Years)
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// numberOfBins = 65536, entriesInBinStart = 10, bytesPerSortNum = 6.
+	// (see Sensible2YearsTransactionHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 48 overflow files (0.1%) with 0.022 GB.
+	// IN PRACTISE we find 38 overflows, with 0.022 GB!
+	// We are VERY PLEASED with this accuracy of prediction!
+	graphGigabytes(bitsFor220kTrans, transactionsEstimate2Years)
 }
 func Test2YearsBlockParams(t *testing.T) {
-	graphGigabytes(bitsFor100ThouBlocks, blocksEstimate2Years)
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// Number of bins = 256, entriesInBinStart = 455 (quite high), bytesPerSortNum = 7.
+	// (see Sensible2YearsTransactionHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 2 overflow files (1%) with 0.004 GB.
+	// IN PRACTISE we find 5 overflows, with 0.004 GB!
+	// AGAIN We are VERY PLEASED with this accuracy of prediction!
+	graphGigabytes(bitsFor101kBlocks, blocksEstimate2Years)
 }
