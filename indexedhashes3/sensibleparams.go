@@ -12,9 +12,9 @@ const bitsFor2milBlocks = int64(21) // 2^21 = 2,097,152 blocks				There were 824
 const bitsFor2bilTrans = int64(31)  // 2^31 = 2,147,483,648 transactions	There were 947,337,057 transactions
 const bitsFor4bilAddrs = int64(32)  // 2^32 = 4,294,967,296 addresses		There must be fewer addresses than txos
 // (There were 2,652,374,369 txos, including spent)
-const addressesEstimate16Years = int64(3000000000)
-const transactionsEstimate16Years = int64(1000000000)
-const blocksEstimate16Years = int64(1000000)
+const addressesEstimate16Years = int64(3244977536)    // Nased on the size of Hashes.hsh (/32) after 888888 blocks (so an overestimate)
+const transactionsEstimate16Years = int64(1169006653) // Based on the size of Hashes.hsh (/32) after 888888 blocks
+const blocksEstimate16Years = int64(888888)
 
 func Sensible16YearsAddressHashParams() *HashIndexingParams {
 	// Run test Test16YearsAddressParams() to see how these numbers are arrived at
@@ -23,7 +23,7 @@ func Sensible16YearsAddressHashParams() *HashIndexingParams {
 		addressesEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,  // digitsPerNumberedFolder
 		16777216,                 // numberOfBins (result of some optimization calculations)
-		229,                      // entriesInBinStart (result of some optimization calculations)
+		236,                      // entriesInBinStart (result of some optimization calculations)
 		5)                        // bytesPerSortNum (result of some optimization calculations)
 }
 
@@ -34,7 +34,7 @@ func Sensible16YearsTransactionHashParams() *HashIndexingParams {
 		transactionsEstimate16Years, // hashCountEstimate
 		digitsPerNumberedFolder,     // digitsPerNumberedFolder
 		16777216,                    // numberOfBins (result of some optimization calculations)
-		84,                          // entriesInBinStart (result of some optimization calculations)
+		101,                         // entriesInBinStart (result of some optimization calculations)
 		5)                           // bytesPerSortNum (result of some optimization calculations)
 }
 
