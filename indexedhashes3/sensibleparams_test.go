@@ -17,11 +17,13 @@ func Test16YearsBlockParams(t *testing.T) {
 
 // Functions to optimize and print params for 2 Years of bitcoin (for testing)
 func Test2YearsAddressParams(t *testing.T) {
-	// We don't get any 4096 byte results, so we use 4092 (132 * 31 bytes)
+	// At time of writing, based on the printed outputs of this call, we choose:
+	// numberOfBins = 65536, entriesInBinStart = 9, bytesPerSortNum = 6.
+	// (see Sensible2YearsAddressHashParams() where these values are set)
+	// This gives IN THEORY a prediction of 636 overflow files (1%).
 	graphGigabytes(bitsFor269kAddrs, addressesEstimate2Years)
 }
 func Test2YearsTransactionParams(t *testing.T) {
-	// We don't get any 4096 byte results, so we use 4092 (132 * 31 bytes)
 	graphGigabytes(bitsFor100milTrans, transactionsEstimate2Years)
 }
 func Test2YearsBlockParams(t *testing.T) {
