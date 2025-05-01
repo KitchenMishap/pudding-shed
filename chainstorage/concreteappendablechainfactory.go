@@ -86,7 +86,9 @@ func NewConcreteAppendableChainCreator(
 	result.parentBlockOfTransWordFileCreator = wordfile.NewConcreteWordFileCreator("parentblockoftrans", result.parentsFolder, roomFor4bilTrans, false)
 	result.parentTransOfTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxi", result.parentsFolder, roomFor1trilTxxs, false)
 	result.parentTransOfTxoWordFileCreator = wordfile.NewConcreteWordFileCreator("parenttransoftxo", result.parentsFolder, roomFor1trilTxxs, false)
-	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 4, 2, roomFor1trilTxxs, true)
+	// 2 digits per folder and 4 digits per file gave 323,406 files which is too many.
+	// Trying 5 digits per file...
+	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 5, 2, roomFor1trilTxxs, true)
 	result.supportedBlkNeis = map[string]int{
 		"version":      4,
 		"time":         4,
