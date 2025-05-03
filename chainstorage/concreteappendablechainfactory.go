@@ -67,12 +67,22 @@ func NewConcreteAppendableChainCreator(
 	roomFor1trilAddrs := int64(5)  //	,,			,,			 addresses		There must be fewer addresses than txos
 	roomForAllSatoshis := int64(7) // 256^7 = 72,057,594,037,927,936 sats		There will be 2,100,000,000,000,000 sats
 
-	result.blockHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+	var err error
+	result.blockHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
 		result.blocksFolder, "Hashes")
-	result.transactionHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+	if err != nil {
+		return nil, err
+	}
+	result.transactionHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
 		result.transactionsFolder, "Hashes")
-	result.addressHashStoreCreator, _ = indexedhashes3.NewHashStoreCreatorFromFile(
+	if err != nil {
+		return nil, err
+	}
+	result.addressHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
 		result.addressesFolder, "Hashes")
+	if err != nil {
+		return nil, err
+	}
 
 	result.blkFirstTransWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttrans", result.blocksFolder, roomFor4bilTrans, false)
 	result.trnFirstTxiWordFileCreator = wordfile.NewConcreteWordFileCreator("firsttxi", result.transactionsFolder, roomFor1trilTxxs, false)
