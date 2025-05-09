@@ -14,7 +14,7 @@ import (
 )
 
 const readerThreads = 25
-const path = "E:\\Data\\NewParams888888_5digits"
+const path = "E:\\Data\\DeleteMe"
 const parallel = true
 
 func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {

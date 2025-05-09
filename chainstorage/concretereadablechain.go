@@ -149,13 +149,13 @@ func (crc *concreteReadableChain) TxoInterface(hTxo chainreadinterface.ITxoHandl
 func (crc *concreteReadableChain) AddressInterface(hAddress chainreadinterface.IAddressHandle) (chainreadinterface.IAddress, error) {
 	result := Address{}
 
-	result.hashSpecified = hAddress.HashSpecified()
-	if result.hashSpecified {
-		result.hash = hAddress.Hash()
+	result.handle.hashSpecified = hAddress.HashSpecified()
+	if result.handle.hashSpecified {
+		result.handle.hash = hAddress.Hash()
 	}
-	result.heightSpecified = hAddress.HeightSpecified()
-	if result.heightSpecified {
-		result.height = hAddress.Height()
+	result.handle.heightSpecified = hAddress.HeightSpecified()
+	if result.handle.heightSpecified {
+		result.handle.height = hAddress.Height()
 	}
 
 	result.data = crc
