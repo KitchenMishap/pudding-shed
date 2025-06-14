@@ -7,10 +7,11 @@ import (
 )
 
 type hashStore struct {
-	params        *HashIndexingParams
-	overflowFiles *overflowFiles
-	binNumFile    wordfile.ReadWriteAtWordCounter
-	binStartsFile *os.File
+	params          *HashIndexingParams
+	overflowFiles   *overflowFiles
+	binNumFileWrite wordfile.ReadWriteAtWordCounter
+	binNumFileRead  wordfile.ReadAtWordCounter
+	binStartsFile   *os.File
 }
 
 // Compiler check that implements
@@ -24,7 +25,24 @@ func newHashStoreObject(params *HashIndexingParams, folderPath string,
 	result.params = params
 	result.overflowFiles = newOverflowFiles(folderPath, params)
 	var err error
-	result.binNumFile, err = binNumWordFileCreator.OpenWordFile()
+	result.binNumFileWrite, err = binNumWordFileCreator.OpenWordFile()
+	result.binNumFileRead = result.binNumFileWrite
+	if err != nil {
+		return nil, err
+	}
+	result.binStartsFile = binStartsFile
+	return &result, nil
+}
+
+func newHashStoreObjectReadOnly(params *HashIndexingParams, folderPath string,
+	binNumWordFileCreator wordfile.WordFileCreator,
+	binStartsFile *os.File) (*hashStore, error) {
+	result := hashStore{}
+	result.params = params
+	result.overflowFiles = newOverflowFiles(folderPath, params)
+	var err error
+	result.binNumFileWrite = nil
+	result.binNumFileRead, err = binNumWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		return nil, err
 	}
@@ -42,11 +60,11 @@ func (h hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 	sn := abbr.toSortNum(h.params)
 
 	// Store the binNumber to file
-	hashesSoFar, err := h.binNumFile.CountWords()
+	hashesSoFar, err := h.binNumFileRead.CountWords()
 	if err != nil {
 		return -1, err
 	}
-	err = h.binNumFile.WriteWordAt(int64(bn), hashesSoFar)
+	err = h.binNumFileWrite.WriteWordAt(int64(bn), hashesSoFar)
 	if err != nil {
 		return -1, err
 	}
@@ -84,7 +102,7 @@ func (h hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 }
 
 func (h hashStore) GetHashAtIndex(index int64, hash *indexedhashes.Sha256) error {
-	bn, err := h.binNumFile.ReadWordAt(index)
+	bn, err := h.binNumFileRead.ReadWordAt(index)
 	if err != nil {
 		return err
 	}
@@ -100,7 +118,7 @@ func (h hashStore) GetHashAtIndex(index int64, hash *indexedhashes.Sha256) error
 }
 
 func (h hashStore) CountHashes() (int64, error) {
-	count, err := h.binNumFile.CountWords()
+	count, err := h.binNumFileRead.CountWords()
 	if err != nil {
 		return -1, err
 	}
@@ -108,7 +126,8 @@ func (h hashStore) CountHashes() (int64, error) {
 }
 
 func (h hashStore) Close() error {
-	err := h.binNumFile.Close()
+	// if binNumFileWrite exists, it is equal to binNumFileRead
+	err := h.binNumFileRead.Close()
 	if err != nil {
 		return err
 	}
@@ -120,7 +139,7 @@ func (h hashStore) Close() error {
 }
 
 func (h hashStore) Sync() error {
-	err := h.binNumFile.Sync()
+	err := h.binNumFileWrite.Sync()
 	if err != nil {
 		return err
 	}

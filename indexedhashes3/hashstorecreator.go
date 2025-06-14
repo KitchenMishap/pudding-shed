@@ -119,7 +119,7 @@ func (c *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (indexedhashes.HashRe
 	if err != nil {
 		return nil, err
 	}
-	hashStore, err := newHashStoreObject(c.params, c.folderPath, c.binNumWordFileCreator, binStartsFile)
+	hashStore, err := newHashStoreObjectReadOnly(c.params, c.folderPath, c.binNumWordFileCreator, binStartsFile)
 	if err != nil {
 		return nil, err
 	}
