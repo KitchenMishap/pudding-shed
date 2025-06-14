@@ -113,5 +113,15 @@ func (c *ConcreteHashStoreCreator) OpenHashStore() (indexedhashes.HashReadWriter
 }
 
 func (c *ConcreteHashStoreCreator) OpenHashStoreReadOnly() (indexedhashes.HashReader, error) {
-	return c.OpenHashStore()
+	sep := string(os.PathSeparator)
+	binStartsFilename := c.folderPath + sep + "BinStarts.bes"
+	binStartsFile, err := os.OpenFile(binStartsFilename, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	hashStore, err := newHashStoreObject(c.params, c.folderPath, c.binNumWordFileCreator, binStartsFile)
+	if err != nil {
+		return nil, err
+	}
+	return hashStore, nil
 }
