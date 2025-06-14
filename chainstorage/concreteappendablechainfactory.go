@@ -476,29 +476,29 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 	result := concreteReadableChain{}
 
 	var err error
-	result.blkHashes, err = cacc.blockHashStoreCreator.OpenHashStore()
+	result.blkHashes, err = cacc.blockHashStoreCreator.OpenHashStoreReadOnly()
 	if err != nil {
 		return nil, err
 	}
-	result.trnHashes, err = cacc.transactionHashStoreCreator.OpenHashStore()
+	result.trnHashes, err = cacc.transactionHashStoreCreator.OpenHashStoreReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		return nil, err
 	}
-	result.addrHashes, err = cacc.addressHashStoreCreator.OpenHashStore()
+	result.addrHashes, err = cacc.addressHashStoreCreator.OpenHashStoreReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		return nil, err
 	}
-	result.blkFirstTrans, err = cacc.blkFirstTransWordFileCreator.OpenWordFile()
+	result.blkFirstTrans, err = cacc.blkFirstTransWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
 		result.addrHashes.Close()
 		return nil, err
 	}
-	result.trnFirstTxi, err = cacc.trnFirstTxiWordFileCreator.OpenWordFile()
+	result.trnFirstTxi, err = cacc.trnFirstTxiWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -506,7 +506,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.blkFirstTrans.Close()
 		return nil, err
 	}
-	result.trnFirstTxo, err = cacc.trnFirstTxoWordFileCreator.OpenWordFile()
+	result.trnFirstTxo, err = cacc.trnFirstTxoWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -515,7 +515,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.trnFirstTxi.Close()
 		return nil, err
 	}
-	result.txiTx, err = cacc.txiTxWordFileCreator.OpenWordFile()
+	result.txiTx, err = cacc.txiTxWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -525,7 +525,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.trnFirstTxo.Close()
 		return nil, err
 	}
-	result.txiVout, err = cacc.txiVoutWordFileCreator.OpenWordFile()
+	result.txiVout, err = cacc.txiVoutWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -536,7 +536,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.txiTx.Close()
 		return nil, err
 	}
-	result.txoSats, err = cacc.txoSatsWordFileCreator.OpenWordFile()
+	result.txoSats, err = cacc.txoSatsWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -548,7 +548,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.txiVout.Close()
 		return nil, err
 	}
-	result.txoAddress, err = cacc.txoAddressWordFileCreator.OpenWordFile()
+	result.txoAddress, err = cacc.txoAddressWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -561,7 +561,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.txoSats.Close()
 		return nil, err
 	}
-	result.txoSpentTxi, err = cacc.txoSpentTxiWordFileCreator.OpenWordFile()
+	result.txoSpentTxi, err = cacc.txoSpentTxiWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -575,7 +575,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.txoAddress.Close()
 		return nil, err
 	}
-	result.addrFirstTxo, err = cacc.addrFirstTxoWordFileCreator.OpenWordFile()
+	result.addrFirstTxo, err = cacc.addrFirstTxoWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -591,7 +591,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		return nil, err
 	}
 
-	result.parentBlockOfTrans, err = cacc.parentBlockOfTransWordFileCreator.OpenWordFile()
+	result.parentBlockOfTrans, err = cacc.parentBlockOfTransWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -607,7 +607,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.addrFirstTxo.Close()
 		return nil, err
 	}
-	result.parentTransOfTxi, err = cacc.parentTransOfTxiWordFileCreator.OpenWordFile()
+	result.parentTransOfTxi, err = cacc.parentTransOfTxiWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -624,7 +624,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		result.parentBlockOfTrans.Close()
 		return nil, err
 	}
-	result.parentTransOfTxo, err = cacc.parentTransOfTxoWordFileCreator.OpenWordFile()
+	result.parentTransOfTxo, err = cacc.parentTransOfTxoWordFileCreator.OpenWordFileReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -643,7 +643,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 		return nil, err
 	}
 
-	result.addrAdditionalTxos, err = cacc.addrAdditionalTxosIaaCreator.OpenMap()
+	result.addrAdditionalTxos, err = cacc.addrAdditionalTxosIaaCreator.OpenMapReadOnly()
 	if err != nil {
 		result.blkHashes.Close()
 		result.trnHashes.Close()
@@ -668,7 +668,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedBlkNeis {
 		blkNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.blocksFolder, int64(size), false)
-		wfile, err := blkNonEssentialIntCreator.OpenWordFile()
+		wfile, err := blkNonEssentialIntCreator.OpenWordFileReadOnly()
 		if err == nil {
 			result.blkNonEssentialInts[supportedName] = wfile
 		}
@@ -679,7 +679,7 @@ func (cacc *ConcreteAppendableChainCreator) openReadOnlyPrivate() (*concreteRead
 	// However they do not need to exist, and if they're not there we don't error.
 	for supportedName, size := range cacc.supportedTrnNeis {
 		trnNonEssentialIntCreator := wordfile.NewConcreteWordFileCreator(supportedName, cacc.transactionsFolder, int64(size), false)
-		wfile, err := trnNonEssentialIntCreator.OpenWordFile()
+		wfile, err := trnNonEssentialIntCreator.OpenWordFileReadOnly()
 		if err == nil {
 			result.trnNonEssentialInts[supportedName] = wfile
 		}
