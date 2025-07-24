@@ -21,6 +21,7 @@ func main() {
 	var sDirFlag = flag.String("Dir", "", "Directory to create and store data")
 	var nGbFlag = flag.Int("Gb", 1, "Number of gigabytes memory available to Phase 2")
 	var nThreadsFlag = flag.Int("Threads", 4, "Number of threads to run")
+	var nYrsFlag = flag.Int("Years", 2, "Number of years of blockchain. 17 years taken as 888888 blocks")
 	flag.Parse()
 
 	if *sDirFlag == "" {
@@ -30,6 +31,7 @@ func main() {
 
 	fmt.Println("Starting PuddingShed:")
 	fmt.Println("Dir=" + *sDirFlag)
+	fmt.Println("Yrs=" + strconv.Itoa(*nYrsFlag))
 	fmt.Println("Gb=" + strconv.Itoa(*nGbFlag))
 	fmt.Println("Threads=" + strconv.Itoa(*nThreadsFlag))
 
@@ -39,7 +41,7 @@ func main() {
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
 
-	err := jobs.SeveralYearsPrimaries(2, "delegated",
+	err := jobs.SeveralYearsPrimaries(*nYrsFlag, "delegated",
 		true, true, true, *sDirFlag, *nGbFlag, *nThreadsFlag)
 
 	if err != nil {
