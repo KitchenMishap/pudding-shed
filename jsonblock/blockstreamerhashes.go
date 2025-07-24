@@ -30,9 +30,9 @@ func (obh *OneBlockHolderHashes) GenesisBlock() *JsonBlockHashes {
 	if obh.latestBlockVisited != -1 {
 		panic("OneBlockHolder: Can only visit Genesis block once")
 	}
-	fmt.Println("OneBlockHolder: Attempting to receive genesis block")
+	fmt.Println("Attempting to receive genesis block...")
 	obh.currentBlock = <-obh.InChan
-	fmt.Println("OneBlockHolder: Received genesis block")
+	fmt.Println("...Received genesis block")
 
 	if obh.currentBlock == nil {
 		panic("OneBlockHolder: First block was nil")

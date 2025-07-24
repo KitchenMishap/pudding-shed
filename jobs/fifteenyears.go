@@ -323,7 +323,6 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		fmt.Println(sTimeUpdate)
 	}
 
-	fmt.Println("Done Several Years")
 	return nil
 }
 

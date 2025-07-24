@@ -51,9 +51,9 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	if obh.latestBlockVisited != -1 {
 		panic("OneBlockHolder: Can only visit Genesis block once")
 	}
-	fmt.Println("OneBlockHolder: Attempting to receive genesis block")
+	fmt.Println("Attempting to receive genesis block...")
 	obh.currentBlock = <-obh.InChan
-	fmt.Println("OneBlockHolder: Received genesis block")
+	fmt.Println("...Received genesis block")
 
 	// There's some processing to be done on the block, non-parallel
 	obh.PostJsonGatherTransHashes(obh.currentBlock)

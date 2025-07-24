@@ -29,14 +29,15 @@ func main() {
 		return
 	}
 
+	fmt.Println("=====================")
 	fmt.Println("Starting PuddingShed:")
+	t := time.Now()
+	fmt.Println(t.Format("Mon Jan 2 15:04:05"))
 	fmt.Println("Dir=" + *sDirFlag)
 	fmt.Println("Yrs=" + strconv.Itoa(*nYrsFlag))
 	fmt.Println("Gb=" + strconv.Itoa(*nGbFlag))
 	fmt.Println("Threads=" + strconv.Itoa(*nThreadsFlag))
-
-	t := time.Now()
-	fmt.Println(t.Format("Mon Jan 2 15:04:05"))
+	fmt.Println("=====================")
 
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
@@ -45,10 +46,16 @@ func main() {
 		true, true, true, *sDirFlag, *nGbFlag, *nThreadsFlag)
 
 	if err != nil {
+		fmt.Println("==================")
 		println(err.Error())
 		println("There was an error :-O")
+		fmt.Println("PuddingShed FAILED")
+		fmt.Println("==================")
+	} else {
+		fmt.Println("===================")
+		fmt.Println("PuddingShed SUCCESS")
+		t = time.Now()
+		fmt.Println(t.Format("Mon Jan 2 15:04:05"))
+		fmt.Println("===================")
 	}
-	fmt.Println("End of main()")
-	t = time.Now()
-	fmt.Println(t.Format("Mon Jan 2 15:04:05"))
 }

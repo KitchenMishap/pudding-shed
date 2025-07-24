@@ -117,12 +117,9 @@ func (ppt *preprocessTaskHashes) GetError() error {
 
 func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage.IAppendableHashesChain, threads int) error {
 	dateFormat := "Mon Jan 2 15:04:05"
-	phase := "1 of 3"
-	phaseName := "Gather the hashes"
 	progressInterval := 5 * time.Second
 	phaseStart := time.Now()
 	nextProgress := phaseStart.Add(progressInterval)
-	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
@@ -303,7 +300,6 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	}
 	fmt.Println()
 	hc.Close()
-	fmt.Println("Done Several Years Parallel Phase 1")
 	return nil
 }
 
@@ -312,12 +308,9 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	transactionIndexer transactionindexing.ITransactionIndexer, threads int) error {
 
 	dateFormat := "Mon Jan 2 15:04:05"
-	phase := "1 of 3"
-	phaseName := "Gather the hashes"
 	progressInterval := 5 * time.Second
 	phaseStart := time.Now()
 	nextProgress := phaseStart.Add(progressInterval)
-	fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
@@ -503,6 +496,5 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	}
 	fmt.Println()
 	ac.Close()
-	fmt.Println("Done Several Years Parallel Phase 3")
 	return nil
 }
