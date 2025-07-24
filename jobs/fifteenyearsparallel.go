@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-const THREADS = 4
 const BLOATLIMIT = 10
 
 type preprocessTask struct {
@@ -116,7 +115,7 @@ func (ppt *preprocessTaskHashes) GetError() error {
 	return ppt.err
 }
 
-func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage.IAppendableHashesChain) error {
+func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage.IAppendableHashesChain, threads int) error {
 	dateFormat := "Mon Jan 2 15:04:05"
 	phase := "1 of 3"
 	phaseName := "Gather the hashes"
@@ -127,7 +126,7 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
-	readerPool := corereader.NewPool(THREADS, false)
+	readerPool := corereader.NewPool(threads, false)
 	//workerPool := concurrency.NewWorkerPool(THREADS)
 	workerPool := concurrency.NewWorkerPool(1)
 	statusMap := sync.Map{}
@@ -310,7 +309,7 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 
 func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	ac chainstorage.IAppendableChain,
-	transactionIndexer transactionindexing.ITransactionIndexer) error {
+	transactionIndexer transactionindexing.ITransactionIndexer, threads int) error {
 
 	dateFormat := "Mon Jan 2 15:04:05"
 	phase := "1 of 3"
@@ -322,7 +321,7 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	transactionsCount := int64(0)
 	lastTrans := int64(0)
 
-	readerPool := corereader.NewPool(THREADS, true)
+	readerPool := corereader.NewPool(threads, true)
 	//workerPool := concurrency.NewWorkerPool(THREADS)
 	workerPool := concurrency.NewWorkerPool(1)
 

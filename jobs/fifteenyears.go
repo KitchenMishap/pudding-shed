@@ -13,11 +13,12 @@ import (
 	"time"
 )
 
-const readerThreads = 25
-const path = "E:\\Data\\TwoYears"
 const parallel = true
 
-func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
+func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1 bool, doPhase2 bool, doPhase3 bool,
+	path string, gbMem int, threads int) error {
+
+	readerThreads := threads
 
 	blocksEachYear := []int64{0, 32879, 100888, 160463, 215006, // Block heights at year 0..4
 		278460, 337312, 391569, 446472, 502401, // years 5..9
@@ -79,7 +80,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		lastTrans = int64(0)
 
 		if parallel {
-			err = PhaseOneParallel(lastBlock, transactionsTarget, hc)
+			err = PhaseOneParallel(lastBlock, transactionsTarget, hc, threads)
 			if err != nil {
 				return err
 			}
@@ -163,15 +164,15 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 			tParams = indexedhashes3.Sensible16YearsTransactionHashParams()
 			aParams = indexedhashes3.Sensible16YearsAddressHashParams()
 		}
-		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams)
+		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem)
 		if err != nil {
 			return err
 		}
-		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams)
+		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem)
 		if err != nil {
 			return err
 		}
-		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams)
+		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem)
 		if err != nil {
 			return err
 		}
@@ -245,7 +246,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		}
 
 		if parallel {
-			err = PhaseThreeParallel(lastBlock, transactionsTarget, ac, transactionIndexer)
+			err = PhaseThreeParallel(lastBlock, transactionsTarget, ac, transactionIndexer, threads)
 			if err != nil {
 				return err
 			}

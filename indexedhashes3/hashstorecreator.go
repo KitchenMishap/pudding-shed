@@ -18,7 +18,7 @@ type ConcreteHashStoreCreator struct {
 var _ indexedhashes.HashStoreCreator = (*ConcreteHashStoreCreator)(nil)
 
 func NewHashStoreCreatorAndPreloader(folder string, name string,
-	params *HashIndexingParams) (indexedhashes.HashStoreCreator, *MultipassPreloader, error) {
+	params *HashIndexingParams, gbMem int) (indexedhashes.HashStoreCreator, *MultipassPreloader, error) {
 	sep := string(os.PathSeparator)
 	hashStoreFolderPath := folder + sep + name
 
@@ -34,7 +34,7 @@ func NewHashStoreCreatorAndPreloader(folder string, name string,
 		return nil, nil, err
 	}
 	wordFile := wordfile.NewWordFile(file, params.BytesRoomForBinNum(), 0)
-	preloader := NewMultipassPreloader(params, hashStoreFolderPath, wordFile)
+	preloader := NewMultipassPreloader(params, hashStoreFolderPath, wordFile, gbMem)
 	return creator, preloader, nil
 }
 

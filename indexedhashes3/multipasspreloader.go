@@ -18,13 +18,13 @@ type MultipassPreloader struct {
 	overflowFiles   *overflowFiles
 }
 
-func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNumsWordFile wordfile.WriterAtWord) *MultipassPreloader {
+func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNumsWordFile wordfile.WriterAtWord, gbMem int) *MultipassPreloader {
 	result := MultipassPreloader{}
 	result.params = params
 	result.folderPath = folderPath
 	result.binStartsFile = nil
 	result.binNumsWordFile = binNumsWordFile
-	result.bytesPerPass = 2 * 1024 * 1024 * 1024 // 2 Gigabyte (memory)
+	result.bytesPerPass = int64(gbMem * 1024 * 1024 * 1024)
 	result.overflowFiles = newOverflowFiles(folderPath, params)
 	return &result
 }
