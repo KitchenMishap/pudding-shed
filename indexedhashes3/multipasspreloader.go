@@ -24,7 +24,7 @@ func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNum
 	result.folderPath = folderPath
 	result.binStartsFile = nil
 	result.binNumsWordFile = binNumsWordFile
-	result.bytesPerPass = 32 * 1024 * 1024 * 1024 // 32 Gigabyte (memory)
+	result.bytesPerPass = 2 * 1024 * 1024 * 1024 // 2 Gigabyte (memory)
 	result.overflowFiles = newOverflowFiles(folderPath, params)
 	return &result
 }
