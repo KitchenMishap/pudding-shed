@@ -2,7 +2,9 @@ from spiraltools import *
 import json
 
 class Block(dict):
-    def __init__(self, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
+    def __init__(self, glw, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
+        self.gapLengthWeight = glw      # Spare space is distributed between blocks according to glw, giving PARTIAL
+                                        # indication of of delta-time between blocks
         self.length = l
         self.minLength = l
         self.width = w
@@ -116,6 +118,8 @@ def towerMain():
     prevY = 0
     d = 5
     prevD = 5
+    block0Seconds1970 = 1231006505
+    prevSecondsGenesis = block0Seconds1970
     while y<15:                  # For each year
         yearLoop = Loop()
         while y == prevY:          # For each day in year
@@ -137,24 +141,28 @@ def towerMain():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
-                block = Block(length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
-                dayLoop.append(block)
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
                 seconds1970 = blockJson["MedianTime"]
-                secondsGenesis = seconds1970 - 1231006505
+                secondsGenesis = seconds1970 - block0Seconds1970
+                secondsBlock = secondsGenesis - prevSecondsGenesis
                 daysGenesis = math.floor(secondsGenesis / (24 * 60 * 60))
                 yearsGenesis = math.floor(daysGenesis / 365)
                 prevY = y
                 y = yearsGenesis
                 prevD = d
                 d = daysGenesis
+                prevSecondsGenesis = secondsGenesis
+                gapLengthWeight = secondsBlock
+                block = Block(gapLengthWeight, length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
+                dayLoop.append(block)
 
             prevD = d
             # These measure calls set the following for each loop:
             # minInnerCircumf
             # minLength
             # subUnitsMaxThickness
+            # subUnitsTotalGapLengthWeight
             # Initially the following are set to these minima for now:
             # innerCircumf
             # length
@@ -183,11 +191,12 @@ def towerMain():
                 avDayInnerCircumfRamped += dayLoop.innerCircumfRamped(b)
             avDayInnerCircumfRamped /= len(dayLoop.units)
 
-            spacingPerBlock = avDayInnerCircumfRamped / len(dayLoop.units)
+            spacingPerLoop = avDayInnerCircumfRamped
             for b, block in enumerate(dayLoop.units):
                 # Block length takes account of "ramped" circumf measurement of dayLoop at a particular block index
                 # Here we are "percolating down" ramped day circumf to block length
-                blockLength = resultOrValue(block, "minLength") + spacingPerBlock
+                spacingThisBlock = spacingPerLoop * block.gapLengthWeight / dayLoop.subUnitsTotalGapLengthWeight
+                blockLength = resultOrValue(block, "minLength") + spacingThisBlock
                 block.length = max(block.length, blockLength)
 
     print("Pass Two Point Two: New low level measurements percolate up...")
@@ -203,12 +212,12 @@ def towerMain():
         for d, dayLoop in enumerate(yearLoop.units):
             avYearInnerCircumfRamped += yearLoop.innerCircumfRamped(d)
         avYearInnerCircumfRamped /= len(yearLoop.units)
-        spacingPerBlock = avYearInnerCircumfRamped / len(yearLoop.units)
+        spacingPerDay = avYearInnerCircumfRamped / len(yearLoop.units)
 
         for d, dayLoop in enumerate(yearLoop.units):
             # Block length takes account of "ramped" circumf measurement of yearLoop at a particular day index
             # Here we are "percolating down" ramped year circumf to day length
-            dayLength = resultOrValue(dayLoop, "length") + spacingPerBlock
+            dayLength = resultOrValue(dayLoop, "length") + spacingPerDay
             dayLoop.length = max(dayLoop.length, dayLength)
 
     print("Pass Two Point Four: Further low level measurements percolate up...")

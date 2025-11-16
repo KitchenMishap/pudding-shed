@@ -115,6 +115,8 @@ class Loop(dict):
         self.subUnitsMaxThickness = 0.0
         self.innerCircumf = 0.0
         self.length = 0.0
+        self.gapLengthWeight = 0.0  # A Block is a Unit that has a gapLengthWeight; a Loop is a unit that does not
+        self.subUnitsTotalGapLengthWeight = 0.0
         self.complete = False
         self.loopFraction = 0.0
 
@@ -126,6 +128,7 @@ class Loop(dict):
         self.minInnerCircumf = 0.0
         self.minLength = 0.0
         self.subUnitsMaxThickness = 0.0
+        self.subUnitsTotalGapLengthWeight = 0.0
         prevUnit = None
         for unit in self.units:
             # length can be a value or a function to be called
@@ -137,6 +140,9 @@ class Loop(dict):
 
             thickness = resultOrValue(unit, "thickness")
             self.subUnitsMaxThickness = max(self.subUnitsMaxThickness, thickness)
+
+            gapLengthWeight = resultOrValue(unit, "gapLengthWeight")
+            self.subUnitsTotalGapLengthWeight += gapLengthWeight
 
             unit.nextUnit = None     # For a moment...
             unit.prevUnit = prevUnit
