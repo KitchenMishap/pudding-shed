@@ -75,6 +75,18 @@ def towerMain():
     jsonFile = json.load(fi1)
     fi1.close()
 
+    print( "Making difficulty adjustment blocks black... and grey for the next 144 blocks")
+    for b, block in enumerate(jsonFile["Blocks"]):
+        sinceDifficulty = b % 2016
+        if b >= 2016 and sinceDifficulty < 144:
+            jsonFile["Blocks"][b]["ColourByte0"] = 128
+            jsonFile["Blocks"][b]["ColourByte1"] = 128
+            jsonFile["Blocks"][b]["ColourByte2"] = 128
+            if sinceDifficulty == 0:
+                jsonFile["Blocks"][b]["ColourByte0"] = 0
+                jsonFile["Blocks"][b]["ColourByte1"] = 0
+                jsonFile["Blocks"][b]["ColourByte2"] = 0
+
     print( "First pass: populate, and measure to percolate up...")
     centuryLoop = Loop()
     blk = 1
