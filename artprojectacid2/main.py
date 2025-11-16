@@ -197,6 +197,11 @@ def towerMain():
         for d, dayLoop in enumerate(yearLoop.units):
             for b, block in enumerate(dayLoop.units):
 
+                # Special case for block 0, which is seperated by 6 days from block 1
+                if b==0 and d==0 and y==0:
+                    sixDays = 6 * dayLoop.length
+                    block.introducedTransforms.append(SpreadTranslateY(-sixDays, -sixDays))
+
                 # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
                 block.introducedTransforms.append(SpreadTranslateX(halfThickness, halfThickness))
