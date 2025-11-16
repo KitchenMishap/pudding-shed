@@ -216,6 +216,7 @@ def towerMain():
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
             # Rotation for elements of dayLoop
+            dayLoop.introducedTransforms.append(SpreadRotateY(-90.0, -90.0))   # Rotate all so genesis block is upright
             dayLoop.introducedTransforms.append(SpreadRotateY(0, 360.0))
 
         # Give yearLoop a radius
