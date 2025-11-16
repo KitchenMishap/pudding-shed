@@ -64,6 +64,23 @@ class Block(dict):
             positionedSlab = Instance(colouredSlab, slabTransform)
             renderer.append(positionedSlab)
 
+def markBlock(json, block):
+    json["Blocks"][block-2]["ColourByte0"] = 255    # red before
+    json["Blocks"][block-2]["ColourByte1"] = 0
+    json["Blocks"][block-2]["ColourByte2"] = 0
+    json["Blocks"][block-1]["ColourByte0"] = 255    # red before
+    json["Blocks"][block-1]["ColourByte1"] = 0
+    json["Blocks"][block-1]["ColourByte2"] = 0
+    json["Blocks"][block]["ColourByte0"] = 0    # blue block
+    json["Blocks"][block]["ColourByte1"] = 0
+    json["Blocks"][block]["ColourByte2"] = 255
+    json["Blocks"][block+1]["ColourByte0"] = 255    # red after
+    json["Blocks"][block+1]["ColourByte1"] = 0
+    json["Blocks"][block+1]["ColourByte2"] = 0
+    json["Blocks"][block+2]["ColourByte0"] = 255    # red after
+    json["Blocks"][block+2]["ColourByte1"] = 0
+    json["Blocks"][block+2]["ColourByte2"] = 0
+
 def towerMain():
 
     daySpacingRatio = 1.1
@@ -86,6 +103,10 @@ def towerMain():
                 jsonFile["Blocks"][b]["ColourByte0"] = 0
                 jsonFile["Blocks"][b]["ColourByte1"] = 0
                 jsonFile["Blocks"][b]["ColourByte2"] = 0
+
+    print( "Marking significant blocks as blue... (and two red blocks either side)")
+    markBlock(jsonFile, 170)      # First transaction, 10 btc satoshi to finney
+    markBlock(jsonFile, 57043)    # Pizza transaction
 
     print( "First pass: populate, and measure to percolate up...")
     centuryLoop = Loop()
