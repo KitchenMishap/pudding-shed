@@ -2,9 +2,9 @@ from spiraltools import *
 import json
 
 class Block(dict):
-    def __init__(self, glw, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
-        self.gapLengthWeight = glw      # Spare space is distributed between blocks according to glw, giving PARTIAL
-                                        # indication of of delta-time between blocks
+    def __init__(self, glwBefore, glwAfter, l, w, t, r, g, b, includeBase, baseR, baseG, baseB):
+        self.gapLengthWeightBefore = glwBefore  # Spare space is distributed between blocks according to glw,
+        self.gapLengthWeightAfter = glwAfter    # giving PARTIAL indication of of delta-time between blocks
         self.length = l
         self.minLength = l
         self.width = w
@@ -30,14 +30,12 @@ class Block(dict):
         # Apply all the introduced transforms
         for introduced in self.introducedTransforms:
             name = introduced.name
-            # A block is not distributed over sub-units, so we use the middle
-            amount = (introduced.start + introduced.end) / 2
+            amount = introduced.start
             instanceTransform.append(TransformPrimitive(name, amount))
         # Apply all the delegated transforms
         for delegated in delegatedTransforms:
             name = delegated.name
-            # A block is not distributed over sub-units, so we use the middle
-            amount = (delegated.start + delegated.end) / 2
+            amount = delegated.start
             instanceTransform.append(TransformPrimitive(name, amount))
         positionedCuboid = Instance(colouredCube, instanceTransform)
         renderer.append(positionedCuboid)
@@ -54,14 +52,12 @@ class Block(dict):
             # Apply all the introduced transforms
             for introduced in self.introducedTransforms:
                 name = introduced.name
-                # A block is not distributed over sub-units, so we use the middle
-                amount = (introduced.start + introduced.end) / 2
+                amount = introduced.start
                 slabTransform.append(TransformPrimitive(name, amount))
             # Apply all the delegated transforms
             for delegated in delegatedTransforms:
                 name = delegated.name
-                # A block is not distributed over sub-units, so we use the middle
-                amount = (delegated.start + delegated.end) / 2
+                amount = delegated.start
                 slabTransform.append(TransformPrimitive(name, amount))
             positionedSlab = Instance(colouredSlab, slabTransform)
             renderer.append(positionedSlab)
@@ -112,14 +108,16 @@ def towerMain():
 
     print( "First pass: populate, and measure to percolate up...")
     centuryLoop = Loop()
-    blk = 1
+    blk = 1     # Don't start with block 0 as that is a block that's alone in a day and confuses things
+    prevBlock = None
     blockJson = jsonFile["Blocks"][blk]
     y = 0
     prevY = 0
-    d = 5
-    prevD = 5
-    block0Seconds1970 = 1231006505
-    prevSecondsGenesis = block0Seconds1970
+    d = 6       # As we're starting at block 1
+    prevD = 6
+    # Block 0 happened at timestamp 1231006505
+    timeZero = 1231006505
+    prevSecondsFromTimeZero = 1231469665 - 600 - timeZero # 10 minutes before block 1
     while y<15:                  # For each year
         yearLoop = Loop()
         while y == prevY:          # For each day in year
@@ -141,21 +139,26 @@ def towerMain():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
+                seconds1970 = blockJson["MedianTime"]
+                secondsFromTimeZero = seconds1970 - timeZero
+                secondsBlock = secondsFromTimeZero - prevSecondsFromTimeZero
+                daysFromTimeZero = math.floor(secondsFromTimeZero / (24 * 60 * 60))
+                yearsFromTimeZero = math.floor(daysFromTimeZero / 365)
+                prevY = y
+                y = yearsFromTimeZero
+                prevD = d
+                d = daysFromTimeZero
+                prevSecondsFromTimeZero = secondsFromTimeZero
+                if d < 8:
+                    print( "Day: ", d, "Minutes gap: ", math.floor(secondsBlock / 60) )
+                gapLengthWeight = max(secondsBlock, 60)     # Minimum of a minute, as early blocks have medianTime spacing zero?
+                block = Block(gapLengthWeight, 0.0, length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
+                dayLoop.append(block)
+                if not (prevBlock is None):
+                    prevBlock["gapLengthWeightAfter"] = gapLengthWeight
+                prevBlock = block
                 blk = blk + 1
                 blockJson = jsonFile["Blocks"][blk]
-                seconds1970 = blockJson["MedianTime"]
-                secondsGenesis = seconds1970 - block0Seconds1970
-                secondsBlock = secondsGenesis - prevSecondsGenesis
-                daysGenesis = math.floor(secondsGenesis / (24 * 60 * 60))
-                yearsGenesis = math.floor(daysGenesis / 365)
-                prevY = y
-                y = yearsGenesis
-                prevD = d
-                d = daysGenesis
-                prevSecondsGenesis = secondsGenesis
-                gapLengthWeight = secondsBlock
-                block = Block(gapLengthWeight, length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
-                dayLoop.append(block)
 
             prevD = d
             # These measure calls set the following for each loop:
@@ -195,8 +198,9 @@ def towerMain():
             for b, block in enumerate(dayLoop.units):
                 # Block length takes account of "ramped" circumf measurement of dayLoop at a particular block index
                 # Here we are "percolating down" ramped day circumf to block length
-                spacingThisBlock = spacingPerLoop * block.gapLengthWeight / dayLoop.subUnitsTotalGapLengthWeight
-                blockLength = resultOrValue(block, "minLength") + spacingThisBlock
+                spacingBeforeThisBlock = spacingPerLoop * block.gapLengthWeightBefore / dayLoop.subUnitsTotalGapLengthWeight / 2.0
+                spacingAfterThisBlock = spacingPerLoop * block.gapLengthWeightAfter / dayLoop.subUnitsTotalGapLengthWeight / 2.0
+                blockLength = resultOrValue(block, "minLength") + spacingBeforeThisBlock + spacingAfterThisBlock
                 block.length = max(block.length, blockLength)
 
     print("Pass Two Point Two: New low level measurements percolate up...")
@@ -240,9 +244,9 @@ def towerMain():
             for b, block in enumerate(dayLoop.units):
 
                 # Special case for block 0, which is seperated by 6 days from block 1
-                if b==0 and d==0 and y==0:
-                    sixDays = 6 * dayLoop.length
-                    block.introducedTransforms.append(SpreadTranslateY(-sixDays, -sixDays))
+                #if b==0 and d==0 and y==0:
+                #    sixDays = 6 * dayLoop.length
+                #    block.introducedTransforms.append(SpreadTranslateY(-sixDays, -sixDays))
 
                 # Half block thickness so inside cylinder of dayLoop is smooth
                 halfThickness = block.thickness / 2
@@ -258,7 +262,7 @@ def towerMain():
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
             # Rotation for elements of dayLoop
-            dayLoop.introducedTransforms.append(SpreadRotateY(-90.0, -90.0))    # Rotate all so genesis block is upright
+            #dayLoop.introducedTransforms.append(SpreadRotateY(-90.0, -90.0))    # Rotate all so genesis block is upright
             dayLoop.introducedTransforms.append(SpreadRotateY(0, -360.0))       # Negative to make blocks clockwise
 
         # Give yearLoop a radius
