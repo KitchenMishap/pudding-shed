@@ -120,6 +120,8 @@ class Loop(dict):
         self.subUnitsTotalGapLengthWeight = 0.0
         self.complete = False
         self.loopFraction = 0.0
+        self.startAngle = 0.0   # These are useful for amending in dayloops (to cater for big gaps in first few days)
+        self.endAngle = 360.0
 
     def append(self, unit):
         self.units.append(unit)

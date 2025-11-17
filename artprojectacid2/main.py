@@ -79,6 +79,14 @@ def markBlock(json, block):
     json["Blocks"][block+2]["ColourByte1"] = 0
     json["Blocks"][block+2]["ColourByte2"] = 0
 
+TIMEZERO = 1230768000   # Midnight Jan 1 2009
+def secondsIntoDay(timestamp):
+    return (timestamp - TIMEZERO) % (24 * 60 * 60)
+def dayNumber(timestamp):
+    return math.floor(float(timestamp - TIMEZERO) / (24 * 60 * 60))
+def yearNumber(timestamp):
+    return math.floor(dayNumber(timestamp) / 365)
+
 def towerMain():
 
     daySpacingRatio = 1.1
@@ -109,20 +117,23 @@ def towerMain():
     print( "First pass: populate, and measure to percolate up...")
     centuryLoop = Loop()
     blk = 1     # Don't start with block 0 as that is a block that's alone in a day and confuses things
-    prevBlock = None
     blockJson = jsonFile["Blocks"][blk]
-    y = 0
-    prevY = 0
-    d = 6       # As we're starting at block 1
-    prevD = 6
-    # Block 0 happened at timestamp 1231006505
-    timeZero = 1231006505
-    prevSecondsFromTimeZero = 1231469665 - 600 - timeZero # 10 minutes before block 1
-    while y<15:                  # For each year
+    timestamp = blockJson["MedianTime"]
+    secondOfDay = secondsIntoDay(timestamp)
+    day = dayNumber(timestamp)
+    year = yearNumber(timestamp)
+    firstBlockOfDay = True
+    prevYear = year
+    prevDay = day
+    prevSecond = secondOfDay - 10 * 60
+    prevBlock = None
+    end = False
+    while not end:                  # For each year
         yearLoop = Loop()
-        while y == prevY:          # For each day in year
+        while year == prevYear and not end:          # For each day in year
             dayLoop = Loop()
-            while d == prevD:           # For each block in day
+            while (day == prevDay or firstBlockOfDay) and not end:           # For each block in day
+                # PART 1) Do the stuff for the current block
                 sizeBytes = blockJson["SizeBytes"]
                 if sizeBytes >= 16 * 16 * 16:
                     length = math.pow(sizeBytes, 1/3.0)
@@ -139,28 +150,30 @@ def towerMain():
                 red = blockJson["ColourByte0"] / 255.0
                 green = blockJson["ColourByte1"] / 255.0
                 blue = blockJson["ColourByte2"] / 255.0
-                seconds1970 = blockJson["MedianTime"]
-                secondsFromTimeZero = seconds1970 - timeZero
-                secondsBlock = secondsFromTimeZero - prevSecondsFromTimeZero
-                daysFromTimeZero = math.floor(secondsFromTimeZero / (24 * 60 * 60))
-                yearsFromTimeZero = math.floor(daysFromTimeZero / 365)
-                prevY = y
-                y = yearsFromTimeZero
-                prevD = d
-                d = daysFromTimeZero
-                prevSecondsFromTimeZero = secondsFromTimeZero
-                if d < 8:
-                    print( "Day: ", d, "Minutes gap: ", math.floor(secondsBlock / 60) )
-                gapLengthWeight = max(secondsBlock, 60)     # Minimum of a minute, as early blocks have medianTime spacing zero?
-                block = Block(gapLengthWeight, 0.0, length, width, thickness, red, green, blue, False,1.0, 1.0, 1.0)
+                dayLoop.endAngle = 360.0 * (float(secondOfDay) / (24.0 * 60.0 * 60.0))  # Overwritten unless last block
+                if firstBlockOfDay:
+                    dayLoop.startAngle = dayLoop.endAngle
+                gapLengthWeight = max(secondOfDay - prevSecond, 60)     # Minimum of a minute, as early blocks have medianTime spacing zero?
+                block = Block(gapLengthWeight, 0.0, length, width, thickness, red, green, blue, False, 1.0, 1.0, 1.0)
                 dayLoop.append(block)
                 if not (prevBlock is None):
                     prevBlock["gapLengthWeightAfter"] = gapLengthWeight
+                # PART 2) Move onto the next block
                 prevBlock = block
+                prevSecond = secondOfDay
+                prevDay = day
+                prevYear = year
                 blk = blk + 1
-                blockJson = jsonFile["Blocks"][blk]
-
-            prevD = d
+                if blk < len(jsonFile["Blocks"]):
+                    blockJson = jsonFile["Blocks"][blk]
+                    timestamp = blockJson["MedianTime"]
+                    secondOfDay = secondsIntoDay(timestamp)
+                    day = dayNumber(timestamp)
+                    year = yearNumber(timestamp)
+                else:
+                    end = True
+                firstBlockOfDay = False
+            firstBlockOfDay = True
             # These measure calls set the following for each loop:
             # minInnerCircumf
             # minLength
@@ -173,11 +186,10 @@ def towerMain():
             dayLoop.complete = True
             dayLoop.measure(daySpacingRatio)
             yearLoop.append(dayLoop)
-
-        prevY = y
         yearLoop.complete = True
         yearLoop.measure(yearSpacingRatio)
         centuryLoop.append(yearLoop)
+        prevYear = year
     centuryLoop.measure(centurySpacingRatio)
 
     arcInnerCircumf = centuryLoop.innerCircumf
@@ -262,8 +274,10 @@ def towerMain():
             dayLoop.introducedTransforms.append(SpreadTranslateX(dayStartInnerRadius, dayEndInnerRadius))
 
             # Rotation for elements of dayLoop
-            #dayLoop.introducedTransforms.append(SpreadRotateY(-90.0, -90.0))    # Rotate all so genesis block is upright
-            dayLoop.introducedTransforms.append(SpreadRotateY(0, -360.0))       # Negative to make blocks clockwise
+            #dayLoop.introducedTransforms.append(SpreadRotateY(-90.0, -90.0))    # Rotate all so midnight is top
+            startAngle = -dayLoop.startAngle    # Negated so clockwise
+            endAngle = -dayLoop.endAngle
+            dayLoop.introducedTransforms.append(SpreadRotateY(startAngle, endAngle))
 
         # Give yearLoop a radius
         yearStartRadius = yearLoop.startAttr("innerCircumf", True) / (2.0 * math.pi)
