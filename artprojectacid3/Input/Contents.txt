@@ -1,0 +1,2 @@
+In here is the output of pudding-shed, the input to main.py.
+Here we have called it acidblocks.json

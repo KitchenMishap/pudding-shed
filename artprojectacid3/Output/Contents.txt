@@ -1,0 +1,2 @@
+In here we have the output of main.py, the input to pudding-shed-raytraced.
+Here we have called it renderspec.json

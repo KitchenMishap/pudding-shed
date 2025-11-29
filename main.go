@@ -8,7 +8,7 @@ import (
 func main() {
 	const lastBlock = 824196 // 15 Years of blockchain
 	const dbDir = "F:\\Data\\FifteenYears_19Fe2024"
-	const opDir = "artprojectacid2\\Input"
+	const opDir = "artprojectacid3\\Input"
 
 	if opDir != "" {
 		err := os.MkdirAll(opDir, os.ModePerm)
@@ -17,5 +17,5 @@ func main() {
 		}
 	}
 
-	artprojectacid.GatherBlocksToFile(dbDir, lastBlock, opDir+"\\acidblocks.json")
+	artprojectacid.GatherBlocksToFile(dbDir, lastBlock, opDir+"\\acidblocks3.json")
 }
