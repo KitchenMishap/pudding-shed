@@ -7,8 +7,8 @@ import (
 
 func main() {
 	const lastBlock = 824196 // 15 Years of blockchain
-	const dbDir = "F:\\Data\\SeveralYears"
-	const opDir = "artprojectacid\\WorkingDir"
+	const dbDir = "F:\\Data\\FifteenYears_19Fe2024"
+	const opDir = "artprojectacid2\\Input"
 
 	if opDir != "" {
 		err := os.MkdirAll(opDir, os.ModePerm)
