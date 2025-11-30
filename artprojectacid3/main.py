@@ -1,3 +1,4 @@
+from spiraltools import *
 import json
 
 def towerMain():
@@ -7,8 +8,8 @@ def towerMain():
     jsonFile = json.load(fi1)
     fi1.close()
 
-    print( "First pass: ..." )
+    print( "First pass: Import json and create block Instances" )
     for b, block in enumerate(jsonFile["Blocks"]):
-        print( block["Time"] )
+        print( block["SizeBytes"] )
 
 towerMain()
