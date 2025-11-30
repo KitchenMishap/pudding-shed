@@ -4,6 +4,7 @@ type JsonBlockType struct {
 	Height      int
 	SizeBytes   int
 	Time        int
+	MedianTime  int
 	ColourByte0 int
 	ColourByte1 int
 	ColourByte2 int

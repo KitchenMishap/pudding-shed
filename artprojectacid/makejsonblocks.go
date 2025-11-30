@@ -20,7 +20,8 @@ func makeBlock(ibc chainreadinterface.IBlockChain, ibh chainreadinterface.IBlock
 	}
 
 	res.Height = int(block.Height())
-	res.Time = int((*nei)["time"])
+	res.Time = int((*nei)["time"])             // time is NOT guaranteed to go up
+	res.MedianTime = int((*nei)["mediantime"]) // mediantime is guaranteed to go up, so we give both
 	res.SizeBytes = int((*nei)["size"])
 	res.ColourByte0, res.ColourByte1, res.ColourByte2 = colourBytes(ibc, ibh)
 

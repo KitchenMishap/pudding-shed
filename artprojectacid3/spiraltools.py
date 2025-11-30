@@ -62,3 +62,26 @@ class Instance(dict):
         self["transform"] = self["transform"] + transform
         renderer.append(self)
 #endregion
+
+class Block(dict):
+    def __init__(self, l, w, t, r, g, b):
+        self.length = l
+        self.width = w
+        self.thickness = t
+        self.red = r
+        self.green = g
+        self.blue = b
+        self.introducedTransforms = []
+
+    def render(self, renderer):
+        # Firstly, a cube
+        instanceTransform = []
+        instanceTransform.append(ScaleX(self.thickness))
+        instanceTransform.append(ScaleY(self.width))
+        instanceTransform.append(ScaleZ(self.minLength))
+        colouredCube = Cube(self.red, self.green, self.blue, 1,0)
+        # Apply all the introduced transforms
+        for introduced in self.introducedTransforms:
+            instanceTransform.append(TransformPrimitive(introduced.name, introduced.amount))
+        positionedCuboid = Instance(colouredCube, instanceTransform)
+        renderer.append(positionedCuboid)
