@@ -159,7 +159,7 @@ def towerMain():
     # All other blocks are the max of the r_limits on the gaps before/after
     for b in range(1, block_count-1):
         r_limit_before = r_limit_array[b-1]         # For block 1, look in gap 0
-        r_limit_after = r_limit_array[b] + 0.01     # for block 1, look in gap 1
+        r_limit_after = r_limit_array[b]            # for block 1, look in gap 1
         instances[b]["r_min_day"] = max(r_limit_before, r_limit_after)
 
     print("Fourth pass, find the maxima within neighbourhoods of a certain size")
