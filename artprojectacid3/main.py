@@ -177,24 +177,41 @@ def towerMain():
             else:
                 print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",0.0", ",", instances[index]["SpiralTime"], file=f)
 
-    print("Second pass, introduce transforms...")
+    print("Sixth pass, introduce transforms...")
     for i, instance in enumerate(instances):
         blockJson = json_file["Blocks"][i]
 
         # Half block thickness so inside cylinder of dayLoop is smooth
-        halfThickness = instance.thickness / 2
-        instance.introducedTransforms.append(TranslateX(halfThickness))
+        half_thickness = instance.thickness / 2
+        instance.introducedTransforms.append(TranslateX(half_thickness))
 
         # Give day a radius
-        #instance.introducedTransforms.append(TranslateX(dayRadius))
+        day_radius = instance["r_day"]
+        instance.introducedTransforms.append(TranslateX(day_radius))
 
         # Rotation for elements of day loop
-        #instance.introducedTransforms.append(RotateY(dayAngle))
+        timestamp = instance["SpiralTime"]
+        first_jan_2009_midnight = 1230768000
+        day_second = (timestamp - first_jan_2009_midnight) % (24 * 60 * 60)
+        day_angle = 360.0 * day_second / (24 * 60 * 60)
+        instance.introducedTransforms.append(RotateY(day_angle))
 
         # Give year a radius
-        #instance.introducedTransforms.append(TranslateX(yearRadius))
+        year_radius = 100000    # stab in the dark for now
+        instance.introducedTransforms.append(TranslateX(year_radius))
 
         # Rotation for elements of year loop
-        #instance.introducedTransforms.append(RotateZ(yearAngle))
+        year_second = (timestamp - first_jan_2009_midnight) % (365.25 * 24 * 60 * 60)
+        year_angle = 360.0 * year_second / (365.25 * 24 * 60 * 60)
+        instance.introducedTransforms.append(RotateZ(year_angle))
+
+    print("Seventh pass, render")
+    renderer = []                   # Renderer can merely be an array to append to
+    for instance in instances:
+        instance.render(renderer)
+
+    print( "Save..." )
+    fo = open("Output\\renderspec.json", 'w')
+    json.dump(renderer, fo, default=vars, indent=2)
 
 towerMain()

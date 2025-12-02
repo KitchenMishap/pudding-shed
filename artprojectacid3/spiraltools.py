@@ -78,7 +78,7 @@ class Block(dict):
         instanceTransform = []
         instanceTransform.append(ScaleX(self.thickness))
         instanceTransform.append(ScaleY(self.width))
-        instanceTransform.append(ScaleZ(self.minLength))
+        instanceTransform.append(ScaleZ(self.length))
         colouredCube = Cube(self.red, self.green, self.blue, 1,0)
         # Apply all the introduced transforms
         for introduced in self.introducedTransforms:
