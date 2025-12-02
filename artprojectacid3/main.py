@@ -1,4 +1,5 @@
 from spiraltools import *
+from quartic import *
 import json
 import math
 
@@ -27,54 +28,74 @@ def generate_spiral_time( json_file ):
 
 def nudge_time_stamps( json_file, min_delta_time ):
     # Even when using spiral_time (see above, which is usually median_time), we find may adjacent blocks
-    # (and even series of blocks) with the same timestamp. Here we detect sequences with small delta_times between
-    # them, and try to spread them out a bit, using the surrounding blocks to provide a scale
-    failures = 0
+    # (and even series of blocks) with the same timestamp. Here we impose a minimum delta time between blocks
+    # - some blocks may be moved forward in time to impose this, cumulatively, until there is space to catch up
+    # in future blocks.
 
-    blocks = len(json_file["Blocks"])
-    b = 1
-    delta_time = json_file["Blocks"][b]["SpiralTime"] - json_file["Blocks"][b-1]["SpiralTime"]
+    blocks = json_file["Blocks"]
+    time = blocks[0]["SpiralTime"]
+    cumulative_time = time
 
-    while True:
-        # Search for the start of the next small delta_time sequence
-        while delta_time >= min_delta_time:
-            b = b + 1
-            if b >= blocks:
-                print( failures, " failures")
-                return
-            delta_time = json_file["Blocks"][b]["SpiralTime"] - json_file["Blocks"][b-1]["SpiralTime"]
+    for b, block in enumerate(blocks):
+        if b >=1:
+            time = block["SpiralTime"]
+            cumulative_time += min_delta_time
+            if cumulative_time <= time:
+                cumulative_time = time
+            elif b < 1000:
+                print( "Block ", b, ": Cumulative time ahead by ", cumulative_time - time)
+            block["SpiralTime"] = cumulative_time
 
-        # Found a small delta_time between b-1 and b
-        first_short_block = b
+def is_maximum(instances, index, name_attr, half_period):
+    value = instances[index][name_attr]
+    for i in range(1, half_period + 1):
+        if instances[index - i][name_attr] > value:
+            return False    # Something nearby is bigger
+        if instances[index + i][name_attr] > value:
+            return False    # Something nearby is bigger
+    return True     # Nothing nearby is bigger
 
-        # Search for the end of this small delta_time sequence
-        while delta_time < min_delta_time and b < blocks - 1:
-            b = b + 1
-            delta_time = json_file["Blocks"][b]["SpiralTime"] - json_file["Blocks"][b-1]["SpiralTime"]
+def find_maxima_indices(instances, name_attr, half_period):
+    length = len(instances)
+    results = []
+    if length < half_period + half_period + 1:
+        return results
+    for i in range(half_period, length - half_period - 1):
+        if is_maximum(instances, i, name_attr, half_period):
+            results.append(i)
+    return results
 
-        # Rare edge case: the sequence of short blocks is at the end of the chain
-        if b == blocks - 1:
-            time_stamp = json_file["Blocks"][first_short_block - 1]["SpiralTime"]
-            for b in range(first_short_block, blocks):
-                time_stamp += min_delta_time
-                json_file["Blocks"][b]["SpiralTime"] = time_stamp
-            print( failures, " failures")
-            return
+def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_target):
+    index_index = 1     # For now, maxima_indices SEEM to come in pairs 1966, 1967, 4098, 4099, 7527, 7528 .. 821790, 821791
+                        # NOT ALWAYS TRUE
+    while index_index < len(maxima_indices) - 1:
+        period_start_index = maxima_indices[index_index]
+        period_end_index = maxima_indices[index_index + 1]
+        points = []
+        for index in range(period_start_index, period_end_index + 1):
+            x = instances[index][name_time]
+            y = instances[index][name_source]
+            points.append([x,y])
+        C = make_quartic_dip(points, 10)
+        for index in range(period_start_index, period_end_index + 1):
+            x = instances[index][name_time]
+            y = quartic_curve(x, C)
+            instances[index][name_target] = y
+        while maxima_indices[index_index + 1] == maxima_indices[index_index]:
+            index_index += 1
+        index_index += 1
 
-        last_short_block = b - 1
-        before_time = json_file["Blocks"][first_short_block - 1]["SpiralTime"]
-        after_time = json_file["Blocks"][last_short_block + 1]["SpiralTime"]
-        count = last_short_block + 1 - first_short_block
-        step = float(after_time - before_time) / (count + 2.0)
-        #if count > 1:
-        #    print( "Attempting to remedy ", count, " short blocks with step ", step)
-        if step < min_delta_time:
-            print( "Failed to remedy ", count, "short blocks at ", first_short_block, ", step ", step, " is less than limit ", min_delta_time)
-            failures = failures + 1
-        time_stamp = float(before_time)
-        for bb in range(first_short_block, last_short_block + 1):
-            time_stamp += step
-            json_file["Blocks"][bb]["SpiralTime"] = time_stamp
+    # Extend the last maxima, flat to the end of the sequence of instances
+    flat_value = y
+    for index in range(period_end_index + 1, len(instances)):
+        instances[index][name_target] = flat_value
+
+    # Extend the first maxima, flat back to the start of the sequence of instances
+    index_index = 1
+    period_start_index = maxima_indices[index_index]
+    flat_value = instances[period_start_index][name_target]
+    for index in range(period_start_index):
+        instances[index][name_target] = flat_value
 
 def towerMain():
 
@@ -87,7 +108,7 @@ def towerMain():
     generate_spiral_time(json_file)
 
     print("Nudge Timestamps...")
-    nudge_time_stamps(json_file, 2)
+    nudge_time_stamps(json_file, 60)
 
     print( "First pass: Import json and create block Instances with length, width, thickness" )
     instances = []
@@ -110,6 +131,7 @@ def towerMain():
         blue = blockJson["ColourByte2"] / 255.0
 
         instances.append(Block(length, width, thickness, red, green, blue))
+        instances[b]["SpiralTime"] = blockJson["SpiralTime"]
 
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
     # In these sections, for things with r in the name, r refers to the day radius
@@ -134,9 +156,19 @@ def towerMain():
     instances[block_count - 1]["r_min_day"] = r_limit_array[gap_count - 1]
     # All other blocks are the max of the r_limits on the gaps before/after
     for b in range(1, block_count-1):
-        r_limit_before = r_limit_array[b-1]     # For block 1, look in gap 0
-        r_limit_after = r_limit_array[b]        # for block 1, look in gap 1
+        r_limit_before = r_limit_array[b-1]         # For block 1, look in gap 0
+        r_limit_after = r_limit_array[b] + 0.01     # for block 1, look in gap 1
         instances[b]["r_min_day"] = max(r_limit_before, r_limit_after)
+
+    print("Fourth pass, find the maxima within neighbourhoods of a certain size")
+    maxima_indices = find_maxima_indices(instances, "r_min_day", 144)
+    print(maxima_indices)
+
+    print("Fifth pass, label quartic dips")
+    label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
+
+    for index in range(1000,4000):
+        print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"])
 
     print("Second pass, introduce transforms...")
     for i, instance in enumerate(instances):
