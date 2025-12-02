@@ -76,10 +76,12 @@ def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_t
             x = instances[index][name_time]
             y = instances[index][name_source]
             points.append([x,y])
-        C = make_quartic_dip(points, 10)
+        mean_x_val = mean_x(points)
+        mean_y_val = mean_y(points)
+        C_offset = make_quartic_dip_offset(points, 10, mean_x_val, mean_y_val)
         for index in range(period_start_index, period_end_index + 1):
             x = instances[index][name_time]
-            y = quartic_curve(x, C)
+            y = quartic_curve_offset(x, C_offset, mean_x_val, mean_y_val)
             instances[index][name_target] = y
         while maxima_indices[index_index + 1] == maxima_indices[index_index]:
             index_index += 1

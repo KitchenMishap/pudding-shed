@@ -98,3 +98,34 @@ def make_quartic_dip(points, iterations):
             # Try raising ybottom to see if we can get back into the success zone
             ybottom = (ybottom + ytop)/2.0
     return Cbest
+
+# Return quartic coefficients based on shifting points by mean_x, mean_y first
+def make_quartic_dip_offset(points, iterations, mean_x, mean_y):
+    points_offset = []
+    for point in points:
+        x_offset = point[0] - mean_x
+        y_offset = point[1] - mean_y
+        points_offset.append( [x_offset, y_offset] )
+    return make_quartic_dip(points_offset, iterations)
+
+# Return the y value for an x of a quartic curve, where C was created by shifting by mean_x, mean_y
+def quartic_curve_offset(x, C, mean_x, mean_y):
+    x_input = x - mean_x
+    y_output = quartic_curve(x_input, C)
+    return y_output + mean_y
+
+def mean_x(points):
+    sum = 0
+    count = 0
+    for point in points:
+        sum += point[0]
+        count += 1
+    return sum / count
+
+def mean_y(points):
+    sum = 0
+    count = 0
+    for point in points:
+        sum += point[1]
+        count += 1
+    return sum / count
