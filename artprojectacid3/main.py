@@ -197,7 +197,7 @@ def towerMain():
         instance.introducedTransforms.append(RotateY(day_angle))
 
         # Give year a radius
-        year_radius = 100000    # stab in the dark for now
+        year_radius = 10000    # stab in the dark for now
         instance.introducedTransforms.append(TranslateX(year_radius))
 
         # Rotation for elements of year loop
