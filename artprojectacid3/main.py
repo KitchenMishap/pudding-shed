@@ -167,8 +167,9 @@ def towerMain():
     print("Fifth pass, label quartic dips")
     label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
 
-    for index in range(1000,4000):
-        print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"])
+    with open('quartics.csv', 'w') as f:
+        for index in range(1000,4000):
+            print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], file=f)
 
     print("Second pass, introduce transforms...")
     for i, instance in enumerate(instances):
