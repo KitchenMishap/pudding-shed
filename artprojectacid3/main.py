@@ -111,6 +111,32 @@ def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_t
     for index in range(period_start_index):
         instances[index][name_target] = flat_value
 
+# The length-per-day of a block is the sum length of blocks between 12h before and 12h after that block
+# The seconds-per-day of a block is the difference in timestamps between the first and last blocks over this 24h period
+def label_length_per_day(instances):
+    for i, instance in enumerate(instances):
+        timestamp = instance["SpiralTime"]
+        time_start = timestamp
+        time_end = timestamp
+        length = 0
+
+        # Search backwards
+        j = i-1
+        while j >= 0 and instances[j]["SpiralTime"] > timestamp - 12 * 60 * 60:
+            length += instances[j].length
+            time_start = instances[j]["SpiralTime"]
+            j -= 1
+
+        # Search forwards
+        j = i
+        while j < len(instances) and instances[j]["SpiralTime"] < timestamp + 12 * 60 * 60:
+            length += instances[j].length
+            time_end = instances[j]["SpiralTime"]
+            j += 1
+
+        instance["length_per_day"] = length
+        instance["seconds_per_day"] = time_end - time_start
+
 def towerMain():
 
     print( "Opening source data file..." )
@@ -147,6 +173,9 @@ def towerMain():
         instances.append(Block(length, width, thickness, red, green, blue))
         instances[b]["SpiralTime"] = blockJson["SpiralTime"]
 
+    print("Pass 1.1, label up length and seconds per day")
+    label_length_per_day(instances)
+
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
     # In these sections, for things with r in the name, r refers to the day radius
     block_count = len(instances)
@@ -178,8 +207,15 @@ def towerMain():
     maxima_indices = find_maxima_indices(instances, "r_min_day", 144)
     print(maxima_indices)
 
-    print("Fifth pass, label quartic dips")
-    label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
+    print("Fifth pass, label quartic dips - COMMENTED OUT")
+    #label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
+
+    print("Pass 5.1, day radius based on length_per_day")
+    for instance in instances:
+        seconds_per_day = instance["seconds_per_day"]
+        if seconds_per_day == 0:
+            seconds_per_day = 24 * 60 * 60  # Avoid divide by zero for genesis block
+        instance["r_day"] = (instance["length_per_day"] / (2.0 * math.pi)) * (24 * 60 * 60) / seconds_per_day
 
     with open('quartics.csv', 'w') as f:
         for index in range(0,100000):
