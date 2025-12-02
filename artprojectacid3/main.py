@@ -49,11 +49,23 @@ def nudge_time_stamps( json_file, min_delta_time ):
 def is_maximum(instances, index, name_attr, half_period):
     value = instances[index][name_attr]
     for i in range(1, half_period + 1):
-        if instances[index - i][name_attr] > value:
-            return False    # Something nearby is bigger
-        if instances[index + i][name_attr] > value:
-            return False    # Something nearby is bigger
-    return True     # Nothing nearby is bigger
+        matched_left = False
+        matched_right = False
+        left = instances[index - i][name_attr]
+        if left > value:
+            return False    # Something nearby is bigger. Definitely return false
+        right = instances[index + i][name_attr]
+        if right > value:
+            return False    # Something nearby is bigger. Definitely return false
+        if left == value:
+            matched_left = True     # Something nearby on the left is equal. Special treatment!
+            if matched_left and matched_right:
+                return False        # definitely return false if matched on both sides nearby
+        if right == value:
+            matched_right = True    # Something nearby on the right is equal. Special treatmeent!
+            if matched_left and matched_right:
+                return False        # definitely return false if matched on both sides nearby
+    return True     # Nothing nearby is bigger. And (subtly special case) if matched, it is only matched on ONE side nearby
 
 def find_maxima_indices(instances, name_attr, half_period):
     length = len(instances)
@@ -170,12 +182,12 @@ def towerMain():
     label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
 
     with open('quartics.csv', 'w') as f:
-        for index in range(0,800000):
+        for index in range(0,100000):
             if index in maxima_indices:
                 # Put spikes in third column to indicate maxima
-                print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, ",", instances[index]["SpiralTime"], file=f)
+                print(index, ",", instances[index]["SpiralTime"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, file=f)
             else:
-                print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",0.0", ",", instances[index]["SpiralTime"], file=f)
+                print(index, ",", instances[index]["SpiralTime"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", 0.0, file=f)
 
     print("Sixth pass, introduce transforms...")
     for i, instance in enumerate(instances):
