@@ -112,9 +112,10 @@ def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_t
         instances[index][name_target] = flat_value
 
 # The length-per-day of a block is the sum length of blocks between 12h before and 12h after that block
-# The seconds-per-day of a block is the difference in timestamps between the first and last blocks over this 24h period
+# The active_hours_per_day is the number of whole hours that contain blocks over this 24h period
 def label_length_per_day(instances):
     for i, instance in enumerate(instances):
+        active_hours = {}
         timestamp = instance["SpiralTime"]
         time_start = timestamp
         time_end = timestamp
@@ -125,6 +126,8 @@ def label_length_per_day(instances):
         while j >= 0 and instances[j]["SpiralTime"] > timestamp - 12 * 60 * 60:
             length += instances[j].length
             time_start = instances[j]["SpiralTime"]
+            hour = int(time_start / (60*60))
+            active_hours[hour] = True
             j -= 1
 
         # Search forwards
@@ -132,10 +135,12 @@ def label_length_per_day(instances):
         while j < len(instances) and instances[j]["SpiralTime"] < timestamp + 12 * 60 * 60:
             length += instances[j].length
             time_end = instances[j]["SpiralTime"]
+            hour = int(time_end / (60 * 60))
+            active_hours[hour] = True
             j += 1
 
         instance["length_per_day"] = length
-        instance["seconds_per_day"] = time_end - time_start
+        instance["active_hours_per_day"] = len(active_hours)
 
 def towerMain():
 
@@ -173,7 +178,7 @@ def towerMain():
         instances.append(Block(length, width, thickness, red, green, blue))
         instances[b]["SpiralTime"] = blockJson["SpiralTime"]
 
-    print("Pass 1.1, label up length and seconds per day")
+    print("Pass 1.1, label up length and active hours per day")
     label_length_per_day(instances)
 
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
@@ -212,10 +217,10 @@ def towerMain():
 
     print("Pass 5.1, day radius based on length_per_day")
     for instance in instances:
-        seconds_per_day = instance["seconds_per_day"]
-        if seconds_per_day == 0:
-            seconds_per_day = 24 * 60 * 60  # Avoid divide by zero for genesis block
-        instance["r_day"] = (instance["length_per_day"] / (2.0 * math.pi)) * (24 * 60 * 60) / seconds_per_day
+        active_hours_per_day = instance["active_hours_per_day"]
+        if active_hours_per_day == 0:
+            active_hours_per_day = 1    # Avoid divide by zero for genesis block
+        instance["r_day"] = (instance["length_per_day"] / (2.0 * math.pi)) * (24 / active_hours_per_day)
 
     with open('quartics.csv', 'w') as f:
         for index in range(0,100000):
