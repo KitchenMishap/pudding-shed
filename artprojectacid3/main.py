@@ -170,8 +170,12 @@ def towerMain():
     label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
 
     with open('quartics.csv', 'w') as f:
-        for index in range(1000,4000):
-            print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], file=f)
+        for index in range(0,800000):
+            if index in maxima_indices:
+                # Put spikes in third column to indicate maxima
+                print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, ",", instances[index]["SpiralTime"], file=f)
+            else:
+                print(index, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",0.0", ",", instances[index]["SpiralTime"], file=f)
 
     print("Second pass, introduce transforms...")
     for i, instance in enumerate(instances):
