@@ -153,7 +153,7 @@ def towerMain():
     generate_spiral_time(json_file)
 
     print("Nudge Timestamps...")
-    nudge_time_stamps(json_file, 60)
+    nudge_time_stamps(json_file, 10)    # 10 seconds minimum between blocks
 
     print( "First pass: Import json and create block Instances with length, width, thickness" )
     instances = []
@@ -230,7 +230,28 @@ def towerMain():
             else:
                 print(index, ",", instances[index]["SpiralTime"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", 0.0, file=f)
 
-    print("Sixth pass, introduce transforms...")
+    print("Sixth pass, day angle based on lengths and delta times")
+    prev_day = int(instances[0]["SpiralTime"] / (24 * 60 * 60)) - 1
+    prev_day_second = instances[0]["SpiralTime"] % (24 * 60 * 60) - 10 * 60
+    for i, instance in enumerate(instances):
+        timestamp = instance["SpiralTime"]
+        day_second = timestamp % (24 * 60 * 60)
+        day = int(timestamp / (24 * 60 * 60))
+        if day != prev_day:
+            day_angle = 360.0 * day_second / (24 * 60 * 60)
+        else:
+            delta_time = day_second - prev_day_second
+            delta_time_angle = 360.0 * (instance["active_half_hours_per_day"] / 48) * delta_time / (24 * 60 * 60)
+            delta_length = instances[i-1].length / 2.0 + instances[i].length / 2.0
+            delta_length_angle = 360.0 * (instance["active_half_hours_per_day"] / 48) * delta_length / instance["length_per_day"]
+            day_angle = prev_day_angle + delta_time_angle + delta_length_angle
+        instance["day_angle"] = day_angle
+        prev_day = day
+        prev_day_second = day_second
+        prev_day_angle = day_angle
+
+
+    print("Seventh pass, introduce transforms...")
     for i, instance in enumerate(instances):
         blockJson = json_file["Blocks"][i]
 
@@ -243,17 +264,15 @@ def towerMain():
         instance.introducedTransforms.append(TranslateX(day_radius))
 
         # Rotation for elements of day loop
-        timestamp = instance["SpiralTime"]
-        first_jan_2009_midnight = 1230768000
-        day_second = (timestamp - first_jan_2009_midnight) % (24 * 60 * 60)
-        day_angle = 360.0 * day_second / (24 * 60 * 60)
-        instance.introducedTransforms.append(RotateY(day_angle))
+        instance.introducedTransforms.append(RotateY(instance["day_angle"]))
 
         # Give year a radius
         year_radius = 10000    # stab in the dark for now
         instance.introducedTransforms.append(TranslateX(year_radius))
 
         # Rotation for elements of year loop
+        timestamp = instance["SpiralTime"]
+        first_jan_2009_midnight = 1230768000
         year_second = (timestamp - first_jan_2009_midnight) % (365.25 * 24 * 60 * 60)
         year_angle = 360.0 * year_second / (365.25 * 24 * 60 * 60)
         instance.introducedTransforms.append(RotateZ(year_angle))
