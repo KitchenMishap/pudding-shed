@@ -239,11 +239,21 @@ def towerMain():
         day = int(timestamp / (24 * 60 * 60))
         if day != prev_day:
             day_angle = 360.0 * day_second / (24 * 60 * 60)
+            first_angle_of_day = day_angle
+            # Find the last angle of the day
+            j = i
+            putative_day = day
+            while putative_day == day and j < len(instances) -1:
+                putative_day_second = instances[j]["SpiralTime"] % (24 * 60 * 60)
+                last_angle_of_day = 360.0 * putative_day_second / (24 * 60 * 60)
+                j += 1
+                putative_day = int(instances[j]["SpiralTime"] / (24 * 60 * 60))
+            day_angle_span = last_angle_of_day - first_angle_of_day
         else:
             delta_time = day_second - prev_day_second
-            delta_time_angle = 360.0 * (instance["active_half_hours_per_day"] / 48) * delta_time / (24 * 60 * 60)
+            delta_time_angle = day_angle_span * delta_time / (24 * 60 * 60)
             delta_length = instances[i-1].length / 2.0 + instances[i].length / 2.0
-            delta_length_angle = 360.0 * (instance["active_half_hours_per_day"] / 48) * delta_length / instance["length_per_day"]
+            delta_length_angle = day_angle_span * delta_length / instance["length_per_day"]
             day_angle = prev_day_angle + delta_time_angle + delta_length_angle
         instance["day_angle"] = day_angle
         prev_day = day
