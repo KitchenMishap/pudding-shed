@@ -238,28 +238,59 @@ def towerMain():
         day_second = timestamp % (24 * 60 * 60)
         day = int(timestamp / (24 * 60 * 60))
         if day != prev_day:
-            day_angle = 360.0 * day_second / (24 * 60 * 60)
-            first_angle_of_day = day_angle
+            # Find the first angle of the day
+            # first_day_angle_time is the time-based portion of the first angle
+            first_day_angle_time = 360.0 * day_second / (24 * 60 * 60)
+            # first_day_angle_length is the length-based portion of the first angle
+            first_half_length = instance.length / 2.0
+            first_circumference = instance["length_per_day"] * 48 / instance["active_half_hours_per_day"]
+            first_day_angle_length = 360.0 * first_half_length / first_circumference
+            first_angle_of_day = first_day_angle_time + first_day_angle_length
+
             # Find the last angle of the day
             j = i
             putative_day = day
             while putative_day == day and j < len(instances) -1:
                 putative_day_second = instances[j]["SpiralTime"] % (24 * 60 * 60)
-                last_angle_of_day = 360.0 * putative_day_second / (24 * 60 * 60)
+                # day_angle_time is the time-based portion of the first angle
+                last_day_angle_time = 360.0 - 360.0 * putative_day_second / (24 * 60 * 60)
+                # day_angle_length is the length-based portion of the first angle
+                half_length = instances[j].length / 2.0
+                last_circumference = instances[j]["length_per_day"] * 48 / instances[j]["active_half_hours_per_day"]
+                last_day_angle_length = 360.0 * half_length / last_circumference
+                last_angle_of_day = 360.0 - last_day_angle_time - last_day_angle_length
+
                 j += 1
                 putative_day = int(instances[j]["SpiralTime"] / (24 * 60 * 60))
+
+            day_angle = first_angle_of_day
             day_angle_span = last_angle_of_day - first_angle_of_day
+            if day_angle_span <= 0:
+                print(i)
+                print("first_day_angle_time", first_day_angle_time)
+                print("first_day_angle_length", first_day_angle_length)
+                print("last_day_angle_time", last_day_angle_time)
+                print("last_day_angle_length", last_day_angle_length)
+                print("last_angle_of_day", last_angle_of_day)
+                print("first_angle_of_day", first_angle_of_day)
+                print("day_angle_span", day_angle_span)
         else:
             delta_time = day_second - prev_day_second
             delta_time_angle = day_angle_span * delta_time / (24 * 60 * 60)
+            if delta_time_angle <= 0:
+                print("delta_time_angle", delta_time_angle)
             delta_length = instances[i-1].length / 2.0 + instances[i].length / 2.0
             delta_length_angle = day_angle_span * delta_length / instance["length_per_day"]
+            if delta_time_angle <= 0:
+                print("delta_length_angle", delta_length_angle)
             day_angle = prev_day_angle + delta_time_angle + delta_length_angle
         instance["day_angle"] = day_angle
         prev_day = day
         prev_day_second = day_second
         prev_day_angle = day_angle
 
+    for i in range(40):
+        print(instances[i])
 
     print("Seventh pass, introduce transforms...")
     for i, instance in enumerate(instances):
