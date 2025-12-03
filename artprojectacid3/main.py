@@ -178,53 +178,83 @@ def towerMain():
         instances.append(Block(length, width, thickness, red, green, blue))
         instances[b]["SpiralTime"] = blockJson["SpiralTime"]
 
-    print("Pass 0: Adorn blocks with first_block_of_day and last_block_of_day")
+    print("Pass 0: Adorn blocks with first_block_of_bunch and last_block_of_bunch")
+    # Bunches are typically days, but are also delineated where big gaps occur
+    # Bunches can even be one block long - eg the genesis block
+    bunch_gap_limit = 60 * 60   # One hour
     instance_count = len(instances)
-    first_block_of_day = 0
+    first_block_of_bunch = 0
     prev_day = 0
     for i, instance in enumerate(instances):
-        day = int(instance["SpiralTime"] / (24 * 60 * 60))      # Note that genesis block is not at day 0
-        if day != prev_day or i == instance_count - 1:
-            # Go back and fill in ["first_block_of_day"] and ["last_block_of_day"] for all blocks in the previous day
-            for j in range(first_block_of_day, i):
-                instances[j]["first_block_of_day"] = first_block_of_day
-                instances[j]["last_block_of_day"] = i - 1
-            # If i is the last block, also fill in i
-            if i == instance_count - 1:
-                instances[i]["first_block_of_day"] = first_block_of_day
-                instances[i]["last_block_of_day"] = i
-            first_block_of_day = i
-        prev_day = day
+        if i == 0:
+            # Genesis block is the start and end of a bunch
+            instances[0]["first_block_of_bunch"] = 0
+            instances[0]["last_block_of_bunch"] = 0
+            first_block_of_bunch = 0
+        else:
+            day = int(instance["SpiralTime"] / (24 * 60 * 60))      # Note that genesis block is not at day 0
+            new_day = (day != prev_day)
+            gap = instance["SpiralTime"] - instances[i-1]["SpiralTime"]
+            new_bunch = (gap > bunch_gap_limit)
+            if new_day or new_bunch or i == instance_count - 1:
+                # Go back and fill in ["first_block_of_bunch"] and ["last_block_of_bunch"] for all blocks in the previous bunch
+                for j in range(first_block_of_bunch, i):
+                    instances[j]["first_block_of_bunch"] = first_block_of_bunch
+                    instances[j]["last_block_of_bunch"] = i - 1
+                    # If i is the last block of the whole blockchain, also fill in i
+                    if i == instance_count - 1:
+                        instances[i]["first_block_of_bunch"] = first_block_of_bunch
+                        instances[i]["last_block_of_bunch"] = i
+                first_block_of_bunch = i
+            prev_day = day
 
     print("Pass 1.1, label up length and active half hours per day")
-    label_length_per_day(instances)
+    label_length_per_day(instances)     # TODO revisit based on bunches?
 
     print("Pass 1.2, label up day_angle")
     for i, instance in enumerate(instances):
-        if instance["first_block_of_day"] == i:
-            length_for_rev = 0
-        length_for_rev += instance.length
-        if instance["last_block_of_day"] == i:
-            # Go back and calculate for the whole day
+        if instance["first_block_of_bunch"] == i:
+            length_for_bunch = instance.length / 2.0
+        elif instance["last_block_of_bunch"] == i:
+            length_for_bunch += instance.length / 2.0
+        else:
+            length_for_bunch += instance.length
+        if instance["last_block_of_bunch"] == i:
+            # Go back and calculate for the whole bunch
+            first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["SpiralTime"]
+            second_of_day = first_timestamp_of_bunch % (24 * 60 * 60)
+            fraction_of_revolution_start =  second_of_day / (24 * 60 * 60)
+            first_angle_of_bunch = 360.0 * fraction_of_revolution_start
+
+            last_timestamp_of_bunch = instances[i]["SpiralTime"]
+            second_of_day = last_timestamp_of_bunch % (24 * 60 * 60)
+            fraction_of_revolution_end =  second_of_day / (24 * 60 * 60)
+            last_angle_of_bunch = 360.0 * fraction_of_revolution_end
+
+            time_for_bunch = last_timestamp_of_bunch - first_timestamp_of_bunch
+            if time_for_bunch == 0:
+                time_for_bunch = 1      # Avoid divide by zero for bunches of one block
+
+            print("time_for_bunch", time_for_bunch)
+
             length_so_far = 0.0
-            for j in range(instance["first_block_of_day"], i + 1):
-                # First calculate fraction_of_rev_length (based on material lengths)
+            for j in range(instance["first_block_of_bunch"], i + 1):
+                # First calculate fraction_of_bunch_length (based on material lengths)
                 length = instances[j].length
                 length_so_far += length / 2.0
-                fraction_of_rev_length = length_so_far / length_for_rev
+                fraction_of_bunch_length = length_so_far / length_for_bunch
                 length_so_far += length / 2.0
 
                 # Second calculate fraction_of_rev_time (based on time gaps)
                 timestamp = instances[j]["SpiralTime"]
-                second_of_day = timestamp % (24 * 60 * 60)
-                fraction_of_rev_time = second_of_day / (24 * 60 * 60)
+                fraction_of_bunch_time = (timestamp - first_timestamp_of_bunch) / time_for_bunch
 
                 # Third, combine the two based on a time:space ratio
                 time_weighting = 1.0  # Equal weighting to time (gaps) and space (material)
                 space_weighting = 1.0
-                fraction_of_rev = (fraction_of_rev_time * time_weighting + fraction_of_rev_length * space_weighting) / (time_weighting + space_weighting)
+                fraction_of_bunch = (fraction_of_bunch_time * time_weighting + fraction_of_bunch_length * space_weighting) / (time_weighting + space_weighting)
 
-                instances[j]["day_angle"] = 360.0 * fraction_of_rev
+                instances[j]["day_angle"] = first_angle_of_bunch + (last_angle_of_bunch - first_angle_of_bunch) * fraction_of_bunch
 
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
     # In these sections, for things with r in the name, r refers to the day radius
