@@ -267,7 +267,7 @@ def towerMain():
     label_quartic_dips(instances, maxima_indices, "modified_time", "year_radius_raw", "year_radius")
 
     print("Calculate vertical offset")
-    year_spacing_ratio = 2.0
+    year_spacing_ratio = 1.2
     first_timestamp = instances[0]["modified_time"]
     for i, instance in enumerate(instances):
         timestamp = instance["modified_time"]
@@ -306,7 +306,7 @@ def towerMain():
         if year != prev_year:
             # New year
             start_of_year_offset = offset
-            rate = rates[year]
+            rate = max(rates[year], rates[year + 1])
         # Ramp from start_of_year_offset according to the rate
         offset = start_of_year_offset + (day_of_year/365.25) * rate
         instances[i]["vertical_offset"] = offset
