@@ -3,48 +3,24 @@ from quartic import *
 import json
 import math
 
-def generate_spiral_time( json_file ):
+def modify_timestamps( json_file_contents ):
     # time is important for the first few days where people are paying attention.
     # But time is NOT guaranteed to go up for successive blocks, and in fact DOESN'T!
     # mediantime is however guaranteed to go up. But it's the median of the last 11 blocks.
-    # So we introduce "spiraltime", which starts as "time" but transitions gradually to "mediantime"
-    start_ramp_block = 2016     # Arbitrarily coincide the transition ramp with the second difficulty epoch
-    ramp_blocks_length = 2016.0
-    blocks = len(json_file["Blocks"])
-    for b in range(blocks):
-        if b < start_ramp_block:
-            ramp_param = 0.0                # entirely "time"
-        elif b - start_ramp_block < ramp_blocks_length:
-            ramp_param = (b - start_ramp_block) / ramp_blocks_length
-        else:
-            ramp_param = 1.0                # entirely "mediantime"
-        time = json_file["Blocks"][b]["Time"]
-        median_time = json_file["Blocks"][b]["MedianTime"]
-        spiral_time = ramp_param * median_time + (1.0 - ramp_param) * time
-        # Remove the old times, to be safe
-        del json_file["Blocks"][b]["Time"]
-        del json_file["Blocks"][b]["MedianTime"]
-        json_file["Blocks"][b]["SpiralTime"] = spiral_time
-
-def nudge_time_stamps( json_file, min_delta_time ):
-    # Even when using spiral_time (see above, which is usually median_time), we find may adjacent blocks
-    # (and even series of blocks) with the same timestamp. Here we impose a minimum delta time between blocks
-    # - some blocks may be moved forward in time to impose this, cumulatively, until there is space to catch up
-    # in future blocks.
-
-    blocks = json_file["Blocks"]
-    time = blocks[0]["SpiralTime"]
-    cumulative_time = time
-
-    for b, block in enumerate(blocks):
-        if b >=1:
-            time = block["SpiralTime"]
-            cumulative_time += min_delta_time
-            if cumulative_time <= time:
-                cumulative_time = time
-            elif b < 1000:
-                print( "Block ", b, ": Cumulative time ahead by ", cumulative_time - time)
-            block["SpiralTime"] = cumulative_time
+    # We will use time, and then call nudge_time_stamps() to enforce a minimum (positive!)
+    # gap between adjacent blocks.
+    # We've done away with the clunky ramping from time to mediantime (since time should be more
+    # representative, though very occasionally quirky, for most blocks).
+    prev_time = json_file_contents["Blocks"][0]["Time"]
+    for block in json_file_contents["Blocks"]:
+        time = block["Time"]
+        median_time = block["MedianTime"]
+        modified_time = max(prev_time + 1, time)    # Occasionally bunch up blocks, with one second interval between
+        # Remove the old times, to be safe and reduce memory usage
+        del block["Time"]
+        del block["MedianTime"]
+        block["modified_time"] = modified_time
+        prev_time = modified_time
 
 def is_maximum(instances, index, name_attr, half_period):
     value = instances[index][name_attr]
@@ -116,25 +92,25 @@ def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_t
 def label_length_per_day(instances):
     for i, instance in enumerate(instances):
         active_half_hours = {}
-        timestamp = instance["SpiralTime"]
+        timestamp = instance["modified_time"]
         time_start = timestamp
         time_end = timestamp
         length = 0
 
         # Search backwards
         j = i-1
-        while j >= 0 and instances[j]["SpiralTime"] > timestamp - 12 * 60 * 60:
+        while j >= 0 and instances[j]["modified_time"] > timestamp - 12 * 60 * 60:
             length += instances[j].length
-            time_start = instances[j]["SpiralTime"]
+            time_start = instances[j]["modified_time"]
             half_hour = int(time_start / (30*60))
             active_half_hours[half_hour] = True
             j -= 1
 
         # Search forwards
         j = i
-        while j < len(instances) and instances[j]["SpiralTime"] < timestamp + 12 * 60 * 60:
+        while j < len(instances) and instances[j]["modified_time"] < timestamp + 12 * 60 * 60:
             length += instances[j].length
-            time_end = instances[j]["SpiralTime"]
+            time_end = instances[j]["modified_time"]
             half_hour = int(time_end / (30 * 60))
             active_half_hours[half_hour] = True
             j += 1
@@ -144,43 +120,41 @@ def label_length_per_day(instances):
 
 def towerMain():
 
-    print( "Opening source data file..." )
-    fi1 = open("Input\\acidblocks3.json")
+    filename = "Input\\acidblocks3.json"
+    print( "Read source data file", filename, "..." )
+    fi1 = open(filename)
     json_file = json.load(fi1)
     fi1.close()
 
-    print("Generate SpiralTime...")
-    generate_spiral_time(json_file)
+    print("Modify timestamps...")
+    modify_timestamps(json_file)
 
-    print("Nudge Timestamps...")
-    nudge_time_stamps(json_file, 1)    # 1 second minimum between blocks
-
-    print( "First pass: Import json and create block Instances with length, width, thickness" )
+    print( "Read json and create Instances with length, width, thickness, colour..." )
     instances = []
     for b, blockJson in enumerate(json_file["Blocks"]):
-        sizeBytes = blockJson["SizeBytes"]
-        if sizeBytes >= 16 * 16 * 16:
-            length = math.pow(sizeBytes, 1/3.0)
-            width = math.pow(sizeBytes, 1/3.0)
-            thickness = math.pow(sizeBytes, 1/3.0)
-        elif sizeBytes > 16 * 16:
+        size_bytes = blockJson["SizeBytes"]
+        if size_bytes >= 16 * 16 * 16:
+            length = math.pow(size_bytes, 1/3.0)
+            width = math.pow(size_bytes, 1/3.0)
+            thickness = math.pow(size_bytes, 1/3.0)
+        elif size_bytes > 16 * 16:
             width = 16
             thickness = 16
-            length = sizeBytes / (16 * 16)
+            length = size_bytes / (16 * 16)
         else:
             length = 1
             width = 16
-            thickness = sizeBytes / 16
+            thickness = size_bytes / 16
         red = blockJson["ColourByte0"] / 255.0
         green = blockJson["ColourByte1"] / 255.0
         blue = blockJson["ColourByte2"] / 255.0
 
         instances.append(Block(length, width, thickness, red, green, blue))
-        instances[b]["SpiralTime"] = blockJson["SpiralTime"]
+        instances[b]["modified_time"] = blockJson["modified_time"]
 
-    print("Pass 0: Adorn blocks with first_block_of_bunch and last_block_of_bunch")
+    print("Identify bunches (similar to days) of blocks...")
     # Bunches are typically days, but are also delineated where big gaps occur
-    # Bunches can even be one block long - eg the genesis block
+    # Bunches can even be just one block long - eg the genesis block
     bunch_gap_limit = 60 * 60   # One hour
     instance_count = len(instances)
     first_block_of_bunch = 0
@@ -192,9 +166,9 @@ def towerMain():
             instances[0]["last_block_of_bunch"] = 0
             first_block_of_bunch = 0
         else:
-            day = int(instance["SpiralTime"] / (24 * 60 * 60))      # Note that genesis block is not at day 0
+            day = int(instance["modified_time"] / (24 * 60 * 60))      # Note that genesis block is not at day 0
             new_day = (day != prev_day)
-            gap = instance["SpiralTime"] - instances[i-1]["SpiralTime"]
+            gap = instance["modified_time"] - instances[i-1]["modified_time"]
             new_bunch = (gap > bunch_gap_limit)
             if new_day or new_bunch or i == instance_count - 1:
                 # Go back and fill in ["first_block_of_bunch"] and ["last_block_of_bunch"] for all blocks in the previous bunch
@@ -225,7 +199,7 @@ def towerMain():
             # Special case for a bunch that is a single block.
             # Avoids a divide by zero
             if instance["first_block_of_bunch"] == instance["last_block_of_bunch"]:
-                timestamp = instance["SpiralTime"]
+                timestamp = instance["modified_time"]
                 second_of_day = timestamp % (24 * 60 * 60)
                 # Artistic license! Make the genesis vertical so you can read the words!
                 if i == 0:
@@ -236,12 +210,12 @@ def towerMain():
                 instances[i]["day_angle"] = day_angle
             else:
                 # Go back and calculate for the whole bunch
-                first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["SpiralTime"]
+                first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["modified_time"]
                 second_of_day = first_timestamp_of_bunch % (24 * 60 * 60)
                 fraction_of_revolution_start =  second_of_day / (24 * 60 * 60)
                 first_angle_of_bunch = 360.0 * fraction_of_revolution_start
 
-                last_timestamp_of_bunch = instances[i]["SpiralTime"]
+                last_timestamp_of_bunch = instances[i]["modified_time"]
                 second_of_day = last_timestamp_of_bunch % (24 * 60 * 60)
                 fraction_of_revolution_end =  second_of_day / (24 * 60 * 60)
                 last_angle_of_bunch = 360.0 * fraction_of_revolution_end
@@ -257,7 +231,7 @@ def towerMain():
                     length_so_far += length / 2.0
 
                     # Second calculate fraction_of_rev_time (based on time gaps)
-                    timestamp = instances[j]["SpiralTime"]
+                    timestamp = instances[j]["modified_time"]
                     fraction_of_bunch_time = (timestamp - first_timestamp_of_bunch) / time_for_bunch
 
                     # Third, combine the two based on a time:space ratio
@@ -281,7 +255,7 @@ def towerMain():
         next_block = g + 1
         a = instances[prev_block].length / 2.0
         b = instances[next_block].length / 2.0
-        delta_time = json_file["Blocks"][next_block]["SpiralTime"] - json_file["Blocks"][prev_block]["SpiralTime"]
+        delta_time = json_file["Blocks"][next_block]["modified_time"] - json_file["Blocks"][prev_block]["modified_time"]
         if delta_time < 1:
             print("Gap ", g, ": delta time < 1:", delta_time)
             delta_time = 1
@@ -303,7 +277,7 @@ def towerMain():
     print(maxima_indices)
 
     print("Fifth pass, label quartic dips - COMMENTED OUT")
-    #label_quartic_dips(instances, maxima_indices, "SpiralTime", "r_min_day", "r_day")
+    #label_quartic_dips(instances, maxima_indices, "modified_time", "r_min_day", "r_day")
 
     print("Pass 5.1, day radius based on length_per_day")
     for instance in instances:
@@ -316,9 +290,9 @@ def towerMain():
         for index in range(0,100000):
             if index in maxima_indices:
                 # Put spikes in third column to indicate maxima
-                print(index, ",", instances[index]["SpiralTime"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, file=f)
+                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, file=f)
             else:
-                print(index, ",", instances[index]["SpiralTime"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", 0.0, file=f)
+                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", 0.0, file=f)
 
 
     for i in range(40):
@@ -344,7 +318,7 @@ def towerMain():
         instance.introducedTransforms.append(TranslateX(year_radius))
 
         # Rotation for elements of year loop
-        timestamp = instance["SpiralTime"]
+        timestamp = instance["modified_time"]
         first_jan_2009_midnight = 1230768000
         year_second = (timestamp - first_jan_2009_midnight) % (365.25 * 24 * 60 * 60)
         year_angle = 360.0 * year_second / (365.25 * 24 * 60 * 60)
