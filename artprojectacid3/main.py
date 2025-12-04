@@ -254,7 +254,11 @@ def towerMain():
                 space_weighting = 1.0
                 fraction_of_bunch = (fraction_of_bunch_time * time_weighting + fraction_of_bunch_length * space_weighting) / (time_weighting + space_weighting)
 
-                instances[j]["day_angle"] = first_angle_of_bunch + (last_angle_of_bunch - first_angle_of_bunch) * fraction_of_bunch
+                day_angle = first_angle_of_bunch + (last_angle_of_bunch - first_angle_of_bunch) * fraction_of_bunch
+
+                # Add 90 and negate to make day spiral clockwise with midnight at the top
+                day_angle = (270.0 + 360.0 - day_angle) % 360.0
+                instances[j]["day_angle"] = day_angle
 
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
     # In these sections, for things with r in the name, r refers to the day radius
