@@ -87,37 +87,6 @@ def label_quartic_dips(instances, maxima_indices, name_time, name_source, name_t
     for index in range(period_start_index):
         instances[index][name_target] = flat_value
 
-# The length-per-day of a block is the sum length of blocks between 12h before and 12h after that block
-# The active_hours_per_day is the number of whole hours that contain blocks over this 24h period
-def label_length_per_day(instances):
-    for i, instance in enumerate(instances):
-        active_half_hours = {}
-        timestamp = instance["modified_time"]
-        time_start = timestamp
-        time_end = timestamp
-        length = 0
-
-        # Search backwards
-        j = i-1
-        while j >= 0 and instances[j]["modified_time"] > timestamp - 12 * 60 * 60:
-            length += instances[j].length
-            time_start = instances[j]["modified_time"]
-            half_hour = int(time_start / (30*60))
-            active_half_hours[half_hour] = True
-            j -= 1
-
-        # Search forwards
-        j = i
-        while j < len(instances) and instances[j]["modified_time"] < timestamp + 12 * 60 * 60:
-            length += instances[j].length
-            time_end = instances[j]["modified_time"]
-            half_hour = int(time_end / (30 * 60))
-            active_half_hours[half_hour] = True
-            j += 1
-
-        instance["length_per_day"] = length
-        instance["active_half_hours_per_day"] = len(active_half_hours)
-
 def towerMain():
 
     filename = "Input\\acidblocks3.json"
@@ -182,10 +151,7 @@ def towerMain():
                 first_block_of_bunch = i
             prev_day = day
 
-    print("Pass 1.1, label up length and active half hours per day")
-    label_length_per_day(instances)     # TODO revisit based on bunches?
-
-    print("Pass 1.2, label up day_angle")
+    print("Calculate day_angle and day_radius_raw...")
     for i, instance in enumerate(instances):
         if instance["first_block_of_bunch"] == i:
             length_for_bunch = instance.length / 2.0
@@ -208,6 +174,9 @@ def towerMain():
                 # Add 270 degrees and negate to make day spiral clockwise with midnight at the top
                 day_angle = (270.0 + 360.0 - day_angle) % 360.0
                 instances[i]["day_angle"] = day_angle
+
+                instances[i]["day_radius_raw"] = 0.0    # This is no use, but will be smoothed out by the quartic dips
+
             else:
                 # Go back and calculate for the whole bunch
                 first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["modified_time"]
@@ -245,69 +214,39 @@ def towerMain():
                     day_angle = (270.0 + 360.0 - day_angle) % 360.0
                     instances[j]["day_angle"] = day_angle
 
-    print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
-    # In these sections, for things with r in the name, r refers to the day radius
-    block_count = len(instances)
-    gap_count = block_count - 1
-    r_limit_array = []
-    for g in range(gap_count):
-        prev_block = g
-        next_block = g + 1
-        a = instances[prev_block].length / 2.0
-        b = instances[next_block].length / 2.0
-        delta_time = json_file["Blocks"][next_block]["modified_time"] - json_file["Blocks"][prev_block]["modified_time"]
-        if delta_time < 1:
-            print("Gap ", g, ": delta time < 1:", delta_time)
-            delta_time = 1
-        theta = 2.0 * math.pi * delta_time / (24.0 * 60.0 * 60.0)
-        r_limit_array.append((a+b) / theta)
+                    # We have a length_for_bunch which we can multiply by (time_weighting + space_weighting)
+                    # to give a partial-circumference for the bunch. And we have a range of angles we know it applies
+                    # across. Thus we can calculate a day radius.
+                    partial_circumference = length_for_bunch * (time_weighting + space_weighting)
+                    partial_revolution = (last_angle_of_bunch - first_angle_of_bunch) / 360.0
+                    full_circumference = (partial_circumference / partial_revolution)
+                    day_radius = full_circumference / (2.0 * math.pi)
+                    instances[j]["day_radius_raw"] = day_radius
 
-    print("Third pass, use rLimit's on gaps to determine rMin on neighbouring blocks")
-    # End blocks have only one r_limit to make a judgement on
-    instances[0]["r_min_day"] = r_limit_array[0]
-    instances[block_count - 1]["r_min_day"] = r_limit_array[gap_count - 1]
-    # All other blocks are the max of the r_limits on the gaps before/after
-    for b in range(1, block_count-1):
-        r_limit_before = r_limit_array[b-1]         # For block 1, look in gap 0
-        r_limit_after = r_limit_array[b]            # for block 1, look in gap 1
-        instances[b]["r_min_day"] = max(r_limit_before, r_limit_after)
+    print("Find the maxima of day_radius within neighbourhoods of a certain size...")
+    maxima_indices = find_maxima_indices(instances, "day_radius_raw", 144)
 
-    print("Fourth pass, find the maxima within neighbourhoods of a certain size")
-    maxima_indices = find_maxima_indices(instances, "r_min_day", 144)
-    print(maxima_indices)
+    print("Smooth between maxima of day_radius using quartic dips...")
+    label_quartic_dips(instances, maxima_indices, "modified_time", "day_radius_raw", "day_radius")
 
-    print("Fifth pass, label quartic dips - COMMENTED OUT")
-    #label_quartic_dips(instances, maxima_indices, "modified_time", "r_min_day", "r_day")
-
-    print("Pass 5.1, day radius based on length_per_day")
-    for instance in instances:
-        active_half_hours_per_day = instance["active_half_hours_per_day"]
-        if active_half_hours_per_day == 0:
-            active_half_hours_per_day = 1    # Avoid divide by zero for genesis block
-        instance["r_day"] = (time_weighting + space_weighting) * (instance["length_per_day"] / (2.0 * math.pi)) * (48 / active_half_hours_per_day)
-
-    with open('quartics.csv', 'w') as f:
+    filename = 'quartics.csv'
+    print("Outputting quartic dips debug csv to", filename, "...")
+    with open(filename, 'w') as f:
         for index in range(0,100000):
             if index in maxima_indices:
                 # Put spikes in third column to indicate maxima
-                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", instances[index]["r_day"]/2, file=f)
+                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["day_radius_raw"], ",", instances[index]["day_radius"], ",", instances[index]["day_radius_raw"]/2, file=f)
             else:
-                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["r_min_day"], ",", instances[index]["r_day"], ",", 0.0, file=f)
+                print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["day_radius_raw"], ",", instances[index]["day_radius"], ",", 0.0, file=f)
 
-
-    for i in range(40):
-        print(instances[i])
-
-    print("Seventh pass, introduce transforms...")
+    print("Introduce transforms to each instance...")
     for i, instance in enumerate(instances):
-        blockJson = json_file["Blocks"][i]
-
         # Half block thickness so inside cylinder of dayLoop is smooth
         half_thickness = instance.thickness / 2
         instance.introducedTransforms.append(TranslateX(half_thickness))
 
         # Give day a radius
-        day_radius = instance["r_day"]
+        day_radius = instance["day_radius"]
         instance.introducedTransforms.append(TranslateX(day_radius))
 
         # Rotation for elements of day loop
@@ -324,13 +263,14 @@ def towerMain():
         year_angle = 360.0 * year_second / (365.25 * 24 * 60 * 60)
         instance.introducedTransforms.append(RotateZ(year_angle))
 
-    print("Seventh pass, render")
+    print("'Render'...")
     renderer = []                   # Renderer can merely be an array to append to
     for instance in instances:
         instance.render(renderer)
 
-    print( "Save..." )
-    fo = open("Output\\renderspec.json", 'w')
+    filename = "Output\\renderspec.json"
+    print( "Saving (this will take a while) to", filename, "..." )
+    fo = open(filename, 'w')
     json.dump(renderer, fo, default=vars, indent=2)
 
 towerMain()
