@@ -182,6 +182,14 @@ def towerMain():
 
                 instances[i]["day_radius_raw"] = 0.0    # This is no use, but will be smoothed out by the quartic dips
 
+                # We have a width that can give us a local (raw) year radius
+                width = instances[i].width
+                day_spacing_ratio = 1.0
+                width_per_day = width * day_spacing_ratio
+                year_circumference_local = width_per_day * 365.25
+                year_radius_raw = year_circumference_local / (2.0 * math.pi)
+                instances[i]["year_radius_raw"] = year_radius_raw
+
             else:
                 # Go back and calculate for the whole bunch
                 first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["modified_time"]
@@ -228,10 +236,18 @@ def towerMain():
                     day_radius = full_circumference / (2.0 * math.pi)
                     instances[j]["day_radius_raw"] = day_radius
 
-    print("Find the maxima of day_radius within neighbourhoods of a certain size...")
+                    # We have a width that can give us a local (raw) year radius
+                    width = instances[j].width
+                    day_spacing_ratio = 1.0
+                    width_per_day = width * day_spacing_ratio
+                    year_circumference_local = width_per_day * 365.25
+                    year_radius_raw = year_circumference_local / (2.0 * math.pi) + day_radius
+                    instances[j]["year_radius_raw"] = year_radius_raw
+
+    print("Find the maxima of day_radius_raw within neighbourhoods of a certain size...")
     maxima_indices = find_maxima_indices(instances, "day_radius_raw", 144)
 
-    print("Smooth between maxima of day_radius using quartic dips...")
+    print("Smooth between maxima of day_radius_raw using quartic dips...")
     label_quartic_dips(instances, maxima_indices, "modified_time", "day_radius_raw", "day_radius")
 
     filename = 'quartics.csv'
@@ -243,6 +259,58 @@ def towerMain():
                 print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["day_radius_raw"], ",", instances[index]["day_radius"], ",", instances[index]["day_radius_raw"]/2, file=f)
             else:
                 print(index, ",", instances[index]["modified_time"] - 1230768000, ",", instances[index]["day_radius_raw"], ",", instances[index]["day_radius"], ",", 0.0, file=f)
+
+    print("Find the maxima of year_radius_raw within neighbourhoods of a certain size...")
+    maxima_indices = find_maxima_indices(instances, "year_radius_raw", int(144 * 365.25 * 0.5))
+
+    print("Smooth between maxima of year_radius_raw using quartic dips...")
+    label_quartic_dips(instances, maxima_indices, "modified_time", "year_radius_raw", "year_radius")
+
+    print("Calculate vertical offset")
+    year_spacing_ratio = 2.0
+    first_timestamp = instances[0]["modified_time"]
+    for i, instance in enumerate(instances):
+        timestamp = instance["modified_time"]
+        year = float(timestamp - first_timestamp) / (365.25 * 24 * 60 * 60)
+        offset_per_loop = (2.0 * instance["day_radius"] + 2.0 * instance.thickness) * year_spacing_ratio
+        instances[i]["vertical_offset_per_year_raw"] = offset_per_loop
+
+    print("Find the maxima of vertical_offset_per_year_raw within neighbourhoods of a certain size...")
+    maxima_indices = find_maxima_indices(instances, "vertical_offset_per_year_raw", int(144 * 365.25 * 0.1))
+
+    print("Smooth between maxima of vertical_offset_raw using quartic dips...")
+    label_quartic_dips(instances, maxima_indices, "modified_time", "vertical_offset_per_year_raw", "vertical_offset_per_year")
+
+    print("Create an array of rate points for each year...")
+    rates = []
+    prev_year = -1
+    first_timestamp = instances[0]["modified_time"]
+    for i, instance in enumerate(instances):
+        year = int((instance["modified_time"] - first_timestamp) / (365.25 * 24.0 * 60.0 * 60.0))
+        rate = instance["vertical_offset_per_year"]
+        if year != prev_year:
+            # New year
+            rates.append(rate)
+        prev_year = year
+    rates.append(rate)
+
+    print(rates)
+
+    print("Generate vertical offsets...")
+    offset = 0.0
+    start_of_year_offset = 0.0
+    prev_year = -1
+    for i, instance in enumerate(instances):
+        year = int((instance["modified_time"] - first_timestamp) / (365.25 * 24.0 * 60.0 * 60.0))
+        day_of_year = ((instance["modified_time"] - first_timestamp) % (365.25 * 24 * 60 * 60))/ (24.0 * 60.0 * 60.0)
+        if year != prev_year:
+            # New year
+            start_of_year_offset = offset
+            rate = rates[year]
+        # Ramp from start_of_year_offset according to the rate
+        offset = start_of_year_offset + (day_of_year/365.25) * rate
+        instances[i]["vertical_offset"] = offset
+        prev_year = year
 
     print("Introduce transforms to each instance...")
     for i, instance in enumerate(instances):
@@ -258,7 +326,7 @@ def towerMain():
         instance.introducedTransforms.append(RotateY(instance["day_angle"]))
 
         # Give year a radius
-        year_radius = 10000    # stab in the dark for now
+        year_radius = instance["year_radius"]
         instance.introducedTransforms.append(TranslateX(year_radius))
 
         # Rotation for elements of year loop
@@ -267,6 +335,10 @@ def towerMain():
         year_second = (timestamp - first_jan_2009_midnight) % (365.25 * 24 * 60 * 60)
         year_angle = 360.0 * year_second / (365.25 * 24 * 60 * 60)
         instance.introducedTransforms.append(RotateZ(year_angle))
+
+        # Translation for yearly offset
+        offset = instance["vertical_offset"]
+        instance.introducedTransforms.append(TranslateZ(offset))
 
     print("'Render'...")
     renderer = []                   # Renderer can merely be an array to append to
