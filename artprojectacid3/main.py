@@ -15,7 +15,12 @@ def modify_timestamps( json_file_contents ):
     for block in json_file_contents["Blocks"]:
         time = block["Time"]
         median_time = block["MedianTime"]
-        modified_time = max(prev_time + 1, time)    # Occasionally bunch up blocks, with one second interval between
+        # There are some blocks in the first year where pairs of blocks are very close to one-another in the context
+        # of otherwise slow mining rates. As these pairs generally get detected as small bunches out on their own,
+        # they cause massive otherwise unnecessary daily loops. So we choose quite a big minimum for the interval
+        # between blocks.
+        smallish_interval = 180     # 3 minutes
+        modified_time = max(prev_time + smallish_interval, time)    # Occasionally bunch up blocks, with smallish interval between
         # Remove the old times, to be safe and reduce memory usage
         del block["Time"]
         del block["MedianTime"]
@@ -124,7 +129,7 @@ def towerMain():
     print("Identify bunches (similar to days) of blocks...")
     # Bunches are typically days, but are also delineated where big gaps occur
     # Bunches can even be just one block long - eg the genesis block
-    bunch_gap_limit = 60 * 60   # One hour
+    bunch_gap_limit = 6 * 60 * 60   # Six hours
     instance_count = len(instances)
     first_block_of_bunch = 0
     prev_day = 0
