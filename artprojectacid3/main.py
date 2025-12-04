@@ -220,45 +220,56 @@ def towerMain():
         else:
             length_for_bunch += instance.length
         if instance["last_block_of_bunch"] == i:
-            # Go back and calculate for the whole bunch
-            first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["SpiralTime"]
-            second_of_day = first_timestamp_of_bunch % (24 * 60 * 60)
-            fraction_of_revolution_start =  second_of_day / (24 * 60 * 60)
-            first_angle_of_bunch = 360.0 * fraction_of_revolution_start
+            # Deal with each block in the bunch
 
-            last_timestamp_of_bunch = instances[i]["SpiralTime"]
-            second_of_day = last_timestamp_of_bunch % (24 * 60 * 60)
-            fraction_of_revolution_end =  second_of_day / (24 * 60 * 60)
-            last_angle_of_bunch = 360.0 * fraction_of_revolution_end
-
-            time_for_bunch = last_timestamp_of_bunch - first_timestamp_of_bunch
-            if time_for_bunch == 0:
-                time_for_bunch = 1      # Avoid divide by zero for bunches of one block
-
-            print("time_for_bunch", time_for_bunch)
-
-            length_so_far = 0.0
-            for j in range(instance["first_block_of_bunch"], i + 1):
-                # First calculate fraction_of_bunch_length (based on material lengths)
-                length = instances[j].length
-                length_so_far += length / 2.0
-                fraction_of_bunch_length = length_so_far / length_for_bunch
-                length_so_far += length / 2.0
-
-                # Second calculate fraction_of_rev_time (based on time gaps)
-                timestamp = instances[j]["SpiralTime"]
-                fraction_of_bunch_time = (timestamp - first_timestamp_of_bunch) / time_for_bunch
-
-                # Third, combine the two based on a time:space ratio
-                time_weighting = 1.0  # Equal weighting to time (gaps) and space (material)
-                space_weighting = 1.0
-                fraction_of_bunch = (fraction_of_bunch_time * time_weighting + fraction_of_bunch_length * space_weighting) / (time_weighting + space_weighting)
-
-                day_angle = first_angle_of_bunch + (last_angle_of_bunch - first_angle_of_bunch) * fraction_of_bunch
-
-                # Add 90 and negate to make day spiral clockwise with midnight at the top
+            # Special case for a bunch that is a single block.
+            # Avoids a divide by zero
+            if instance["first_block_of_bunch"] == instance["last_block_of_bunch"]:
+                timestamp = instance["SpiralTime"]
+                second_of_day = timestamp % (24 * 60 * 60)
+                # Artistic license! Make the genesis vertical so you can read the words!
+                if i == 0:
+                    second_of_day = 12 * 60 * 60
+                day_angle = 360.0 * second_of_day / (24 * 60 * 60)
+                # Add 270 degrees and negate to make day spiral clockwise with midnight at the top
                 day_angle = (270.0 + 360.0 - day_angle) % 360.0
-                instances[j]["day_angle"] = day_angle
+                instances[i]["day_angle"] = day_angle
+            else:
+                # Go back and calculate for the whole bunch
+                first_timestamp_of_bunch = instances[instance["first_block_of_bunch"]]["SpiralTime"]
+                second_of_day = first_timestamp_of_bunch % (24 * 60 * 60)
+                fraction_of_revolution_start =  second_of_day / (24 * 60 * 60)
+                first_angle_of_bunch = 360.0 * fraction_of_revolution_start
+
+                last_timestamp_of_bunch = instances[i]["SpiralTime"]
+                second_of_day = last_timestamp_of_bunch % (24 * 60 * 60)
+                fraction_of_revolution_end =  second_of_day / (24 * 60 * 60)
+                last_angle_of_bunch = 360.0 * fraction_of_revolution_end
+
+                time_for_bunch = last_timestamp_of_bunch - first_timestamp_of_bunch
+
+                length_so_far = 0.0
+                for j in range(instance["first_block_of_bunch"], i + 1):
+                    # First calculate fraction_of_bunch_length (based on material lengths)
+                    length = instances[j].length
+                    length_so_far += length / 2.0
+                    fraction_of_bunch_length = length_so_far / length_for_bunch
+                    length_so_far += length / 2.0
+
+                    # Second calculate fraction_of_rev_time (based on time gaps)
+                    timestamp = instances[j]["SpiralTime"]
+                    fraction_of_bunch_time = (timestamp - first_timestamp_of_bunch) / time_for_bunch
+
+                    # Third, combine the two based on a time:space ratio
+                    time_weighting = 1.0  # Equal weighting to time (gaps) and space (material)
+                    space_weighting = 1.0
+                    fraction_of_bunch = (fraction_of_bunch_time * time_weighting + fraction_of_bunch_length * space_weighting) / (time_weighting + space_weighting)
+
+                    day_angle = first_angle_of_bunch + (last_angle_of_bunch - first_angle_of_bunch) * fraction_of_bunch
+
+                    # Add 90 and negate to make day spiral clockwise with midnight at the top
+                    day_angle = (270.0 + 360.0 - day_angle) % 360.0
+                    instances[j]["day_angle"] = day_angle
 
     print("Second pass, mark up the dayRadiusRLimit's of gaps between blocks")
     # In these sections, for things with r in the name, r refers to the day radius
