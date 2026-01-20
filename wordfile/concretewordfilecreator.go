@@ -88,7 +88,7 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 	}
 	return result, nil
 }
-func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, error) {
+func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounterReadAll, error) {
 	fullName := filepath.Join(wfc.folder, wfc.name+".int")
 	file, err := os.OpenFile(fullName, os.O_RDONLY, 0)
 	if err != nil {
@@ -101,7 +101,7 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, e
 	}
 
 	fileWithSize := memfile.NewFileWithSize(file)
-	var result ReadAtWordCounter
+	var result ReadAtWordCounterReadAll
 	if wfc.memShadowed {
 		result, err = NewMemShadowedWordFile(fileWithSize, file, wfc.wordSize, wordCount)
 		if err != nil {

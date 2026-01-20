@@ -54,7 +54,7 @@ type IParents interface {
 
 // IPrivilegedFiles give access to certain files by a privileged program (pudding-server)
 type IPrivilegedFiles interface {
-	TxoSatsFile() wordfile.ReadAtWordCounter
+	TxoSatsFile() wordfile.ReadAtWordCounterReadAll
 	TxiTxFile() wordfile.ReadAtWordCounter
 	TxiVoutFile() wordfile.ReadAtWordCounter
 	TransFirstTxiFile() wordfile.ReadAtWordCounter

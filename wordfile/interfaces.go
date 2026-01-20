@@ -22,6 +22,7 @@ type ReadWriteAtWordCounter interface {
 	WordCounter
 	Sync() error
 	WordSize() int64
+	ReadWholeFileAsInt64s() ([]int64, error)
 }
 
 type ReadAtWordCounter interface {
@@ -30,10 +31,17 @@ type ReadAtWordCounter interface {
 	WordSize() int64
 }
 
+type ReadAtWordCounterReadAll interface {
+	ReaderAtWord
+	WordCounter
+	WordSize() int64
+	ReadWholeFileAsInt64s() ([]int64, error)
+}
+
 type WordFileCreator interface {
 	WordFileExists() bool
 	CreateWordFile() error
 	OpenWordFile() (ReadWriteAtWordCounter, error)
-	OpenWordFileReadOnly() (ReadAtWordCounter, error)
+	OpenWordFileReadOnly() (ReadAtWordCounterReadAll, error)
 	CreateWordFileFilledZeros(count int64) error
 }

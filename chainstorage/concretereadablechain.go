@@ -18,7 +18,7 @@ type concreteReadableChain struct {
 	trnFirstTxo         wordfile.ReadAtWordCounter
 	txiTx               wordfile.ReadAtWordCounter
 	txiVout             wordfile.ReadAtWordCounter
-	txoSats             wordfile.ReadAtWordCounter
+	txoSats             wordfile.ReadAtWordCounterReadAll
 	txoAddress          wordfile.ReadAtWordCounter
 	txoSpentTxi         wordfile.ReadAtWordCounter
 	addrFirstTxo        wordfile.ReadAtWordCounter
@@ -321,9 +321,9 @@ func (crc *concreteReadableChain) ParentTransOfTxo(transactionHeight int64) (int
 
 // IPrivilegedFiles
 
-func (crc *concreteReadableChain) TxoSatsFile() wordfile.ReadAtWordCounter { return crc.txoSats }
-func (crc *concreteReadableChain) TxiTxFile() wordfile.ReadAtWordCounter   { return crc.txiTx }
-func (crc *concreteReadableChain) TxiVoutFile() wordfile.ReadAtWordCounter { return crc.txiVout }
+func (crc *concreteReadableChain) TxoSatsFile() wordfile.ReadAtWordCounterReadAll { return crc.txoSats }
+func (crc *concreteReadableChain) TxiTxFile() wordfile.ReadAtWordCounter          { return crc.txiTx }
+func (crc *concreteReadableChain) TxiVoutFile() wordfile.ReadAtWordCounter        { return crc.txiVout }
 func (crc *concreteReadableChain) TransFirstTxiFile() wordfile.ReadAtWordCounter {
 	return crc.trnFirstTxi
 }

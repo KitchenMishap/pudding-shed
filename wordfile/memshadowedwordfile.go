@@ -29,6 +29,10 @@ func (wf *MemShadowedWordFile) ReadWordAt(off int64) (int64, error) {
 	return wf.shadow[off], nil
 }
 
+func (wf *MemShadowedWordFile) ReadWholeFileAsInt64s() ([]int64, error) {
+	return wf.underlying.ReadWholeFileAsInt64s()
+}
+
 func (wf *MemShadowedWordFile) WriteWordAt(val int64, off int64) error {
 	// Write to shadow and underlying
 	length := int64(len(wf.shadow))
