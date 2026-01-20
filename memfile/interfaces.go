@@ -32,3 +32,9 @@ type LookupFileWithSize interface {
 type AppendableLookupFile interface {
 	LookupFile
 }
+
+// AppendableLookupFileReadAll adds the ability to read the whole file
+type AppendableLookupFileReadAll interface {
+	AppendableLookupFile
+	ReadAll() ([]byte, error)
+}

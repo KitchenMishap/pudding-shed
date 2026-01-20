@@ -2,6 +2,7 @@ package wordfile
 
 import (
 	"github.com/KitchenMishap/pudding-shed/memfile"
+	"os"
 )
 
 type MemShadowedWordFile struct {
@@ -9,9 +10,9 @@ type MemShadowedWordFile struct {
 	shadow     []int64
 }
 
-func NewMemShadowedWordFile(file memfile.AppendableLookupFile, wordSize int64, wordCount int64) (*MemShadowedWordFile, error) {
+func NewMemShadowedWordFile(file memfile.AppendableLookupFileReadAll, underlying *os.File, wordSize int64, wordCount int64) (*MemShadowedWordFile, error) {
 	p := new(MemShadowedWordFile)
-	p.underlying = NewWordFile(file, wordSize, wordCount)
+	p.underlying = NewWordFile(file, underlying, wordSize, wordCount)
 	p.shadow = make([]int64, wordCount)
 	for i := int64(0); i < wordCount; i++ {
 		var err error

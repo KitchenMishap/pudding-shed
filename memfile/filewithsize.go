@@ -30,3 +30,5 @@ func (fws *FileWithSize) Sync() error {
 func (fws *FileWithSize) WriteAt(p []byte, off int64) (int, error) {
 	return fws.file.WriteAt(p, off)
 }
+
+func (fws *FileWithSize) ReadAll() ([]byte, error) { return fws.ReadAll() }

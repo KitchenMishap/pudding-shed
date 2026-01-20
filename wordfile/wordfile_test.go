@@ -47,10 +47,10 @@ func HelperWordfile(wordsize int64, mask int64, appendOptimized bool, t *testing
 			t.Error("Should be able to create append optimized file from file")
 		}
 		// Treat it as a n-byte wordfile
-		wf = NewWordFile(ao, wordsize, 0)
+		wf = NewWordFile(ao, f, wordsize, 0)
 	} else {
 		// Treat it as a n-byte wordfile
-		wf = NewWordFile(f, wordsize, 0)
+		wf = NewWordFile(f, f, wordsize, 0)
 	}
 
 	// Check it's empty

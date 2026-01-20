@@ -15,8 +15,9 @@ type appendOptimizedFile struct {
 
 // Check that implements
 var _ AppendableLookupFile = (*appendOptimizedFile)(nil)
+var _ AppendableLookupFileReadAll = (*appendOptimizedFile)(nil)
 
-func NewAppendOptimizedFile(file *os.File) (AppendableLookupFile, error) {
+func NewAppendOptimizedFile(file *os.File) (AppendableLookupFileReadAll, error) {
 	result := appendOptimizedFile{}
 	result.file = file
 	result.bufferedWriter = nil // Until an append is done
@@ -38,6 +39,21 @@ func (a *appendOptimizedFile) ReadAt(p []byte, off int64) (int, error) {
 		return nRead, err
 	}
 	return nRead, nil
+}
+
+func (a *appendOptimizedFile) ReadAll() ([]byte, error) {
+	err := a.Sync()
+	if err != nil {
+		return nil, err
+	}
+	info, _ := a.file.Stat()
+	size := info.Size()
+	data := make([]byte, size)
+	_, err = io.ReadFull(a.file, data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func (a *appendOptimizedFile) WriteAt(p []byte, off int64) (n int, err error) {

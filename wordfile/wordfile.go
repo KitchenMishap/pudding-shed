@@ -3,18 +3,22 @@ package wordfile
 import (
 	"encoding/binary"
 	"github.com/KitchenMishap/pudding-shed/memfile"
+	"io"
 	"log"
+	"os"
 )
 
 type WordFile struct {
-	file      memfile.AppendableLookupFile
-	wordSize  int64
-	wordCount int64
+	file       memfile.AppendableLookupFile
+	underlying *os.File
+	wordSize   int64
+	wordCount  int64
 }
 
-func NewWordFile(file memfile.AppendableLookupFile, wordSize int64, wordCount int64) *WordFile {
+func NewWordFile(file memfile.AppendableLookupFile, underlying *os.File, wordSize int64, wordCount int64) *WordFile {
 	p := new(WordFile)
 	p.file = file
+	p.underlying = underlying
 	p.wordSize = wordSize
 	p.wordCount = wordCount
 	return p
@@ -62,4 +66,23 @@ func (wf *WordFile) Sync() error {
 
 func (wf *WordFile) WordSize() int64 {
 	return wf.wordSize
+}
+
+func (wf *WordFile) ReadWholeFileAsInt64s() ([]int64, error) {
+	info, _ := wf.underlying.Stat()
+	size := info.Size()
+	data := make([]byte, size)
+	_, err := io.ReadFull(wf.underlying, data)
+	if err != nil {
+		return nil, err
+	}
+	items := size / wf.wordSize
+	data64 := make([]int64, items)
+	for i := int64(0); i < items; i++ {
+		var intBytes [8]byte
+		copy(intBytes[0:wf.wordSize], data[i*wf.wordSize:(i+1)*wf.wordSize])
+		word := int64(binary.LittleEndian.Uint64(intBytes[0:8]))
+		data64[i] = word
+	}
+	return data64, nil
 }

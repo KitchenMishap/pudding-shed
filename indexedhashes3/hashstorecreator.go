@@ -33,7 +33,7 @@ func NewHashStoreCreatorAndPreloader(folder string, name string,
 	if err != nil {
 		return nil, nil, err
 	}
-	wordFile := wordfile.NewWordFile(file, params.BytesRoomForBinNum(), 0)
+	wordFile := wordfile.NewWordFile(file, file, params.BytesRoomForBinNum(), 0)
 	preloader := NewMultipassPreloader(params, hashStoreFolderPath, wordFile, gbMem)
 	return creator, preloader, nil
 }

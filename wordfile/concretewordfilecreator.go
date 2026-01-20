@@ -79,12 +79,12 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 		return nil, err
 	}
 	if wfc.memShadowed {
-		result, err = NewMemShadowedWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
+		result, err = NewMemShadowedWordFile(appendOptimizedFile, file, wfc.wordSize, wordCount)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		result = NewWordFile(appendOptimizedFile, wfc.wordSize, wordCount)
+		result = NewWordFile(appendOptimizedFile, file, wfc.wordSize, wordCount)
 	}
 	return result, nil
 }
@@ -103,12 +103,12 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, e
 	fileWithSize := memfile.NewFileWithSize(file)
 	var result ReadAtWordCounter
 	if wfc.memShadowed {
-		result, err = NewMemShadowedWordFile(fileWithSize, wfc.wordSize, wordCount)
+		result, err = NewMemShadowedWordFile(fileWithSize, file, wfc.wordSize, wordCount)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		result = NewWordFile(fileWithSize, wfc.wordSize, wordCount)
+		result = NewWordFile(fileWithSize, file, wfc.wordSize, wordCount)
 	}
 	return result, nil
 }
