@@ -18,16 +18,24 @@ type ConcreteWordFileCreator struct {
 // Check that implements
 var _ WordFileCreator = (*ConcreteMmapWordFileCreator)(nil)
 
-func NewConcreteWordFileCreator(name string, folder string, wordSize int64, memShadowed bool) *ConcreteWordFileCreator {
+func NewConcreteWordFileCreator(name string, folder string, wordSize int64, memShadowed bool, holdInRamDANGER bool) WordFileCreator {
 	if wordSize == 0 {
 		panic("must be at least one byte")
 	}
-	result := ConcreteWordFileCreator{}
-	result.name = name
-	result.folder = folder
-	result.wordSize = wordSize
-	result.memShadowed = memShadowed
-	return &result
+	if holdInRamDANGER {
+		result := ConcreteMmapWordFileCreator{}
+		result.name = name
+		result.folder = folder
+		result.wordSize = wordSize
+		return &result
+	} else {
+		result := ConcreteWordFileCreator{}
+		result.name = name
+		result.folder = folder
+		result.wordSize = wordSize
+		result.memShadowed = memShadowed
+		return &result
+	}
 }
 
 func (wfc *ConcreteWordFileCreator) WordFileExists() bool {

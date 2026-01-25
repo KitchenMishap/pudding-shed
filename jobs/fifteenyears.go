@@ -223,7 +223,7 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
 			[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
 			[]string{"size", "vsize", "weight"},
-			delegated)
+			delegated, false)
 		if err != nil {
 			return err
 		}

@@ -67,7 +67,7 @@ func NewHashStoreCreatorPrivate(params *HashIndexingParams, folderPath string) *
 	result.params = params
 	result.folderPath = folderPath
 	result.binNumWordFileCreator = wordfile.NewConcreteWordFileCreator(
-		"BinNums", folderPath, params.BytesRoomForBinNum(), false)
+		"BinNums", folderPath, params.BytesRoomForBinNum(), false, false)
 	return &result
 }
 
