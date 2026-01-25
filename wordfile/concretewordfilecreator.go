@@ -15,6 +15,9 @@ type ConcreteWordFileCreator struct {
 	memShadowed bool
 }
 
+// Check that implements
+var _ WordFileCreator = (*ConcreteMmapWordFileCreator)(nil)
+
 func NewConcreteWordFileCreator(name string, folder string, wordSize int64, memShadowed bool) *ConcreteWordFileCreator {
 	if wordSize == 0 {
 		panic("must be at least one byte")
@@ -88,7 +91,7 @@ func (wfc *ConcreteWordFileCreator) OpenWordFile() (ReadWriteAtWordCounter, erro
 	}
 	return result, nil
 }
-func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounterReadAll, error) {
+func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounter, error) {
 	fullName := filepath.Join(wfc.folder, wfc.name+".int")
 	file, err := os.OpenFile(fullName, os.O_RDONLY, 0)
 	if err != nil {
@@ -101,7 +104,7 @@ func (wfc *ConcreteWordFileCreator) OpenWordFileReadOnly() (ReadAtWordCounterRea
 	}
 
 	fileWithSize := memfile.NewFileWithSize(file)
-	var result ReadAtWordCounterReadAll
+	var result ReadAtWordCounter
 	if wfc.memShadowed {
 		result, err = NewMemShadowedWordFile(fileWithSize, file, wfc.wordSize, wordCount)
 		if err != nil {

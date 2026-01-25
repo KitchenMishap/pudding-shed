@@ -24,6 +24,15 @@ func NewWordFile(file memfile.AppendableLookupFile, underlying *os.File, wordSiz
 	return p
 }
 
+func NewWordFileEx(file memfile.LookupFile, wordSize int64, wordCount int64) *WordFile {
+	p := new(WordFile)
+	p.file = file
+	p.underlying = nil
+	p.wordSize = wordSize
+	p.wordCount = wordCount
+	return p
+}
+
 func (wf *WordFile) ReadWordAt(off int64) (int64, error) {
 	var intBytes [8]byte
 	_, err := wf.file.ReadAt(intBytes[0:wf.wordSize], off*wf.wordSize)

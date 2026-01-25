@@ -31,17 +31,18 @@ type ReadAtWordCounter interface {
 	WordSize() int64
 }
 
+/* This was a secret backdoor!
 type ReadAtWordCounterReadAll interface {
 	ReaderAtWord
 	WordCounter
 	WordSize() int64
 	ReadWholeFileAsInt64s() ([]int64, error)
-}
+}*/
 
 type WordFileCreator interface {
 	WordFileExists() bool
 	CreateWordFile() error
 	OpenWordFile() (ReadWriteAtWordCounter, error)
-	OpenWordFileReadOnly() (ReadAtWordCounterReadAll, error)
+	OpenWordFileReadOnly() (ReadAtWordCounter, error)
 	CreateWordFileFilledZeros(count int64) error
 }
