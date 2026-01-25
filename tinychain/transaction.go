@@ -9,6 +9,11 @@ type Transaction struct {
 	txos []Txo
 }
 
+func (t *Transaction) AllTxoSatoshis() ([]int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (t *Transaction) TxiCount() (int64, error) {
 	return int64(len(t.txis)), nil
 }

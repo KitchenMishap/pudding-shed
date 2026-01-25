@@ -11,6 +11,40 @@ type Transaction struct {
 	data   *concreteReadableChain
 }
 
+func (tr *Transaction) AllTxoSatoshis() ([]int64, error) {
+	chainTransactionCount, err := tr.data.trnFirstTxo.CountWords()
+	if err != nil {
+		return make([]int64, 0), err
+	}
+	firstTxoHeight, err := tr.data.trnFirstTxo.ReadWordAt(tr.height)
+	if err != nil {
+		return make([]int64, 0), err
+	}
+	var lastTxoHeight int64
+	if tr.height == chainTransactionCount-1 {
+		// Special rare case for last transaction in the blockchain!
+		lastTxoHeight, err = tr.data.txoSats.CountWords() // One past last txo in chain
+		if err != nil {
+			return make([]int64, 0), err
+		}
+	} else {
+		lastTxoHeight, err = tr.data.trnFirstTxo.ReadWordAt(tr.height + 1) // First txo of next transaction
+		if err != nil {
+			return make([]int64, 0), err
+		}
+	}
+	txosCount := lastTxoHeight - firstTxoHeight
+	result := make([]int64, 0, txosCount)
+	for i := firstTxoHeight; i < lastTxoHeight; i++ {
+		amount, err := tr.data.txoSats.ReadWordAt(i)
+		if err != nil {
+			return make([]int64, 0), err
+		}
+		result = append(result, amount)
+	}
+	return result, nil
+}
+
 // Functions that implement ITransHandle as part of ITransaction
 
 func (tr *Transaction) Height() int64 {

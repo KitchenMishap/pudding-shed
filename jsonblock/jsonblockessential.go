@@ -47,6 +47,11 @@ type JsonTransEssential struct {
 	nonEssentialInts map[string]int64 `json:"-"` // Does not appear in json. Calculated after passing of whole block
 }
 
+func (jt *JsonTransEssential) AllTxoSatoshis() ([]int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 type JsonTxiEssential struct {
 	J_txid       string               `json:"txid"`
 	J_vout       int                  `json:"vout"`

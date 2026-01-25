@@ -6,6 +6,7 @@ type ITransaction interface {
 	NthTxi(n int64) (ITxiHandle, error)
 	TxoCount() (int64, error)
 	NthTxo(n int64) (ITxoHandle, error)
+	AllTxoSatoshis() ([]int64, error)
 	NonEssentialInts() (*map[string]int64, error)
 }
 
