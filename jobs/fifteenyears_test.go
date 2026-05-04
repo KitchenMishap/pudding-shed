@@ -2,10 +2,11 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 func TestIndexHashes(t *testing.T) {
@@ -15,14 +16,28 @@ func TestIndexHashes(t *testing.T) {
 	}
 }
 
-func TestFiveYearsDelegated(t *testing.T) {
-	SeveralYearsParallel(4, "delegated")
+//func TestFiveYearsDelegated(t *testing.T) {
+//	SeveralYearsParallel(4, "delegated")
+//}
+
+//func TestOneYearUndelegated(t *testing.T) {
+//	SeveralYearsPrimaries(1, "separate files")
+//}
+
+func TestOneYearFileSizes(t *testing.T) {
+	var sDir = "E:\\Data\\OneYearTest"
+	var nGb = 16
+	var nThreads = 20
+	var nYrs = 1
+	err := SeveralYearsPrimaries(nYrs, "delegated", true, true, true,
+		sDir, nGb, nThreads)
+	if err != nil {
+		t.Error(err)
+	}
+	// Look at file sizes manually to determine pass/fail
 }
 
-func TestOneYearUndelegated(t *testing.T) {
-	SeveralYearsPrimaries(1, "separate files")
-}
-
+/*
 func TestMemoryLeak(t *testing.T) {
 	cr := indexedhashes.NewUniformHashStoreCreator(1000000000, "F:\\Data\\TestMemLeak", "TestName", 2)
 	err := cr.CreateHashStore()
@@ -43,7 +58,7 @@ func TestMemoryLeak(t *testing.T) {
 			return
 		}
 	}
-}
+}*/
 
 func TestMemLeak2(t *testing.T) {
 	fmt.Println("Removing files from any previous run")

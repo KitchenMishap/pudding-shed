@@ -3,6 +3,7 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
@@ -565,6 +566,12 @@ func (cac *concreteAppendableChain) Close() {
 	cac.parentBlockOfTrans.Close()
 	cac.parentTransOfTxi.Close()
 	cac.parentTransOfTxo.Close()
+	for _, v := range cac.blkNonEssentialInts {
+		v.Close()
+	}
+	for _, v := range cac.trnNonEssentialInts {
+		v.Close()
+	}
 }
 
 func (cac *concreteAppendableChain) GetAsDelegatedTransactionIndexer() transactionindexing.ITransactionIndexer {
