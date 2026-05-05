@@ -2,14 +2,15 @@ package jobs
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/concurrency"
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
-	"os"
-	"sync"
-	"time"
 )
 
 const BLOATLIMIT = 10
@@ -124,8 +125,8 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	lastTrans := int64(0)
 
 	readerPool := corereader.NewPool(threads, false)
-	//workerPool := concurrency.NewWorkerPool(THREADS)
-	workerPool := concurrency.NewWorkerPool(1)
+	workerPool := concurrency.NewWorkerPool(threads)
+	//workerPool := concurrency.NewWorkerPool(1)
 	statusMap := sync.Map{}
 
 	// Going parallel now
@@ -315,8 +316,8 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	lastTrans := int64(0)
 
 	readerPool := corereader.NewPool(threads, true)
-	//workerPool := concurrency.NewWorkerPool(THREADS)
-	workerPool := concurrency.NewWorkerPool(1)
+	workerPool := concurrency.NewWorkerPool(threads)
+	//workerPool := concurrency.NewWorkerPool(1)
 
 	statusMap := sync.Map{}
 
