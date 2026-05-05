@@ -134,7 +134,7 @@ func PhaseOneParallel(lastBlock int64, transactionsTarget int64, hc chainstorage
 	// These two are much further downstream. But we create them here as here is the only good place
 	// for the cutoff valve when the sequencer becomes bloated!
 	sequencedChan := make(chan *jsonblock.JsonBlockHashes)
-	sequencer := concurrency.NewSequencerContainerHashes(0, BLOATLIMIT, &sequencedChan)
+	sequencer := concurrency.NewSequencerContainer[*jsonblock.JsonBlockHashes](0, BLOATLIMIT, sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)
@@ -326,7 +326,7 @@ func PhaseThreeParallel(lastBlock int64, transactionsTarget int64,
 	// These two are much further downstream. But we create them here as here is the only good place
 	// for the cutoff valve when the sequencer becomes bloated!
 	sequencedChan := make(chan *jsonblock.JsonBlockEssential)
-	sequencer := concurrency.NewSequencerContainer(0, BLOATLIMIT, &sequencedChan)
+	sequencer := concurrency.NewSequencerContainer[*jsonblock.JsonBlockEssential](0, BLOATLIMIT, sequencedChan)
 
 	// A channel to receive []byte slices a block at a time
 	haveReadChannel := make(chan *corereader.Task)

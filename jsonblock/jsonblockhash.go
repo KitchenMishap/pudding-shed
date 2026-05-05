@@ -2,6 +2,7 @@ package jsonblock
 
 import (
 	"encoding/json"
+
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
@@ -46,6 +47,7 @@ func ParseJsonBlockHashes(jsonBytes []byte) (*JsonBlockHashes, error) {
 func (jb *JsonBlockHashes) BlockHash() indexedhashes.Sha256 {
 	return jb.hash
 }
+func (jb *JsonBlockHashes) SequenceNumber() int64 { return int64(jb.J_height) }
 
 func (jt *JsonTransHashes) TransHash() indexedhashes.Sha256 {
 	return jt.txid

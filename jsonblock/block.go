@@ -29,3 +29,8 @@ func (b *JsonBlockEssential) NthTransaction(n int64) (chainreadinterface.ITransH
 func (b *JsonBlockEssential) NonEssentialInts() (*map[string]int64, error) {
 	return &b.nonEssentialInts, nil
 }
+
+// Functions in jsonblock.jsonBlockEssential that implement concurrency.Sequencable
+func (b *JsonBlockEssential) SequenceNumber() int64 {
+	return int64(b.J_height)
+}
