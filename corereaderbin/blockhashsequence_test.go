@@ -11,7 +11,7 @@ func TestStreamBlockHashes(t *testing.T) {
 	blockHashesChannel := make(chan BlockBinary)
 	fmt.Println("Starting stream block hashes")
 	go func() {
-		err := StreamBlockHashesFromGenesis(111111, blockHashesChannel)
+		err := StreamBlockHashesFromGenesis(555555, blockHashesChannel)
 		if err != nil {
 			t.Error(err)
 		}

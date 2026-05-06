@@ -8,15 +8,6 @@ import (
 	"time"
 )
 
-type BlockBinary struct {
-	Height     int64
-	Hash       [32]byte
-	HashString string
-	Binary     []byte
-}
-
-func (bhhb BlockBinary) SequenceNumber() int64 { return bhhb.Height }
-
 // Advised by Gemini AI to avoid "Only one usage of each socket address (...) is normally permitted"
 var TheOneAndOnlyTransport = &http.Transport{
 	// High numbers to saturate my 36 cores
