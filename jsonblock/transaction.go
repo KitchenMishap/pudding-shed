@@ -77,9 +77,9 @@ func (txo *JsonTxoEssential) IndicesPathSpecified() bool { return true }
 
 func (txo *JsonTxoEssential) Satoshis() (int64, error) { return txo.satoshis, nil }
 func (txo *JsonTxoEssential) Address() (chainreadinterface.IAddressHandle, error) {
-	puddingHash := txo.J_scriptPubKey.puddingHash
+	puddingHash3 := txo.J_scriptPubKey.puddingHash3
 	result := AddressHandle{}
-	result.hash = puddingHash
+	result.hash = puddingHash3
 	return &result, nil
 }
 func (t *JsonTransEssential) NonEssentialInts() (*map[string]int64, error) {

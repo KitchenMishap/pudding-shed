@@ -2,6 +2,7 @@ package jsonblock
 
 import (
 	"encoding/json"
+
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
@@ -70,10 +71,10 @@ type JsonTxoEssential struct {
 }
 
 type JsonScriptPubKeyEssential struct {
-	J_hex       string               `json:"hex"`
-	J_address   string               `json:"address"`
-	J_type      string               `json:"type"`
-	puddingHash indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
+	J_hex        string               `json:"hex"`
+	J_address    string               `json:"address"`
+	J_type       string               `json:"type"`
+	puddingHash3 indexedhashes.Sha256 `json:"-"` // Does not appear in json. Calculated after parsing of whole block
 	// "pudding" because peculiar to pudding-shed
 	// (This hash is not in use by bitcoiners generally)
 }
