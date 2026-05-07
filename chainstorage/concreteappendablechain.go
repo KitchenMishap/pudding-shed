@@ -173,6 +173,9 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 			return err
 		}
 		_, err = cac.appendTransactionContents(blockChain, hTrans, firstTransOfBlock+t)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

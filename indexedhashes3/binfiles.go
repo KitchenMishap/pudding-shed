@@ -39,7 +39,7 @@ func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *
 
 func countZeroBytesAtEnd(bytes []byte) int64 {
 	l := int64(len(bytes))
-	for result := int64(0); result <= l; result++ {
+	for result := int64(0); result < l; result++ {
 		if bytes[l-result-1] != 0 {
 			return result
 		}

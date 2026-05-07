@@ -3,9 +3,10 @@ package indexedhashes3
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
-	"os"
 )
 
 // singlePassDetails holds details of one of the multiple passes

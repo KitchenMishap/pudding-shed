@@ -1,6 +1,7 @@
 package jsonblock
 
 import (
+	"encoding/hex"
 	"errors"
 	"strings"
 
@@ -148,20 +149,10 @@ func PostJsonEncodeAddressHashes2(block *JsonBlockHashes) error {
 }
 
 func adornTxoAddressWithPuddingHash2(addrPtr *JsonScriptPubKeyEssential2) {
-	address := addrPtr.J_address // Remember some types of address are case sensitive
-	hex := strings.ToLower(addrPtr.J_hex)
+	hexval := strings.ToLower(addrPtr.J_hex)
+	binval, _ := hex.DecodeString(hexval)
 
 	// THE FOLLOWING HASH IS PECULIAR TO PUDDING SHED SOFTWARE AND NOT IN GENERAL USE BY BITCOINERS
-	// BUT NOTE THAT IT CAN BE GENERATED JUST BY HASHING A USUAL ASCII ADDRESS STRING
-	// The hash we use to identify an address is as follows: (this hash is peculiar to pudding-shed)
-	// If address is more than 10 characters, we assume it's a human-readable ASCII address, we use the hash of that.
-	// Otherwise, we use the hash of hex expressed as ASCII
-	hash := indexedhashes.Sha256{}
-	if len(address) > 10 { // So addresses of "unknown", "none", "", etc aren't accidentally hashed
-		hash = indexedhashes.HashOfString(address)
-	} else {
-		hash = indexedhashes.HashOfString(hex)
-	}
-
-	addrPtr.puddingHash = hash
+	hash := indexedhashes.HashOfBytes(binval)
+	addrPtr.puddingHash3 = hash
 }
