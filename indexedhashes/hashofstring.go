@@ -1,11 +1,10 @@
-package jsonblock
+package indexedhashes
 
 import (
 	"crypto/sha256"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
-func HashOfString(in string) indexedhashes.Sha256 {
+func HashOfString(in string) Sha256 {
 	h := sha256.New()
 	h.Write([]byte(in))
 

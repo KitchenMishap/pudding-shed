@@ -8,7 +8,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 type BlockBinary struct {
@@ -25,7 +25,9 @@ func (bb *BlockBinary) Parse() error {
 	// Skip block header
 	byteIndex := 80
 	// Read the transaction count
-	txCount, bytes := ReadCompactSize(bb.Binary, byteIndex)
+	var txCount uint64
+	var bytes int
+	txCount, bytes = ReadCompactSize(bb.Binary, byteIndex)
 	byteIndex += bytes
 	bb.Transactions = make([]TransactionBinary, txCount)
 
@@ -42,15 +44,18 @@ func (bb *BlockBinary) Parse() error {
 
 		// SegWit check
 		trans.IsSegWit = false
-		if bb.Binary[byteIndex] == 0x00 && bb.Binary[byteIndex+1] == 0x01 {
-			trans.IsSegWit = true
-			byteIndex += 2 // (weirdly!) only increment by two if they're 0,1
+		if bb.Height >= 481824 { // segwit activation block
+			if bb.Binary[byteIndex] == 0x00 && bb.Binary[byteIndex+1] == 0x01 {
+				trans.IsSegWit = true
+				byteIndex += 2 // (weirdly!) only increment by two if they're 0,1
+			}
 		}
 
 		txiCountByteOffset := byteIndex // This is used for skipping segwit for txid hash
 
 		// Txi count
-		txiCount, bytes := ReadCompactSize(bb.Binary, byteIndex)
+		var txiCount uint64
+		txiCount, bytes = ReadCompactSize(bb.Binary, byteIndex)
 		byteIndex += bytes
 		trans.Txis = make([]TxiBinary, txiCount)
 
@@ -65,7 +70,8 @@ func (bb *BlockBinary) Parse() error {
 			byteIndex += 4
 
 			// Read ScriptSig length
-			ssLen, bytes := ReadCompactSize(bb.Binary, byteIndex)
+			var ssLen uint64
+			ssLen, bytes = ReadCompactSize(bb.Binary, byteIndex)
 			byteIndex += bytes
 
 			// Skip that number of bytes
@@ -76,7 +82,8 @@ func (bb *BlockBinary) Parse() error {
 		}
 
 		// Txo count
-		txoCount, bytes := ReadCompactSize(bb.Binary, byteIndex)
+		var txoCount uint64
+		txoCount, bytes = ReadCompactSize(bb.Binary, byteIndex)
 		byteIndex += bytes
 		trans.Txos = make([]TxoBinary, txoCount)
 
@@ -87,14 +94,16 @@ func (bb *BlockBinary) Parse() error {
 			byteIndex += 8
 
 			// Read ScriptPubKey length
-			spkLen, bytes := ReadCompactSize(bb.Binary, byteIndex)
+			var spkLen uint64
+			spkLen, bytes = ReadCompactSize(bb.Binary, byteIndex)
 			byteIndex += bytes
 
 			// Read that number of bytes and convert to hex string
 			hexStringScriptPubKey := hex.EncodeToString(bb.Binary[byteIndex : byteIndex+int(spkLen)])
+			byteIndex += int(spkLen)
 
 			// Take the hash of it (this is puddingHash2, unique to pudding-shed, not a proper bitcoin thing
-			trans.Txos[i].PuddingHash2 = jsonblock.HashOfString(hexStringScriptPubKey)
+			trans.Txos[i].PuddingHash2 = indexedhashes.HashOfString(hexStringScriptPubKey)
 		}
 
 		segwitByteOffset := byteIndex // This is used for skipping segwit for txid hash
@@ -104,12 +113,14 @@ func (bb *BlockBinary) Parse() error {
 			// There is a witness stack for each txi
 			for i := uint64(0); i < txiCount; i++ {
 				// Read how many items are in this input's witness stack
-				itemCount, bytes := ReadCompactSize(bb.Binary, byteIndex)
+				var itemCount uint64
+				itemCount, bytes = ReadCompactSize(bb.Binary, byteIndex)
 				byteIndex += bytes
 
 				for j := uint64(0); j < itemCount; j++ {
 					// Each item in the stack has its own length
-					itemLen, bytes := ReadCompactSize(bb.Binary, byteIndex)
+					var itemLen uint64
+					itemLen, bytes = ReadCompactSize(bb.Binary, byteIndex)
 					byteIndex += bytes
 
 					// Jump over the actual witness data
@@ -157,29 +168,55 @@ func GetBlocksBinary(inChan chan BlockBinary, outChan chan BlockBinary, threads 
 					fmt.Printf("Block %d: %s\n", in.Height, blockReq)
 				}
 
-				resp, err := TheOneAndOnlyClient.Get(blockReq)
-				if err != nil {
-					fmt.Println(err.Error())
-					panic(err) // ToDo
+				success := false
+				for retry := 0; retry < 3; retry++ {
+					if retry > 0 {
+						fmt.Println("Retrying...")
+					}
+					resp, err := TheOneAndOnlyClient.Get(blockReq)
+					if err == nil {
+						if resp.StatusCode == 200 {
+							bodyOutBlock, err := io.ReadAll(resp.Body)
+							if err == nil {
+								err = resp.Body.Close()
+								if err == nil {
+									out := BlockBinary{}
+									out.Height = in.Height
+									out.Hash = in.Hash
+									out.HashString = in.HashString
+									out.Binary = bodyOutBlock
+									err = out.Parse()
+									if err != nil {
+										panic("Parse error")
+									}
+									outChan <- out
+									// Success! Break out of retry loop
+									if retry > 0 {
+										fmt.Printf("Retry succeeded\n")
+									}
+									success = true
+									break
+								} else {
+									fmt.Println(err.Error())
+									fmt.Printf("Error closing response body, might retry...\n")
+								}
+							} else {
+								fmt.Println(err.Error())
+								fmt.Printf("ReadAll() returned error, might retry...\n")
+							}
+						} else {
+							fmt.Println(resp.Status)
+							fmt.Printf("Response is not 200 OK, might retry...\n")
+						}
+					} else {
+						fmt.Println(err.Error())
+						fmt.Printf("Get() returned error, might retry...\n")
+					}
 				}
-				if resp.StatusCode != 200 {
-					panic("Response not OK: " + resp.Status)
+				if success == false {
+					fmt.Println("Retries exhausted getting block from Bitcoin Core, block height: ", in.Height)
+					panic("Retries failed") // ToDo
 				}
-				bodyOutBlock, _ := io.ReadAll(resp.Body)
-				err = resp.Body.Close()
-				if err != nil {
-					fmt.Println(err.Error())
-					panic(err) // ToDo
-				}
-
-				// Send the binary block to the channel
-				out := BlockBinary{}
-				out.Height = in.Height
-				out.Hash = in.Hash
-				out.HashString = in.HashString
-				out.Binary = bodyOutBlock
-
-				outChan <- out
 			}
 		}()
 	}

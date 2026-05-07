@@ -2,6 +2,8 @@ package chainstorage
 
 import (
 	"fmt"
+
+	"github.com/KitchenMishap/pudding-shed/corereaderbin"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -47,6 +49,46 @@ func (chc *concreteHashesChain) AppendHashes(block *jsonblock.JsonBlockHashes) e
 			// Store address hash of txo
 			txo := trans.J_vout[o]
 			addrHash := txo.AddrHash()
+			_, err = chc.adrHashList.AppendHash(addrHash)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (chc *concreteHashesChain) AppendHashesBinary(block *corereaderbin.BlockBinary) error {
+	// === TestPoint ===
+	if testpoints.TestPointBlockEnable && block.Height == testpoints.TestPointBlock {
+		fmt.Println("TESTPOINT: concreteHashesChain.AppendHashesBinary(block height ", testpoints.TestPointBlock, ")")
+	}
+
+	blkHash := block.Hash
+	_, err := chc.blkHashList.AppendHash(blkHash)
+	if err != nil {
+		return err
+	}
+
+	nTrans := len(block.Transactions)
+	if nTrans == 0 {
+		panic("this code assumes at least one transaction per block")
+		// Otherwise, not every entry in blkFirstTrans will be written
+	}
+	for t := 0; t < nTrans; t++ {
+		// Store transaction hash
+		trans := block.Transactions[t]
+		transHash := trans.Txid
+		_, err = chc.trnHashList.AppendHash(transHash)
+		if err != nil {
+			return err
+		}
+
+		nTxo := len(trans.Txos)
+		for o := 0; o < nTxo; o++ {
+			// Store address hash of txo
+			txo := trans.Txos[o]
+			addrHash := txo.PuddingHash2
 			_, err = chc.adrHashList.AppendHash(addrHash)
 			if err != nil {
 				return err

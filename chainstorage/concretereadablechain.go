@@ -2,10 +2,10 @@ package chainstorage
 
 import (
 	"errors"
+
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
@@ -279,7 +279,7 @@ func (crc *concreteReadableChain) AddressHandleByHash(sha256 indexedhashes.Sha25
 	return &result, nil
 }
 func (crc *concreteReadableChain) AddressHandleByString(address string) (chainreadinterface.IAddressHandle, error) {
-	hash := jsonblock.HashOfString(address)
+	hash := indexedhashes.HashOfString(address)
 	return crc.AddressHandleByHash(hash)
 }
 

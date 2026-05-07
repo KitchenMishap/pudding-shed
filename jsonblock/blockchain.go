@@ -2,10 +2,11 @@ package jsonblock
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
-	"strings"
 )
 
 // OneBlockChain - We call it a one block chain, as one block is in memory at any point in time
@@ -225,9 +226,9 @@ func adornTxoAddressWithPuddingHash(addrPtr *JsonScriptPubKeyEssential) {
 	// Otherwise, we use the hash of hex expressed as ASCII
 	hash := indexedhashes.Sha256{}
 	if len(address) > 10 { // So addresses of "unknown", "none", "", etc aren't accidentally hashed
-		hash = HashOfString(address)
+		hash = indexedhashes.HashOfString(address)
 	} else {
-		hash = HashOfString(hex)
+		hash = indexedhashes.HashOfString(hex)
 	}
 
 	addrPtr.puddingHash = hash

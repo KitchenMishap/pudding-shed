@@ -2,8 +2,9 @@ package jsonblock
 
 import (
 	"errors"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"strings"
+
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 // HashesBlockChain - Just the hashes (block, transaction, address)
@@ -157,9 +158,9 @@ func adornTxoAddressWithPuddingHash2(addrPtr *JsonScriptPubKeyEssential2) {
 	// Otherwise, we use the hash of hex expressed as ASCII
 	hash := indexedhashes.Sha256{}
 	if len(address) > 10 { // So addresses of "unknown", "none", "", etc aren't accidentally hashed
-		hash = HashOfString(address)
+		hash = indexedhashes.HashOfString(address)
 	} else {
-		hash = HashOfString(hex)
+		hash = indexedhashes.HashOfString(hex)
 	}
 
 	addrPtr.puddingHash = hash

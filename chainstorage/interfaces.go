@@ -2,6 +2,7 @@ package chainstorage
 
 import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/corereaderbin"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -10,6 +11,7 @@ import (
 // Just stores hashes (block, transaction, address) associated with each appended block
 type IAppendableHashesChain interface {
 	AppendHashes(hashes *jsonblock.JsonBlockHashes) error
+	AppendHashesBinary(block *corereaderbin.BlockBinary) error
 	Close()
 	Sync() error
 	CountHashes() (int64, int64, int64, error)
