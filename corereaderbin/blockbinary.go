@@ -3,7 +3,6 @@ package corereaderbin
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"sync"
@@ -98,12 +97,12 @@ func (bb *BlockBinary) Parse() error {
 			spkLen, bytes = ReadCompactSize(bb.Binary, byteIndex)
 			byteIndex += bytes
 
-			// Read that number of bytes and convert to hex string
-			hexStringScriptPubKey := hex.EncodeToString(bb.Binary[byteIndex : byteIndex+int(spkLen)])
+			// Read that number of bytes
+			scriptPubKey := bb.Binary[byteIndex : byteIndex+int(spkLen)]
 			byteIndex += int(spkLen)
 
-			// Take the hash of it (this is puddingHash2, unique to pudding-shed, not a proper bitcoin thing
-			trans.Txos[i].PuddingHash2 = indexedhashes.HashOfString(hexStringScriptPubKey)
+			// Take the hash of it (this is puddingHash3, unique to pudding-shed, not a proper bitcoin thing)
+			trans.Txos[i].PuddingHash3 = indexedhashes.HashOfBytes(scriptPubKey)
 		}
 
 		segwitByteOffset := byteIndex // This is used for skipping segwit for txid hash

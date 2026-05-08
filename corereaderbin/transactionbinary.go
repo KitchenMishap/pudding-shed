@@ -19,5 +19,5 @@ type TxiBinary struct {
 
 type TxoBinary struct {
 	Value        uint64
-	PuddingHash2 indexedhashes.Sha256
+	PuddingHash3 indexedhashes.Sha256
 }

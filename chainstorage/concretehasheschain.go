@@ -88,7 +88,7 @@ func (chc *concreteHashesChain) AppendHashesBinary(block *corereaderbin.BlockBin
 		for o := 0; o < nTxo; o++ {
 			// Store address hash of txo
 			txo := trans.Txos[o]
-			addrHash := txo.PuddingHash2
+			addrHash := txo.PuddingHash3
 			_, err = chc.adrHashList.AppendHash(addrHash)
 			if err != nil {
 				return err

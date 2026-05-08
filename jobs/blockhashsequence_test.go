@@ -13,7 +13,7 @@ import (
 
 func TestStreamBlockHashes(t *testing.T) {
 
-	path := "E:\\Data\\888888"
+	path := "E:\\Data\\OneYearBinary"
 	dateFormat := "Mon Jan 2 15:04:05"
 	fmt.Println(time.Now().Format(dateFormat) + "\t\tRemoving previous files...")
 	err := os.RemoveAll(path)
@@ -33,7 +33,7 @@ func TestStreamBlockHashes(t *testing.T) {
 	blockHashesChannel := make(chan corereaderbin.BlockBinary)
 	fmt.Println("Starting stream block hashes")
 	go func() {
-		err := corereaderbin.StreamBlockHashesFromGenesis(888888, blockHashesChannel)
+		err := corereaderbin.StreamBlockHashesFromGenesis(32879, blockHashesChannel)
 		if err != nil {
 			t.Error(err)
 		}
