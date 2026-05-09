@@ -1,11 +1,14 @@
-package corereaderbin
+package intrinsicobjects
 
 import (
 	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 // Advised by Gemini AI to avoid "Only one usage of each socket address (...) is normally permitted"
@@ -22,7 +25,7 @@ var TheOneAndOnlyClient = &http.Client{
 }
 
 // Streams 32-byte hashes of blocks to a channel, starting with the genesis block
-func StreamBlockHashesFromGenesis(numBlocks int64, channel chan BlockBinary) error {
+func StreamBlockHashesFromGenesis(numBlocks int64, channel chan indexedhashes.Sha256) error {
 	if numBlocks == 0 {
 		close(channel)
 		return nil
@@ -73,15 +76,15 @@ func StreamBlockHashesFromGenesis(numBlocks int64, channel chan BlockBinary) err
 
 			// The hash of the next block to request
 			hashBytes := bodyOutHeaders[offset+4 : offset+36]
+			hash := indexedhashes.Sha256{}
+			copy(hash[:], hashBytes)
+			channel <- hash
 
-			entry := BlockBinary{}
-			entry.Height = sentBlocks
-			entry.Hash = [32]byte(hashBytes)
+			// The block height
+			blockHeight := sentBlocks
 
-			channel <- entry
-
-			if entry.Height%10_000 == 0 {
-				fmt.Printf("Block %d initiated\n", entry.Height)
+			if blockHeight%10_000 == 0 {
+				fmt.Printf("Block %d initiated\n", blockHeight)
 			}
 
 			sentBlocks++
@@ -109,6 +112,100 @@ func StreamBlockHashesFromGenesis(numBlocks int64, channel chan BlockBinary) err
 		// Request the block as binary
 		headersReq = "http://127.0.0.1:8332/rest/headers/1002/" + hexHash + ".bin"
 	}
+}
+
+type HeightNumberedBlock struct {
+	BlockHeight int64
+	BlockHash   indexedhashes.Sha256
+	Block       Block
+}
+
+// For SequencerContainer
+func (hnb *HeightNumberedBlock) SequenceNumber() int64 { return hnb.BlockHeight }
+
+// Unnumbered block hashes go in, in height sequence
+// Parsed blocks come out, numbered but out of sequence
+func GetAndParseBlocks(inChan chan indexedhashes.Sha256, outChan chan *HeightNumberedBlock, threads int) {
+	// Adorn the hashes with block heights and squirt them into a channel
+	chanNumbered := make(chan *HeightNumberedBlock)
+	go func() {
+		blockHeight := int64(0)
+		for blockHash := range inChan {
+			numbered := HeightNumberedBlock{}
+			numbered.BlockHeight = blockHeight
+			numbered.BlockHash = blockHash
+			numbered.Block = Block{}
+			chanNumbered <- &numbered
+
+			blockHeight++
+		}
+		close(chanNumbered)
+	}()
+
+	// A thread pool to fill in the Blocks of these objects (get from Core and parse)
+	var wg sync.WaitGroup
+	for range threads {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for numbered := range chanNumbered {
+				// Convert binary hash to string hash
+				hashString := ToHexHash(numbered.BlockHash[0:32])
+
+				// Request the block as binary
+				blockReq := "http://127.0.0.1:8332/rest/block/" + hashString + ".bin"
+				if numbered.BlockHeight%10_000 == 0 {
+					fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
+				}
+
+				success := false
+				for retry := 0; retry < 3; retry++ {
+					if retry > 0 {
+						fmt.Println("Retrying...")
+					}
+					resp, err := TheOneAndOnlyClient.Get(blockReq)
+					if err == nil {
+						if resp.StatusCode == 200 {
+							bodyOutBlock, err := io.ReadAll(resp.Body)
+							if err == nil {
+								err = resp.Body.Close()
+								if err == nil {
+									ParseBinaryBlock(bodyOutBlock, &numbered.Block)
+									outChan <- numbered
+									// Success! Break out of retry loop
+									if retry > 0 {
+										fmt.Printf("Retry succeeded\n")
+									}
+									success = true
+									break
+								} else {
+									fmt.Println(err.Error())
+									fmt.Printf("Error closing response body\n")
+								}
+							} else {
+								fmt.Println(err.Error())
+								fmt.Printf("ReadAll() returned error\n")
+							}
+						} else {
+							fmt.Println(resp.Status)
+							fmt.Printf("Response is not 200 OK\n")
+						}
+					} else {
+						fmt.Println(err.Error())
+						fmt.Printf("Get() returned error\n")
+					}
+				}
+				if success == false {
+					fmt.Println("Retries exhausted getting block from Bitcoin Core, block height: ", numbered.BlockHeight)
+					panic("Retries failed") // ToDo
+				}
+			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(outChan)
+	}()
 }
 
 // ToHexHash converts from a 32-byte slice from a binary header

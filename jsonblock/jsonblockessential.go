@@ -11,7 +11,7 @@ import (
 // Hence the word "essential".
 // Some non-essential fields are included; these are the integers which we can conveniently handle in a unified way
 
-// SEE ALSO transaction.go, where these json types are furnished with functions to implement various interfaces
+// SEE ALSO jsonblock/transaction.go, where these json types are furnished with functions to implement various interfaces
 
 type JsonBlockEssential struct {
 	J_height int                  `json:"height"`

@@ -24,6 +24,14 @@ func TestIndexHashes(t *testing.T) {
 //	SeveralYearsPrimaries(1, "separate files")
 //}
 
+func TestTwoYearsPrimaries(t *testing.T) {
+	err := SeveralYearsPrimaries(2, "delegated",
+		true, true, true, "E:\\Data\\TwoYearsJson", 64, 10)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
 func TestOneYearFileSizes(t *testing.T) {
 	var sDir = "E:\\Data\\OneYearTest"
 	var nGb = 16

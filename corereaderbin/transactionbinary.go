@@ -1,9 +1,6 @@
 package corereaderbin
 
-import (
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
-)
-
+/*
 type TransactionBinary struct {
 	Txid     indexedhashes.Sha256
 	Version  uint32
@@ -21,3 +18,4 @@ type TxoBinary struct {
 	Value        uint64
 	PuddingHash3 indexedhashes.Sha256
 }
+*/

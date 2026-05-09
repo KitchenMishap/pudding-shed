@@ -1,4 +1,4 @@
-package jsonblock
+package intrinsicobjects
 
 import (
 	"errors"
@@ -8,36 +8,29 @@ import (
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
-// ToDo For smaller cleaner code with less repeated code, we could write a parser that turns JSON blocks into
-// intriniscobjects.Block, and then use intrinsicchain.OneBlockHolder instead of this file
-
 // OneBlockHolder provides an IBlockchain restricted to accessing blocks in sequence.
-// GenesisBlock() must be called first, and only once. At this point OneBlockHolder takes a
-// JsonBlockEssential* from its InChan and presumes it to be the genesis block.
-// Subsequent calls to NextBlock must be in sequence, and causes another JsonBlockEssentials* to be
-// taken from InChan. Out of sequence blocks will generate errors.
+// GenesisBlock() must be called first, and only once. At this point OneBlockHolder takes an
+// *intrinsicobjects.Block from its InChan and presumes it to be the genesis block.
+// Subsequent calls to NextBlock must be in sequence, and cause another *intrinsicobjects.Block to be
+// taken from InChan. Out of sequence blocks will generate errors, based on block's PrevHash field
 type OneBlockHolder struct {
-	InChan                   chan *JsonBlockEssential
-	transactionIndexer       transactionindexing.ITransactionIndexer
-	currentBlock             *JsonBlockEssential
-	latestBlockVisited       int64
-	latestTransactionVisited int64
+	InChan             chan *Block
+	transactionIndexer transactionindexing.ITransactionIndexer
+	currentBlock       *Block
+	currentBlockHeight int64
 }
 
-func CreateOneBlockHolder(
-	indexer transactionindexing.ITransactionIndexer,
-) *OneBlockHolder {
+func CreateOneBlockHolder(indexer transactionindexing.ITransactionIndexer) *OneBlockHolder {
 	res := OneBlockHolder{
-		InChan:                   make(chan *JsonBlockEssential),
-		transactionIndexer:       indexer,
-		currentBlock:             nil,
-		latestBlockVisited:       -1,
-		latestTransactionVisited: -1,
+		InChan:             make(chan *Block),
+		transactionIndexer: indexer,
+		currentBlock:       nil,
+		currentBlockHeight: -1,
 	}
 	return &res
 }
 
-// Functions in jsonblock.OneBlockChain to implement chainreadinterface.IBlockTree as part of chainreadinterface.IBlockChain
+// Functions in intrinsicchain.OneBlockChain to implement chainreadinterface.IBlockTree as part of chainreadinterface.IBlockChain
 
 func (obh *OneBlockHolder) InvalidBlock() chainreadinterface.IBlockHandle {
 	bh := BlockHandle{}
@@ -46,13 +39,13 @@ func (obh *OneBlockHolder) InvalidBlock() chainreadinterface.IBlockHandle {
 }
 
 func (obh *OneBlockHolder) InvalidTrans() chainreadinterface.ITransHandle {
-	th := TransHandle{}
-	th.nthInBlock = -1
+	th := TransHandleHash{}
+	th.vOut = -1
 	return &th
 }
 
 func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
-	if obh.latestBlockVisited != -1 {
+	if obh.currentBlockHeight != -1 {
 		panic("OneBlockHolder: Can only visit Genesis block once")
 	}
 	fmt.Println("Attempting to receive genesis block...")
@@ -60,18 +53,29 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	fmt.Println("...Received genesis block")
 
 	// There's some processing to be done on the block, non-parallel
-	obh.PostJsonGatherTransHashes(obh.currentBlock)
-	PostJsonArrayIndicesIntoElements(obh.currentBlock)
-	obh.PostJsonUpdateTransReferences(obh.currentBlock)
-	PostJsonGatherNonEssentialInts(obh.currentBlock)
+	// ToDo Is There?
+	//obh.PostJsonGatherTransHashes(obh.currentBlock)
+	//PostJsonArrayIndicesIntoElements(obh.currentBlock)
+	//obh.PostJsonUpdateTransReferences(obh.currentBlock)
+	//PostJsonGatherNonEssentialInts(obh.currentBlock)
 
 	if obh.currentBlock == nil {
 		panic("OneBlockHolder: First block was nil")
 	}
-	if obh.currentBlock.J_height != 0 {
-		panic("OneBlockHolder: First block was not height zero")
+	// Sample four bytes of the genesis hash
+	if obh.currentBlock.BlockHash[0] != 0x6f {
+		panic("OneBlockHolder: First block was not Genesis block")
 	}
-	obh.latestBlockVisited = 0
+	if obh.currentBlock.BlockHash[0] != 0xe2 {
+		panic("OneBlockHolder: First block was not Genesis block")
+	}
+	if obh.currentBlock.BlockHash[0] != 0x8c {
+		panic("OneBlockHolder: First block was not Genesis block")
+	}
+	if obh.currentBlock.BlockHash[0] != 0x0a {
+		panic("OneBlockHolder: First block was not Genesis block")
+	}
+	obh.currentBlockHeight = 0
 	return obh.currentBlock
 }
 
@@ -93,7 +97,7 @@ func (obh *OneBlockHolder) BlockInterface(handle chainreadinterface.IBlockHandle
 	if !handle.HeightSpecified() {
 		panic("OneBlockHolder: only supports BlockInterface() by height")
 	}
-	if handle.Height() != obh.latestBlockVisited {
+	if handle.Height() != obh.currentBlockHeight {
 		panic("OneBlockHolder: block at this height not loaded")
 	}
 	return obh.currentBlock, nil
@@ -104,11 +108,11 @@ func (obh *OneBlockHolder) TransInterface(handle chainreadinterface.ITransHandle
 		return nil, errors.New("this function assumes indices path is specified in ITransHandle")
 	}
 	blockHeight, nthInBlock := handle.IndicesPath()
-	if blockHeight != obh.latestBlockVisited {
+	if blockHeight != obh.currentBlockHeight {
 		panic("TransInterface requested for different block")
 	}
 
-	trans := &obh.currentBlock.J_tx[nthInBlock]
+	trans := &obh.currentBlock.Transactions[nthInBlock]
 	return trans, nil
 }
 
@@ -117,11 +121,11 @@ func (obh *OneBlockHolder) TxiInterface(handle chainreadinterface.ITxiHandle) (c
 		return nil, errors.New("this function assumes indices path is specified in ITxiHandle")
 	}
 	blockHeight, nthInBlock, vIndex := handle.IndicesPath()
-	if blockHeight != obh.latestBlockVisited {
+	if blockHeight != obh.currentBlockHeight {
 		panic("TxiInterface requested for different block")
 	}
 
-	txi := &obh.currentBlock.J_tx[nthInBlock].J_vin[vIndex]
+	txi := &obh.currentBlock.Transactions[nthInBlock].Txis[vIndex]
 	return txi, nil
 }
 
@@ -130,27 +134,27 @@ func (obh *OneBlockHolder) TxoInterface(handle chainreadinterface.ITxoHandle) (c
 		return nil, errors.New("this function assumes indices path is specified in ITxiHandle")
 	}
 	blockHeight, nthInBlock, vIndex := handle.IndicesPath()
-	if blockHeight != obh.latestBlockVisited {
+	if blockHeight != obh.currentBlockHeight {
 		panic("TxoInterface requested for different block")
 	}
 
-	txo := &obh.currentBlock.J_tx[nthInBlock].J_vout[vIndex]
+	txo := &obh.currentBlock.Transactions[nthInBlock].Txos[vIndex]
 	return txo, nil
 }
 
 func (obh *OneBlockHolder) AddressInterface(handle chainreadinterface.IAddressHandle) (chainreadinterface.IAddress, error) {
-	// jsonblock.AddressHandle sneakily supports chainreadinterface.IAddress with limited functionality, so
+	// intrinsicchain.AddressHandle sneakily supports chainreadinterface.IAddress with limited functionality, so
 	// we use one of those
 	if handle.HashSpecified() {
 		result := AddressHandle{}
-		result.hash = handle.Hash()
+		result.puddingHash3 = handle.Hash()
 		return &result, nil
 	} else {
-		return nil, errors.New("jsonblock.OneBlockChain.AddressInterface(): This code depends on the address handle specifying a hash")
+		return nil, errors.New("intrinsicchain.OneBlockChain.AddressInterface(): This code depends on the address handle specifying a hash")
 	}
 }
 
-// Functions in jsonblock.OneBlockChain to implement chainreadinterface.IBlockChain
+// Functions in intrinsicchain.OneBlockChain to implement chainreadinterface.IBlockChain
 
 func (obh *OneBlockHolder) LatestBlock() (chainreadinterface.IBlockHandle, error) {
 	panic("OneBlockHolder: LatestBlock() not supported")
@@ -158,16 +162,21 @@ func (obh *OneBlockHolder) LatestBlock() (chainreadinterface.IBlockHandle, error
 
 func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainreadinterface.IBlockHandle, error) {
 	if bh.HeightSpecified() {
-		if bh.Height() == obh.latestBlockVisited {
+		if bh.Height() == obh.currentBlockHeight {
+			originalBlockHash := obh.currentBlock.BlockHash
 			obh.currentBlock = <-obh.InChan
+			if obh.currentBlock.PrevHash != originalBlockHash {
+				panic("blocks supplied out of sequence")
+			}
 
 			// There's some processing to be done on the block, non-parallel
-			obh.PostJsonGatherTransHashes(obh.currentBlock)
-			PostJsonArrayIndicesIntoElements(obh.currentBlock)
-			obh.PostJsonUpdateTransReferences(obh.currentBlock)
-			PostJsonGatherNonEssentialInts(obh.currentBlock)
+			// ToDo is there?
+			//obh.PostJsonGatherTransHashes(obh.currentBlock)
+			//PostJsonArrayIndicesIntoElements(obh.currentBlock)
+			//obh.PostJsonUpdateTransReferences(obh.currentBlock)
+			//PostJsonGatherNonEssentialInts(obh.currentBlock)
 
-			obh.latestBlockVisited = int64(obh.currentBlock.J_height)
+			obh.currentBlockHeight++
 			return obh.currentBlock, nil
 		} else {
 			panic("Block out of sequence")
@@ -185,6 +194,8 @@ func (obh *OneBlockHolder) NextTransaction(transHandle chainreadinterface.ITrans
 	panic("OneBlockHolder: NextTransaction() not supported (but probably could be)")
 }
 
+// ToDo Hmm...
+/*
 func (obh *OneBlockHolder) PostJsonGatherTransHashes(block *JsonBlockEssential) error {
 	blockHeight := int64(block.J_height)
 	firstTransHeight := obh.latestTransactionVisited + 1
@@ -240,4 +251,4 @@ func (obh *OneBlockHolder) PostJsonUpdateTransReferences(block *JsonBlockEssenti
 		}
 	}
 	return nil
-}
+}*/

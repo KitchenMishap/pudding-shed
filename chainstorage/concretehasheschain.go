@@ -3,7 +3,7 @@ package chainstorage
 import (
 	"fmt"
 
-	"github.com/KitchenMishap/pudding-shed/corereaderbin"
+	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -58,13 +58,13 @@ func (chc *concreteHashesChain) AppendHashes(block *jsonblock.JsonBlockHashes) e
 	return nil
 }
 
-func (chc *concreteHashesChain) AppendHashesBinary(block *corereaderbin.BlockBinary) error {
+func (chc *concreteHashesChain) AppendHashesIntrinsic(block *intrinsicobjects.Block, blockHeight int64) error {
 	// === TestPoint ===
-	if testpoints.TestPointBlockEnable && block.Height == testpoints.TestPointBlock {
+	if testpoints.TestPointBlockEnable && blockHeight == testpoints.TestPointBlock {
 		fmt.Println("TESTPOINT: concreteHashesChain.AppendHashesBinary(block height ", testpoints.TestPointBlock, ")")
 	}
 
-	blkHash := block.Hash
+	blkHash := block.BlockHash
 	_, err := chc.blkHashList.AppendHash(blkHash)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func (chc *concreteHashesChain) AppendHashesBinary(block *corereaderbin.BlockBin
 	for t := 0; t < nTrans; t++ {
 		// Store transaction hash
 		trans := block.Transactions[t]
-		transHash := trans.Txid
+		transHash := trans.TxId
 		_, err = chc.trnHashList.AppendHash(transHash)
 		if err != nil {
 			return err
@@ -88,7 +88,7 @@ func (chc *concreteHashesChain) AppendHashesBinary(block *corereaderbin.BlockBin
 		for o := 0; o < nTxo; o++ {
 			// Store address hash of txo
 			txo := trans.Txos[o]
-			addrHash := txo.PuddingHash3
+			addrHash := txo.AddressPuddingHash3
 			_, err = chc.adrHashList.AppendHash(addrHash)
 			if err != nil {
 				return err
