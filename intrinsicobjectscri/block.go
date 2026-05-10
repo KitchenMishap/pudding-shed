@@ -12,6 +12,7 @@ import (
 type Block struct {
 	intrinsic    *intrinsicobjects.Block
 	transactions []Transaction
+	txidMap      map[indexedhashes.Sha256]int64
 	neisMap      map[string]int64 // Non Essential Ints
 }
 
@@ -19,9 +20,12 @@ func NewBlock(intrinsic *intrinsicobjects.Block) *Block {
 	result := Block{}
 	result.intrinsic = intrinsic
 
+	result.txidMap = make(map[indexedhashes.Sha256]int64)
+
 	result.transactions = make([]Transaction, len(intrinsic.Transactions))
 	for i := range intrinsic.Transactions {
 		result.transactions[i] = *NewTransaction(&intrinsic.Transactions[i])
+		result.txidMap[intrinsic.Transactions[i].TxId] = int64(i)
 	}
 
 	result.neisMap = make(map[string]int64)
