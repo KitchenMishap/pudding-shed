@@ -25,7 +25,7 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 	if bin[byteIndex] == 0x00 && bin[byteIndex+1] != 0x00 {
 		targetTrans.IsSegWit = true
 		if bin[byteIndex+1] != 0x01 { // 0x01 is the only allowable flag at time of writing (2026)
-			fmt.Errorf("unknown SegWit flag: 0x%02x", bin[byteIndex+1])
+			fmt.Printf("unknown SegWit flag: 0x%02x", bin[byteIndex+1])
 		}
 		byteIndex += 2 // (weirdly!) only increment by two if they're 0,1
 	}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -50,48 +49,6 @@ func (chc *concreteHashesChain) AppendHashes(block *jsonblock.JsonBlockHashes) e
 			// Store address hash of txo
 			txo := trans.J_vout[o]
 			addrHash := txo.AddrHash()
-			_, err = chc.adrHashList.AppendHash(addrHash)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// ToDo Deprecate this fn
-
-func (chc *concreteHashesChain) AppendHashesIntrinsic(block *intrinsicobjects.Block, blockHeight int64) error {
-	// === TestPoint ===
-	if testpoints.TestPointBlockEnable && blockHeight == testpoints.TestPointBlock {
-		fmt.Println("TESTPOINT: concreteHashesChain.AppendHashesBinary(block height ", testpoints.TestPointBlock, ")")
-	}
-
-	blkHash := block.BlockHash
-	_, err := chc.blkHashList.AppendHash(blkHash)
-	if err != nil {
-		return err
-	}
-
-	nTrans := len(block.Transactions)
-	if nTrans == 0 {
-		panic("this code assumes at least one transaction per block")
-		// Otherwise, not every entry in blkFirstTrans will be written
-	}
-	for t := 0; t < nTrans; t++ {
-		// Store transaction hash
-		trans := block.Transactions[t]
-		transHash := trans.TxId
-		_, err = chc.trnHashList.AppendHash(transHash)
-		if err != nil {
-			return err
-		}
-
-		nTxo := len(trans.Txos)
-		for o := 0; o < nTxo; o++ {
-			// Store address hash of txo
-			txo := trans.Txos[o]
-			addrHash := txo.AddressPuddingHash3
 			_, err = chc.adrHashList.AppendHash(addrHash)
 			if err != nil {
 				return err
