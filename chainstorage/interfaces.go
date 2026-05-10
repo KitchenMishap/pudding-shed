@@ -12,6 +12,7 @@ import (
 type IAppendableHashesChain interface {
 	AppendHashes(hashes *jsonblock.JsonBlockHashes) error
 	AppendHashesIntrinsic(block *intrinsicobjects.Block, blockHeight int64) error
+	AppendHashesCri(chain chainreadinterface.IBlockChain, hBlock chainreadinterface.IBlockHandle, blockHeight int64) error
 	Close()
 	Sync() error
 	CountHashes() (int64, int64, int64, error)

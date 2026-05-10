@@ -23,11 +23,15 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction) *Transaction {
 	result.txis = make([]Txi, len(intrinsic.Txis))
 	for i := range intrinsic.Txis {
 		result.txis[i].intrinsic = &intrinsic.Txis[i]
+		result.txis[i].parentTransaction = &result
+		result.txis[i].parentIndex = int64(i)
 	}
 
 	result.txos = make([]Txo, len(intrinsic.Txos))
 	for i := range intrinsic.Txos {
 		result.txos[i].intrinsic = &intrinsic.Txos[i]
+		result.txos[i].parentTransaction = &result
+		result.txos[i].parentIndex = int64(i)
 	}
 
 	result.neisMap = make(map[string]int64)
@@ -37,11 +41,15 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction) *Transaction {
 }
 
 type Txi struct {
-	intrinsic *intrinsicobjects.Txi
+	intrinsic         *intrinsicobjects.Txi
+	parentTransaction *Transaction
+	parentIndex       int64
 }
 
 type Txo struct {
-	intrinsic *intrinsicobjects.Txo
+	intrinsic         *intrinsicobjects.Txo
+	parentTransaction *Transaction
+	parentIndex       int64
 }
 
 // intrinsicobjectscri.Transaction implements chainreadinterface.ITransaction
@@ -85,14 +93,19 @@ func (txi *Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
 // intrinsicobjectscri.Txi also implements chainreadinterface.ITxiHandle
 var _ chainreadinterface.ITxiHandle = (*Txi)(nil) // Check that implements
 
-func (txi *Txi) TxiHeight() int64                             { return -1 }
-func (txi *Txi) TxiHeightSpecified() bool                     { return false }
-func (txi *Txi) IsInvalid() bool                              { return false }
-func (txi *Txi) IndicesPath() (int64, int64, int64)           { return -1, -1, -1 }
-func (txi *Txi) IndicesPathSpecified() bool                   { return false }
-func (txi *Txi) ParentTrans() chainreadinterface.ITransHandle { return nil }
-func (txi *Txi) ParentIndex() int64                           { return -1 }
-func (txi *Txi) ParentSpecified() bool                        { return false }
+func (txi *Txi) TxiHeight() int64                   { return -1 }
+func (txi *Txi) TxiHeightSpecified() bool           { return false }
+func (txi *Txi) IsInvalid() bool                    { return false }
+func (txi *Txi) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txi *Txi) IndicesPathSpecified() bool         { return false }
+func (txi *Txi) ParentTrans() chainreadinterface.ITransHandle {
+	result := TransHandle{}
+	result.transactionId = txi.parentTransaction.intrinsic.TxId
+	result.isInvalid = false
+	return &result
+}
+func (txi *Txi) ParentIndex() int64    { return txi.parentIndex }
+func (txi *Txi) ParentSpecified() bool { return true }
 
 // intrinsicobjectscri.Txo implements chainreadinterface.ITxo
 var _ chainreadinterface.ITxo = (*Txo)(nil) // Check that implements
@@ -107,11 +120,16 @@ func (txo *Txo) Address() (chainreadinterface.IAddressHandle, error) {
 // intrinsicobjects.Txo also implements chainreadinterface.ITxoHandle
 var _ chainreadinterface.ITxoHandle = (*Txo)(nil) // Check that implements
 
-func (txo *Txo) TxoHeight() int64                             { return -1 }
-func (txo *Txo) TxoHeightSpecified() bool                     { return false }
-func (txo *Txo) IsInvalid() bool                              { return false }
-func (txo *Txo) IndicesPath() (int64, int64, int64)           { return -1, -1, -1 }
-func (txo *Txo) IndicesPathSpecified() bool                   { return false }
-func (txo *Txo) ParentTrans() chainreadinterface.ITransHandle { return nil }
-func (txo *Txo) ParentIndex() int64                           { return -1 }
-func (txo *Txo) ParentSpecified() bool                        { return false }
+func (txo *Txo) TxoHeight() int64                   { return -1 }
+func (txo *Txo) TxoHeightSpecified() bool           { return false }
+func (txo *Txo) IsInvalid() bool                    { return false }
+func (txo *Txo) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (txo *Txo) IndicesPathSpecified() bool         { return false }
+func (txo *Txo) ParentTrans() chainreadinterface.ITransHandle {
+	result := TransHandle{}
+	result.transactionId = txo.parentTransaction.intrinsic.TxId
+	result.isInvalid = false
+	return &result
+}
+func (txo *Txo) ParentIndex() int64    { return txo.parentIndex }
+func (txo *Txo) ParentSpecified() bool { return true }

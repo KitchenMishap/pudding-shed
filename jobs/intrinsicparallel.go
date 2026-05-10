@@ -7,9 +7,10 @@ import (
 
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/concurrency"
+	"github.com/KitchenMishap/pudding-shed/corereader2"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
-	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
+	"github.com/KitchenMishap/pudding-shed/intrinsicobjectscri"
 )
 
 func RunIntrinsic(path string, years int, blocks int64, gbMem int, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
@@ -119,15 +120,15 @@ func PhaseOneParallelIntrinsic(path string, blocks int64) error {
 	orderedBlockHashesChannel := make(chan indexedhashes.Sha256)
 	fmt.Println("Starting to stream block hashes")
 	go func() {
-		err := intrinsicobjects.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
+		err := corereader2.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
 		if err != nil {
 			panic(err) // ToDo
 		}
 	}()
 
 	// These are used further downstream, but we need seq back here in order to ask if it's bloated
-	orderedNumberedBlockChannel := make(chan *intrinsicobjects.HeightNumberedBlock)
-	seq := concurrency.NewSequencerContainer[*intrinsicobjects.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
+	orderedNumberedBlockChannel := make(chan *corereader2.HeightNumberedBlock)
+	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
 
 	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
 	fmt.Println("Starting to pass hashes to GetBlocksBinary")
@@ -141,15 +142,40 @@ func PhaseOneParallelIntrinsic(path string, blocks int64) error {
 	}()
 
 	fmt.Println("Starting get and parse blocks")
-	intrinsicobjects.GetAndParseBlocks(nobbledBlockHashesChannel, seq.InChan, 10) // ToDo Threads low for now
+	corereader2.GetAndParseBlocksBinary(nobbledBlockHashesChannel, seq.InChan, 10) // ToDo Threads low for now
+
+	/*
+		fmt.Println("Starting output")
+		for numberedBlock := range orderedNumberedBlockChannel {
+			if numberedBlock.BlockHeight%10_000 == 0 {
+				fmt.Printf("Block %d parsed\n", numberedBlock.BlockHeight)
+			}
+			err = hc.AppendHashesIntrinsic(&numberedBlock.Block, numberedBlock.BlockHeight)
+		}*/
 
 	fmt.Println("Starting output")
-	for numberedBlock := range orderedNumberedBlockChannel {
-		if numberedBlock.BlockHeight%10_000 == 0 {
-			fmt.Printf("Block %d parsed\n", numberedBlock.BlockHeight)
+	chain := intrinsicobjectscri.CreateOneBlockHolder()
+	go func() {
+		for numberedBlock := range orderedNumberedBlockChannel {
+			chain.InChan <- &numberedBlock.Block
 		}
-		err = hc.AppendHashesIntrinsic(&numberedBlock.Block, numberedBlock.BlockHeight)
+		close(chain.InChan)
+	}()
+
+	blockHeight := int64(0)
+	hBlock := chain.GenesisBlock()
+	for !hBlock.IsInvalid() {
+		err = hc.AppendHashesCri(chain, hBlock, blockHeight)
+		if err != nil {
+			return err
+		}
+		hBlock, err = chain.NextBlock(hBlock)
+		if err != nil {
+			return err
+		}
+		blockHeight++
 	}
+
 	hc.Close()
 	return nil
 }

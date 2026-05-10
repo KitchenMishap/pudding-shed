@@ -39,7 +39,7 @@ func (obh *OneBlockHolder) InvalidBlock() chainreadinterface.IBlockHandle {
 
 func (obh *OneBlockHolder) InvalidTrans() chainreadinterface.ITransHandle {
 	th := TransHandle{}
-	th.vOut = -1
+	th.isInvalid = true
 	return &th
 }
 
@@ -90,7 +90,15 @@ func (obh *OneBlockHolder) BlockInterface(handle chainreadinterface.IBlockHandle
 	if !handle.HashSpecified() {
 		panic("OneBlockHolder: only supports BlockInterface() by hash")
 	}
-	if handle.Hash() != obh.currentBlock.Hash() {
+	handleHash, err := handle.Hash()
+	if err != nil {
+		return nil, err
+	}
+	currentHash, err := obh.currentBlock.Hash()
+	if err != nil {
+		return nil, err
+	}
+	if handleHash != currentHash {
 		panic("OneBlockHolder: block with this hash not loaded")
 	}
 	return obh.currentBlock, nil
@@ -133,7 +141,7 @@ func (obh *OneBlockHolder) TxiInterface(handle chainreadinterface.ITxiHandle) (c
 
 func (obh *OneBlockHolder) TxoInterface(handle chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
 	if !handle.ParentSpecified() {
-		return nil, errors.New("this function assumes Parent is specified in ITxoHandle")
+		panic("this function assumes Parent is specified in ITxoHandle")
 	}
 	parentHandle := handle.ParentTrans()
 	transHash, err := parentHandle.Hash()
@@ -172,7 +180,13 @@ func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainr
 		}
 		if hash == obh.currentBlock.intrinsic.BlockHash {
 			originalBlockHash := hash
-			obh.currentBlock = NewBlock(<-obh.InChan) // Convert incoming intrinsicobjects.Block to intrinisicobjectscri.Block
+			newBlock := <-obh.InChan
+			if newBlock == nil {
+				// No more blocks
+				return obh.InvalidBlock(), nil
+			}
+			// Convert incoming intrinsicobjects.Block to intrinisicobjectscri.Block
+			obh.currentBlock = NewBlock(newBlock)
 			if obh.currentBlock.intrinsic.PrevHash != originalBlockHash {
 				panic("blocks supplied out of sequence")
 			}

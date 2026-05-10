@@ -5,22 +5,6 @@ import (
 	"encoding/binary"
 )
 
-/*
-type BlockBinary struct {
-	Height     int64
-	Hash       [32]byte
-	HashString string
-	Binary     []byte
-	Data       intrinsicobjects.Block
-}
-
-// Used for concurrency.SequencerContainer
-func (bb BlockBinary) SequenceNumber() int64 { return bb.Height }
-
-func (bb *BlockBinary) Parse() {
-	ParseBinaryBlock(bb.Binary, &bb.Data)
-}*/
-
 func ParseBinaryBlock(bin []byte, targetBlock *Block) {
 	//-------
 	// Header

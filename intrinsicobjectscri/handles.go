@@ -23,7 +23,7 @@ func (bh *BlockHandle) IsInvalid() bool                     { return bh.isInvali
 
 type TransHandle struct {
 	transactionId indexedhashes.Sha256
-	vOut          int64 // -1 indicates invalid handle
+	isInvalid     bool
 }
 
 // intrinsicchaincri.TransHandle implements chainreadinterface.ITransHandle
@@ -36,7 +36,7 @@ func (th *TransHandle) HeightSpecified() bool               { return false }
 func (th *TransHandle) HashSpecified() bool                 { return true }
 func (th *TransHandle) IndicesPathSpecified() bool          { return false }
 func (th *TransHandle) IsTransHandle()                      {}
-func (th *TransHandle) IsInvalid() bool                     { return th.vOut == -1 }
+func (th *TransHandle) IsInvalid() bool                     { return th.isInvalid }
 
 type TxiHandle struct {
 	txId   indexedhashes.Sha256
@@ -66,13 +66,17 @@ type TxoHandle struct {
 // intrinsicobjectscri.TxoHandle implements chainreadinterface.ITxoHandle
 var _ chainreadinterface.ITxoHandle = (*TxoHandle)(nil) // Check that implements
 
-func (htxo *TxoHandle) ParentTrans() chainreadinterface.ITransHandle { return nil }
-func (htxo *TxoHandle) ParentIndex() int64                           { return -1 }
-func (htxo *TxoHandle) ParentSpecified() bool                        { return false }
-func (htxo *TxoHandle) TxoHeight() int64                             { return -1 }
-func (htxo *TxoHandle) IndicesPath() (int64, int64, int64)           { return -1, -1, -1 }
-func (htxo *TxoHandle) TxoHeightSpecified() bool                     { return false }
-func (htxo *TxoHandle) IndicesPathSpecified() bool                   { return false }
+func (th *TxoHandle) ParentTrans() chainreadinterface.ITransHandle {
+	result := TransHandle{}
+	result.transactionId = th.txId
+	return &result
+}
+func (th *TxoHandle) ParentIndex() int64                 { return th.vIndex }
+func (th *TxoHandle) ParentSpecified() bool              { return true }
+func (th *TxoHandle) TxoHeight() int64                   { return -1 }
+func (th *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
+func (th *TxoHandle) TxoHeightSpecified() bool           { return false }
+func (th *TxoHandle) IndicesPathSpecified() bool         { return false }
 
 type AddressHandle struct {
 	puddingHash3 indexedhashes.Sha256
