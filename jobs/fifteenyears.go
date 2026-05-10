@@ -2,15 +2,16 @@ package jobs
 
 import (
 	"fmt"
+	"os"
+	"runtime"
+	"runtime/debug"
+	"time"
+
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/corereader"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
-	"os"
-	"runtime"
-	"runtime/debug"
-	"time"
 )
 
 const parallel = true
@@ -19,15 +20,6 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 	path string, gbMem int, threads int) error {
 
 	readerThreads := threads
-
-	blocksEachYear := []int64{0, 32879, 100888, 160463, 215006, // Block heights at year 0..4
-		278460, 337312, 391569, 446472, 502401, // years 5..9
-		556874, 611138, 664332, 717044, 770225, // years 10..14
-		824204, 877669, 888888, 970000, 1020000} // years 16..19 are Extrapolated estimates
-	transactionsEachYear := []int64{0, 33100, 219927, 2134383, 10675169, // Transaction counts at year 0..4
-		30358181, 55676798, 101532619, 184473419, 288705840, // years 5..9
-		369960799, 489809099, 602400644, 699932865, 793116734, // years 10..14
-		947356729, 1139137995, 1200000000, 1300000000, 1400000000} // years 15..19 (Estimates from 16)
 
 	// Choose a number of blocks
 	lastBlock := blocksEachYear[years] - 1

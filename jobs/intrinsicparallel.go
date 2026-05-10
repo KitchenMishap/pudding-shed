@@ -13,8 +13,10 @@ import (
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjectscri"
 )
 
-func RunIntrinsic(path string, years int, blocks int64, gbMem int, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
+func RunIntrinsic(path string, years int, gbMem int, doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
 	dateFormat := "Mon Jan 2 15:04:05"
+
+	blocks := blocksEachYear[years]
 
 	// ===============================
 	// FIRST we just gather the hashes

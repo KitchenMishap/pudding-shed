@@ -32,6 +32,7 @@ func TestTwoYearsPrimaries(t *testing.T) {
 	}
 }
 
+// TestOneYearFileSizes was written for seeing whether NonEssentialInts were getting truncated (they were, now fixed)
 func TestOneYearFileSizes(t *testing.T) {
 	var sDir = "E:\\Data\\OneYearTest"
 	var nGb = 16
