@@ -26,7 +26,7 @@ func TestIndexHashes(t *testing.T) {
 
 func TestTwoYearsPrimaries(t *testing.T) {
 	err := SeveralYearsPrimaries(2, "delegated",
-		true, true, true, "E:\\Data\\TwoYearsJson", 64, 10)
+		true, true, true, "E:\\Data\\TwoYearsJson", 64, 30)
 	if err != nil {
 		t.Error(err)
 	}
@@ -71,12 +71,16 @@ func TestMemoryLeak(t *testing.T) {
 
 func TestMemLeak2(t *testing.T) {
 	fmt.Println("Removing files from any previous run")
-	os.RemoveAll("F:\\Data\\TestMemLeak")
+	err := os.RemoveAll("E:\\Data\\TestMemLeak")
+	if err != nil {
+		t.Error(err)
+	}
 
 	fmt.Println("Creating and appending files")
 	for a := 0; a < 100; a++ {
+		fmt.Printf("%d\n", a)
 		for b := 0; b < 100; b++ {
-			dirPath := "F:\\Data\\TestMemLeak\\"
+			dirPath := "E:\\Data\\TestMemLeak\\"
 			dirPath += strconv.Itoa(a) + "\\"
 			dirPath += strconv.Itoa(b)
 			err := os.MkdirAll(dirPath, 0777)

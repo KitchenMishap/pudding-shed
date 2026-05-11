@@ -3,6 +3,7 @@ package jsonblock
 import (
 	"encoding/hex"
 	"errors"
+	"math"
 	"strings"
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
@@ -198,7 +199,7 @@ func PostJsonCalculateSatoshis(block *JsonBlockEssential) {
 		transPtr := &block.J_tx[nthTrans]
 		for nthTxo := range transPtr.J_vout {
 			txoPtr := &transPtr.J_vout[nthTxo]
-			txoPtr.satoshis = int64(satoshisPerBitcoin * txoPtr.J_value)
+			txoPtr.satoshis = int64(math.Round(satoshisPerBitcoin * txoPtr.J_value))
 		}
 	}
 }
