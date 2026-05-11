@@ -2,7 +2,9 @@ package jobs
 
 import (
 	"fmt"
+	"math"
 	"os"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -77,6 +79,10 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 		if err != nil {
 			return err
 		}
+
+		previousPercent := debug.SetGCPercent(-1) // Turn GC OFF for this bit
+		previousLimit := debug.SetMemoryLimit(math.MaxInt64)
+
 		err = bpl.IndexTheHashes()
 		if err != nil {
 			return err
@@ -89,6 +95,9 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 		if err != nil {
 			return err
 		}
+
+		previousPercent = debug.SetGCPercent(previousPercent)
+		previousLimit = debug.SetMemoryLimit(previousLimit)
 
 		timeTaken = time.Now().Sub(phaseStart)
 		mins = timeTaken.Minutes()
