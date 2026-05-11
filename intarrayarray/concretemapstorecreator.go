@@ -1,9 +1,10 @@
 package intarrayarray
 
 import (
-	"github.com/KitchenMishap/pudding-shed/numberedfolders"
 	"math"
 	"os"
+
+	"github.com/KitchenMishap/pudding-shed/numberedfolders"
 )
 
 type ConcreteMapStoreCreator struct {
@@ -32,8 +33,14 @@ func (c *ConcreteMapStoreCreator) MapExists() bool {
 
 func (c *ConcreteMapStoreCreator) CreateMap() error {
 	dir := c.folder + string(os.PathSeparator) + c.name
-	os.RemoveAll(dir)
-	os.MkdirAll(dir, os.ModePerm)
+	err := os.RemoveAll(dir)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -45,7 +52,10 @@ func (c *ConcreteMapStoreCreator) OpenMap() (IntArrayMapStoreReadWrite, error) {
 		result.arrayCountPerFile = int64(math.Pow10(int(c.digitsPerFile)))
 		result.elementByteSize = c.elementByteSize
 		result.numberedFolders = numberedfolders.NewNumberedFolders(int(c.digitsPerFile), int(c.digitsPerFolder))
-		result.cacheElementCountLimit = 8000000000 / c.elementByteSize // 8GB
+		result.cacheElementCountLimit = 8000000000 / c.elementByteSize        // 8GB	ToDo Sounds like an awful lot?
+		result.mapFolderFilenameToArrayArray = make(map[string]IntArrayArray) // Not sure how it survived
+		result.mapFolderFilenameToLastAccess = make(map[string]int64)         // without these intialized before?
+		result.mapFolderFilenameToFolderPath = make(map[string]string)
 		return &result, nil
 
 	} else {

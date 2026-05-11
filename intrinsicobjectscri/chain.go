@@ -6,6 +6,7 @@ import (
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
+	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
 // OneBlockHolder provides an IBlockchain restricted to accessing blocks in sequence.
@@ -17,13 +18,22 @@ type OneBlockHolder struct {
 	InChan             chan *intrinsicobjects.Block
 	currentBlock       *Block // intrinsicobjects.Block are converted to intrinsicobjectscri.Block on receipt
 	currentBlockHeight int64  // inferred from block sequence injected
+
+	// We'll sometimes need the following.
+	// We send it indexing info as we discover it.
+	// We retrieve that info as we need it.
+	transactionIndexer       transactionindexing.ITransactionIndexer
+	latestTransactionVisited int64
 }
 
-func CreateOneBlockHolder() *OneBlockHolder {
+func CreateOneBlockHolder(transactionIndexer transactionindexing.ITransactionIndexer) *OneBlockHolder {
 	res := OneBlockHolder{
 		InChan:             make(chan *intrinsicobjects.Block),
 		currentBlock:       nil,
 		currentBlockHeight: -1,
+
+		transactionIndexer:       transactionIndexer,
+		latestTransactionVisited: -1,
 	}
 	return &res
 }
@@ -49,7 +59,16 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	}
 	fmt.Println("Attempting to receive genesis block...")
 	// Convert an intrinsicobjects.Block to an intrinsicobjectscri.Block on receipt
-	obh.currentBlock = NewBlock(<-obh.InChan)
+	var err error
+	obh.currentBlock, err = NewBlock(<-obh.InChan, 0)
+	if err != nil {
+		panic(err)
+	} // ToDo
+	obh.currentBlockHeight = 0
+	err = obh.PostIntrinsicGatherTransHashes(obh.currentBlock)
+	if err != nil {
+		panic(err)
+	} // ToDo
 	fmt.Println("...Received genesis block")
 
 	if obh.currentBlock == nil {
@@ -68,7 +87,6 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	if obh.currentBlock.intrinsic.BlockHash[3] != 0x0a {
 		panic("OneBlockHolder: First block was not Genesis block")
 	}
-	obh.currentBlockHeight = 0
 	return obh.currentBlock
 }
 
@@ -117,7 +135,7 @@ func (obh *OneBlockHolder) TransInterface(handle chainreadinterface.ITransHandle
 		return nil, errors.New("transaction not found in current block based on hash")
 	}
 
-	trans := &obh.currentBlock.transactions[index]
+	trans := obh.currentBlock.transactions[index]
 	return trans, nil
 }
 
@@ -136,7 +154,7 @@ func (obh *OneBlockHolder) TxiInterface(handle chainreadinterface.ITxiHandle) (c
 	if !ok {
 		return nil, errors.New("transaction not found in current block based on hash")
 	}
-	return &obh.currentBlock.transactions[transIndex].txis[handle.ParentIndex()], nil
+	return &obh.currentBlock.transactions[transIndex].puddingShedTxis[handle.ParentIndex()], nil
 }
 
 func (obh *OneBlockHolder) TxoInterface(handle chainreadinterface.ITxoHandle) (chainreadinterface.ITxo, error) {
@@ -186,11 +204,18 @@ func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainr
 				return obh.InvalidBlock(), nil
 			}
 			// Convert incoming intrinsicobjects.Block to intrinisicobjectscri.Block
-			obh.currentBlock = NewBlock(newBlock)
+			obh.currentBlockHeight++
+			obh.currentBlock, err = NewBlock(newBlock, obh.currentBlockHeight)
+			if err != nil {
+				return nil, err
+			}
 			if obh.currentBlock.intrinsic.PrevHash != originalBlockHash {
 				panic("blocks supplied out of sequence")
 			}
-			obh.currentBlockHeight++
+			err = obh.PostIntrinsicGatherTransHashes(obh.currentBlock)
+			if err != nil {
+				return nil, err
+			}
 			return obh.currentBlock, nil
 		}
 		panic("Wrong block seems to be loaded")
@@ -204,4 +229,34 @@ func (obh *OneBlockHolder) LatestTransaction() (chainreadinterface.ITransHandle,
 
 func (obh *OneBlockHolder) NextTransaction(_ chainreadinterface.ITransHandle) (chainreadinterface.ITransHandle, error) {
 	panic("OneBlockHolder: NextTransaction() not supported (but probably could be)")
+}
+
+func (obh *OneBlockHolder) PostIntrinsicGatherTransHashes(block *Block) error {
+	// (Only needs doing if we have a transaction indexer)
+	if obh.transactionIndexer == nil {
+		return nil
+	}
+	// Some things that need doing for new blocks encountered, after the intrinsic parsing is done,
+	// and in the context of a growing chain of blocks
+	blockHeight := int64(block.blockHeight)
+	firstTransHeight := obh.latestTransactionVisited + 1
+	err := obh.transactionIndexer.StoreBlockHeightToFirstTrans(blockHeight, firstTransHeight)
+	if err != nil {
+		return err
+	}
+	transHeight := obh.latestTransactionVisited
+	for nthTrans := range block.transactions {
+		transHeight++
+		err = obh.transactionIndexer.StoreTransHeightToParentBlock(transHeight, blockHeight)
+		if err != nil {
+			return err
+		}
+		transPtr := &(block.transactions[nthTrans])
+		err = obh.transactionIndexer.StoreTransHashToHeight(&((*transPtr).intrinsic.TxId), transHeight)
+		if err != nil {
+			return err
+		}
+	}
+	obh.latestTransactionVisited = transHeight
+	return nil
 }

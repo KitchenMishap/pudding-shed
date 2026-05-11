@@ -139,13 +139,16 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 			return err
 		}
 		transNum, err := cac.appendTransactionFrame(blockChain, blkNum, hTrans)
+		if err != nil {
+			return err
+		}
 		if t == 0 {
+			if transNum < PrevTrans {
+				panic("Trans num going backwards!")
+			}
 			// We will need this soon, as duplicate transaction hashes
 			// in blocks 91812 and 91842 mean we can't look up by hash!
 			firstTransOfBlock = transNum
-		}
-		if err != nil {
-			return err
 		}
 		if hTrans.HeightSpecified() && hTrans.Height() != transNum {
 			panic("cannot append a transaction out of sequence")
@@ -168,6 +171,11 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 		// Otherwise, not every entry in blkFirstTrans will be written
 	}
 	for t := int64(0); t < nTrans; t++ {
+		if t == 0 && (firstTransOfBlock == 142726 || firstTransOfBlock == 142783) {
+			// These transactions have identical txid!
+			abc := 123 // Useful breakpoint here if things are going awry...
+			abc++
+		}
 		hTrans, err := block.NthTransaction(t)
 		if err != nil {
 			return err
@@ -183,6 +191,13 @@ func (cac *concreteAppendableChain) AppendBlock(blockChain chainreadinterface.IB
 
 func (cac *concreteAppendableChain) appendTransactionFrame(blockChain chainreadinterface.IBlockChain,
 	blkNum int64, hTrans chainreadinterface.ITransHandle) (int64, error) {
+
+	if blkNum == 91842 {
+		// This block contains a txid that is repeated in the blockchain!
+		abc := 123 // Useful breakpoint here if things are going awry...
+		abc++
+	}
+
 	trans, err := blockChain.TransInterface(hTrans)
 	if err != nil {
 		return -1, err
@@ -585,7 +600,7 @@ func (cac *concreteAppendableChain) GetAsDelegatedTransactionIndexer() transacti
 }
 
 // Functions to implement concreteAppendableChain as an IDelegatedTrasactionIndexing
-func (cac *concreteAppendableChain) StoreTransHashToHeight(sha256 *indexedhashes.Sha256, transHeight int64) error {
+func (cac *concreteAppendableChain) StoreTransHashToHeight(_ *indexedhashes.Sha256, _ int64) error {
 	// All hashes are now presumed already stored and indexed. Nothing to do.
 	return nil
 }
@@ -601,6 +616,9 @@ func (cac *concreteAppendableChain) RetrieveTransHashToHeight(sha256 *indexedhas
 	height, err := cac.trnHashes.IndexOfHash(sha256)
 	if err != nil {
 		fmt.Println("Error when: RetrieveTransHashToHeight(hash)")
+	}
+	if height == 142726 {
+		fmt.Println("Warning! RetrieveTransHashToHeight() being called for duplicate hash in chain")
 	}
 	return height, err
 }

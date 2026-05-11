@@ -10,21 +10,36 @@ import (
 // implement chainreadinterface Interfaces
 
 type Transaction struct {
-	intrinsic *intrinsicobjects.Transaction
-	txis      []Txi
-	txos      []Txo
-	neisMap   map[string]int64 // Non Essential Ints
+	intrinsic       *intrinsicobjects.Transaction
+	puddingShedTxis []Txi // Txi's of coinbase transactions will NOT appear in here (in contrast to Bitcoin Core)
+	txos            []Txo
+
+	parentBlock *Block
+	parentIndex int64 // Transaction index within block
+
+	neisMap map[string]int64 // Non Essential Ints
 }
 
-func NewTransaction(intrinsic *intrinsicobjects.Transaction) *Transaction {
+func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
+	parentBlock *Block, parentIndex int64) (*Transaction, error) {
+
 	result := Transaction{}
 	result.intrinsic = intrinsic
+	result.parentBlock = parentBlock
+	result.parentIndex = parentIndex
 
-	result.txis = make([]Txi, len(intrinsic.Txis))
-	for i := range intrinsic.Txis {
-		result.txis[i].intrinsic = &intrinsic.Txis[i]
-		result.txis[i].parentTransaction = &result
-		result.txis[i].parentIndex = int64(i)
+	// This software (pudding shed) represents coinbase transactions in a non-standard way.
+	// Coming from Bitcoin Core, whether binary or JSON, the coinbase transactions are indicated by "magic" txi values.
+	// But instead, we represent a coinbase transaction as having NO txis at all.
+	if isCoinbase {
+		result.puddingShedTxis = make([]Txi, 0)
+	} else {
+		result.puddingShedTxis = make([]Txi, len(intrinsic.BitcoinCoreTxis))
+		for i := range len(intrinsic.BitcoinCoreTxis) {
+			result.puddingShedTxis[i].intrinsic = &intrinsic.BitcoinCoreTxis[i]
+			result.puddingShedTxis[i].parentTransaction = &result
+			result.puddingShedTxis[i].parentIndex = int64(i)
+		}
 	}
 
 	result.txos = make([]Txo, len(intrinsic.Txos))
@@ -36,8 +51,11 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction) *Transaction {
 
 	result.neisMap = make(map[string]int64)
 	// ToDo
+	result.neisMap["weight"] = 999
+	result.neisMap["size"] = 999
+	result.neisMap["vsize"] = 999
 
-	return &result
+	return &result, nil
 }
 
 type Txi struct {
@@ -55,8 +73,10 @@ type Txo struct {
 // intrinsicobjectscri.Transaction implements chainreadinterface.ITransaction
 var _ chainreadinterface.ITransaction = (*Transaction)(nil) // Check that implements
 
-func (t *Transaction) TxiCount() (int64, error)                              { return int64(len(t.txis)), nil }
-func (t *Transaction) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) { return &t.txis[n], nil }
+func (t *Transaction) TxiCount() (int64, error) { return int64(len(t.puddingShedTxis)), nil }
+func (t *Transaction) NthTxi(n int64) (chainreadinterface.ITxiHandle, error) {
+	return &t.puddingShedTxis[n], nil
+}
 func (t *Transaction) TxoCount() (int64, error)                              { return int64(len(t.txos)), nil }
 func (t *Transaction) NthTxo(n int64) (chainreadinterface.ITxoHandle, error) { return &t.txos[n], nil }
 func (t *Transaction) NonEssentialInts() (*map[string]int64, error)          { return &t.neisMap, nil }
@@ -77,8 +97,10 @@ func (t *Transaction) Hash() (indexedhashes.Sha256, error) { return t.intrinsic.
 func (t *Transaction) HashSpecified() bool                 { return true }
 func (t *Transaction) IsTransHandle()                      {}
 func (t *Transaction) IsInvalid() bool                     { return false }
-func (t *Transaction) IndicesPath() (int64, int64)         { return -1, -1 }
-func (t *Transaction) IndicesPathSpecified() bool          { return false }
+
+// IndicedPath needs to be specified due to repeated txids in the blockchain
+func (t *Transaction) IndicesPath() (int64, int64) { return t.parentBlock.blockHeight, t.parentIndex }
+func (t *Transaction) IndicesPathSpecified() bool  { return true }
 
 // intrinsicobjectscri.Txi implements chainreadinterface.ITxi
 var _ chainreadinterface.ITxi = (*Txi)(nil) // Check that implements

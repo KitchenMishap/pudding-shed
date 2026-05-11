@@ -10,28 +10,44 @@ import (
 // implement chainreadinterface Interfaces
 
 type Block struct {
-	intrinsic    *intrinsicobjects.Block
-	transactions []Transaction
+	intrinsic *intrinsicobjects.Block
+
+	transactions []*Transaction
 	txidMap      map[indexedhashes.Sha256]int64
 	neisMap      map[string]int64 // Non Essential Ints
+	blockHeight  int64
 }
 
-func NewBlock(intrinsic *intrinsicobjects.Block) *Block {
+func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64) (*Block, error) {
+
 	result := Block{}
 	result.intrinsic = intrinsic
+	result.blockHeight = blockHeight
 
 	result.txidMap = make(map[indexedhashes.Sha256]int64)
 
-	result.transactions = make([]Transaction, len(intrinsic.Transactions))
+	result.transactions = make([]*Transaction, len(intrinsic.Transactions))
 	for i := range intrinsic.Transactions {
-		result.transactions[i] = *NewTransaction(&intrinsic.Transactions[i])
+		isCoinbase := i == 0 // First transaction of block is coinbase transaction (reward plus miners' fees)
+		var err error
+		result.transactions[i], err = NewTransaction(&intrinsic.Transactions[i], isCoinbase,
+			&result, int64(i))
+		if err != nil {
+			return nil, err
+		}
 		result.txidMap[intrinsic.Transactions[i].TxId] = int64(i)
 	}
 
 	result.neisMap = make(map[string]int64)
 	// ToDo
+	result.neisMap["time"] = 999
+	result.neisMap["mediantime"] = 999
+	result.neisMap["size"] = 999
+	result.neisMap["strippedsize"] = 999
+	result.neisMap["weight"] = 999
+	result.neisMap["difficulty"] = 999
 
-	return &result
+	return &result, nil
 }
 
 // intrinsicobjectscri.Block implements chainreadinterface.IBlock
@@ -39,7 +55,7 @@ var _ chainreadinterface.IBlock = (*Block)(nil) // Check that implements
 
 func (b *Block) TransactionCount() (int64, error) { return int64(len(b.transactions)), nil }
 func (b *Block) NthTransaction(n int64) (chainreadinterface.ITransHandle, error) {
-	return &b.transactions[n], nil
+	return b.transactions[n], nil
 }
 func (b *Block) NonEssentialInts() (*map[string]int64, error) { return &b.neisMap, nil }
 

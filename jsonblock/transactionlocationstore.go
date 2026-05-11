@@ -2,6 +2,8 @@ package jsonblock
 
 import (
 	"errors"
+	"fmt"
+
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -37,7 +39,11 @@ func (tif *transactionIndexerFiles) StoreBlockHeightToFirstTrans(blockHeight int
 func (tif *transactionIndexerFiles) RetrieveTransHashToHeight(sha256 *indexedhashes.Sha256) (int64, error) {
 	// Note this isn't as simple as it seems. There are duplicate transactions in blocks 91812 and
 	// 91842 with identical hashes! We will not of course get both returned in this case.
-	return tif.transHashStore.IndexOfHash(sha256)
+	result, err := tif.transHashStore.IndexOfHash(sha256)
+	if result == 142726 {
+		fmt.Println("Warning! RetrieveTransHashToHeight() being called for duplicate hash in chain")
+	}
+	return result, err
 }
 func (tif *transactionIndexerFiles) RetrieveTransHeightToParentBlock(transHeight int64) (int64, error) {
 	return tif.transParentBlock.ReadWordAt(transHeight)

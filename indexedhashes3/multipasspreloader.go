@@ -3,10 +3,11 @@ package indexedhashes3
 import (
 	"errors"
 	"fmt"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
-	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"os"
 	"strconv"
+
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
 type MultipassPreloader struct {
