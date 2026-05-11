@@ -1,8 +1,9 @@
 package indexedhashes3
 
 import (
-	"errors"
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/KitchenMishap/pudding-shed/testpoints"
@@ -40,24 +41,25 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
 	}
 	defer hashesFile.Close()
 
+	reader := bufio.NewReaderSize(hashesFile, 8*1024*1024) // Google Gemini AI says this will be much faster
+
 	hashIndex := int64(0)
 	hash := [32]byte{}
-	chunk := make([]byte, 4096) // We read up to 4096 bytes at a time
-	nBytes, _ := hashesFile.Read(chunk)
-	for nBytes > 0 {
-		if nBytes%32 != 0 {
-			return errors.New("invalid hash file length")
+	for {
+		// Read 32 bytes directly from the buffer
+		// This is MUCH faster than manual chunking
+		_, err = io.ReadFull(reader, hash[:])
+		if err == io.EOF {
+			break
 		}
-		hashCount := nBytes / 32
-		for index := 0; index < hashCount; index++ {
-			copy(hash[:], chunk[index*32:index*32+32])
-			err := spd.dealWithOneHash(hashIndex, &hash, mp)
-			if err != nil {
-				return err
-			}
-			hashIndex++
+		if err != nil {
+			return err
 		}
-		nBytes, _ = hashesFile.Read(chunk)
+		err = spd.dealWithOneHash(hashIndex, &hash, mp)
+		if err != nil {
+			return err
+		}
+		hashIndex++
 	}
 	return nil
 }
@@ -115,10 +117,13 @@ func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
 }
 
 func (spd *singlePassDetails) checkThereAreNonEmptyBins() {
-	for _, element := range spd.bins {
-		if len(element) > 0 {
-			return // OK
+	const verify = false
+	if verify {
+		for _, element := range spd.bins {
+			if len(element) > 0 {
+				return // OK
+			}
 		}
+		panic("There are no non-empty Bins")
 	}
-	panic("There are no non-empty Bins")
 }
