@@ -14,6 +14,11 @@ type Transaction struct {
 	IsSegWit        bool
 	BitcoinCoreTxis []Txi // "Bitcoin Core" to remind us these are DIFFERENT to "Pudding Shed's" Txi's
 	Txos            []Txo // (Bitcoin Core has Txi's for coinbase transactions; Pudding Shed DISCARDS them)
+
+	Size         int
+	Weight       int
+	VSize        int
+	StrippedSize int
 }
 
 type Txi struct {

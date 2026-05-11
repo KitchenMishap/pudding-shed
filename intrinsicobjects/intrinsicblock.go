@@ -17,4 +17,9 @@ type Block struct {
 	NBits        uint32
 	Nonce        uint32
 	Transactions []Transaction
+
+	Size         int
+	Weight       int
+	StrippedSize int
+	Difficulty   float64
 }

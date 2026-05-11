@@ -11,6 +11,7 @@ import (
 // Returns number of bytes read
 func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans *Transaction) int {
 	startByteIndex := byteIndex
+	strippedCount := 0
 
 	h.Reset()                             // This is for building the txid hash. It does NOT include various segwit bytes!
 	h.Write(bin[byteIndex : byteIndex+4]) // First 4 bytes of the hashable thing
@@ -28,6 +29,7 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 			fmt.Printf("unknown SegWit flag: 0x%02x", bin[byteIndex+1])
 		}
 		byteIndex += 2 // (weirdly!) only increment by two if they're 0,1
+		strippedCount += 2
 	}
 
 	txiCountByteOffset := byteIndex // This is used for skipping segwit for txid hash
@@ -110,6 +112,9 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 	}
 
 	locktimeByteOffset := byteIndex // This is used for skipping segwit for txid hash
+
+	strippedCount += (locktimeByteOffset - segwitByteOffset)
+
 	// Skip 4 bytes of locktime
 	byteIndex += 4
 
@@ -127,6 +132,11 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 
 	targetTrans.TxId = finalHash
 
+	targetTrans.Size = byteIndex - startByteIndex
+	targetTrans.StrippedSize = targetTrans.Size - strippedCount
+	targetTrans.Weight = (targetTrans.StrippedSize * 3) + targetTrans.Size
+	targetTrans.VSize = (targetTrans.Weight + 3) / 4
 	// targetTrans is now a complete(ish) description of a transaction, with txi's, txo's, and a txid
-	return byteIndex - startByteIndex
+
+	return targetTrans.Size
 }

@@ -50,10 +50,9 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 	}
 
 	result.neisMap = make(map[string]int64)
-	// ToDo
-	result.neisMap["weight"] = 999
-	result.neisMap["size"] = 999
-	result.neisMap["vsize"] = 999
+	result.neisMap["weight"] = int64(intrinsic.Weight)
+	result.neisMap["size"] = int64(intrinsic.Size)
+	result.neisMap["vsize"] = int64(intrinsic.VSize)
 
 	return &result, nil
 }

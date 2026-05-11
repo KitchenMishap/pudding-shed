@@ -16,13 +16,15 @@ type Block struct {
 	txidMap      map[indexedhashes.Sha256]int64
 	neisMap      map[string]int64 // Non Essential Ints
 	blockHeight  int64
+	medianTime   uint32
 }
 
-func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64) (*Block, error) {
+func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64, mediantime uint32) (*Block, error) {
 
 	result := Block{}
 	result.intrinsic = intrinsic
 	result.blockHeight = blockHeight
+	result.medianTime = mediantime
 
 	result.txidMap = make(map[indexedhashes.Sha256]int64)
 
@@ -40,12 +42,12 @@ func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64) (*Block, err
 
 	result.neisMap = make(map[string]int64)
 	// ToDo
-	result.neisMap["time"] = 999
-	result.neisMap["mediantime"] = 999
-	result.neisMap["size"] = 999
-	result.neisMap["strippedsize"] = 999
-	result.neisMap["weight"] = 999
-	result.neisMap["difficulty"] = 999
+	result.neisMap["time"] = int64(intrinsic.Time)
+	result.neisMap["mediantime"] = int64(result.medianTime)
+	result.neisMap["size"] = int64(intrinsic.Size)
+	result.neisMap["strippedsize"] = int64(intrinsic.StrippedSize)
+	result.neisMap["weight"] = int64(intrinsic.Weight)
+	result.neisMap["difficulty"] = int64(intrinsic.Difficulty) // ToDo round this for JSON and Here
 
 	return &result, nil
 }

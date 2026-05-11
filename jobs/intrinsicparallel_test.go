@@ -3,10 +3,10 @@ package jobs
 import "testing"
 
 func TestStreamBlockHashes(t *testing.T) {
-	path := "E:\\Data\\TwoYearsBinary"
-	years := 2
-	gbMem := 16
-	threads := 10 // ToDo low for now whilst long task is running
+	path := "E:\\Data\\TenYearsBinary"
+	years := 10
+	gbMem := 64
+	threads := 30
 	err := RunIntrinsic(path, "delegated", years, threads, gbMem, true, true, true)
 
 	if err != nil {

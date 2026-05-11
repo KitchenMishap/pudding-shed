@@ -3,6 +3,7 @@ package intrinsicobjectscri
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
@@ -19,6 +20,8 @@ type OneBlockHolder struct {
 	currentBlock       *Block // intrinsicobjects.Block are converted to intrinsicobjectscri.Block on receipt
 	currentBlockHeight int64  // inferred from block sequence injected
 
+	timestampsForMedian []uint32
+
 	// We'll sometimes need the following.
 	// We send it indexing info as we discover it.
 	// We retrieve that info as we need it.
@@ -31,6 +34,8 @@ func CreateOneBlockHolder(transactionIndexer transactionindexing.ITransactionInd
 		InChan:             make(chan *intrinsicobjects.Block),
 		currentBlock:       nil,
 		currentBlockHeight: -1,
+
+		timestampsForMedian: make([]uint32, 0, 12), // Empty, capacity for 11 plus 1 spare
 
 		transactionIndexer:       transactionIndexer,
 		latestTransactionVisited: -1,
@@ -60,7 +65,10 @@ func (obh *OneBlockHolder) GenesisBlock() chainreadinterface.IBlockHandle {
 	fmt.Println("Attempting to receive genesis block...")
 	// Convert an intrinsicobjects.Block to an intrinsicobjectscri.Block on receipt
 	var err error
-	obh.currentBlock, err = NewBlock(<-obh.InChan, 0)
+	intrinsicBlock := <-obh.InChan
+	timestamp := intrinsicBlock.Time
+	mediantime := obh.PostIntrinsicCalculateMedianTime(timestamp)
+	obh.currentBlock, err = NewBlock(intrinsicBlock, 0, mediantime)
 	if err != nil {
 		panic(err)
 	} // ToDo
@@ -198,14 +206,16 @@ func (obh *OneBlockHolder) NextBlock(bh chainreadinterface.IBlockHandle) (chainr
 		}
 		if hash == obh.currentBlock.intrinsic.BlockHash {
 			originalBlockHash := hash
-			newBlock := <-obh.InChan
-			if newBlock == nil {
+			newIntrinsicBlock := <-obh.InChan
+			if newIntrinsicBlock == nil {
 				// No more blocks
 				return obh.InvalidBlock(), nil
 			}
+			timestamp := newIntrinsicBlock.Time
+			mediantime := obh.PostIntrinsicCalculateMedianTime(timestamp)
 			// Convert incoming intrinsicobjects.Block to intrinisicobjectscri.Block
 			obh.currentBlockHeight++
-			obh.currentBlock, err = NewBlock(newBlock, obh.currentBlockHeight)
+			obh.currentBlock, err = NewBlock(newIntrinsicBlock, obh.currentBlockHeight, mediantime)
 			if err != nil {
 				return nil, err
 			}
@@ -259,4 +269,28 @@ func (obh *OneBlockHolder) PostIntrinsicGatherTransHashes(block *Block) error {
 	}
 	obh.latestTransactionVisited = transHeight
 	return nil
+}
+
+func (obh *OneBlockHolder) PostIntrinsicCalculateMedianTime(timestamp uint32) uint32 {
+	// 1. Maintain the sliding window (max 11)
+	obh.timestampsForMedian = append(obh.timestampsForMedian, timestamp)
+	if len(obh.timestampsForMedian) > 11 {
+		obh.timestampsForMedian = obh.timestampsForMedian[1:]
+	}
+
+	// 2. Create a temporary copy to avoid scrambling your sliding window
+	n := len(obh.timestampsForMedian)
+	temp := make([]uint32, n)
+	copy(temp, obh.timestampsForMedian)
+
+	// 3. Sort the timestamps numerically
+	sort.Slice(temp, func(i, j int) bool {
+		return temp[i] < temp[j]
+	})
+
+	// 4. The Core Rule: Pick the element at Index (Size / 2)
+	// For N=1, Index 0
+	// For N=2, Index 1 (The later one)
+	// For N=11, Index 5 (The middle one)
+	return temp[n/2]
 }
