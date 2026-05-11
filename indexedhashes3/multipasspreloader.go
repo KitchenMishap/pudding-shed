@@ -46,6 +46,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 	for pass := int64(0); pass < passes; pass++ {
 		sline := "\r" + fmt.Sprintf("%s: Pass %d of %d", mp.folderPath, pass, passes)
 		fmt.Print(sline)
+		os.Stdout.Sync()
 		firstBinNum := pass * binsPerPass
 		bins := binsPerPass
 		if firstBinNum+bins > mp.params.NumberOfBins() {
