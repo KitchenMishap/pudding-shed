@@ -47,6 +47,7 @@ func countZeroBytesAtEnd(bytes []byte) int64 {
 	return l
 }
 
+// This fn is still used somewhere despite a re-write...
 func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) error {
 	// Zeroes at the end of binStarts only ever get overwritten as bin gets bigger, the bin never gets smaller.
 	// So we don't have to write zeroes after the bins, as they are already in the file.
@@ -79,4 +80,26 @@ func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles
 	}
 	_, err := binStartsFile.WriteAt(binStartBytes, int64(bn)*p.EntriesInBinStart()*p.BytesPerBinEntry())
 	return err
+}
+
+// For Gemini's rewrite
+func saveOverflow(bn binNum, b bin, numEntriesBinStart int64, ovf *overflowFiles, p *HashIndexingParams) error {
+	numEntries := int64(len(b))
+	// Write the overflows file (to bytes first)
+	overflowByteCount := (numEntries - numEntriesBinStart) * p.BytesPerBinEntry()
+	overflowBytes := make([]byte, overflowByteCount)
+	for entry := numEntriesBinStart; entry < numEntries; entry++ {
+		copy(overflowBytes[(entry-numEntriesBinStart)*p.BytesPerBinEntry():], b[entry])
+	}
+	// (now to file)
+	overflowFolderpath, overflowFilepath := ovf.overflowFolderpathFilepath(bn)
+	err := os.MkdirAll(overflowFolderpath, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(overflowFilepath, overflowBytes, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

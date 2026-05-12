@@ -5,9 +5,12 @@ import "testing"
 func TestStreamBlockHashes(t *testing.T) {
 	path := "E:\\Data\\TenYearsBinary"
 	years := 10
-	gbMem := 64
+	gbMem := 16
 	threads := 30
-	err := RunIntrinsic(path, "delegated", years, threads, gbMem, true, true, true)
+	do1 := true
+	do2 := true
+	do3 := true
+	err := RunIntrinsic(path, "delegated", years, threads, gbMem, do1, do2, do3)
 
 	if err != nil {
 		t.Error(err)

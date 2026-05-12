@@ -10,8 +10,8 @@ import (
 
 type bin []binEntryBytes
 
-func newEmptyBin() bin {
-	result := bin(make([]binEntryBytes, 0))
+func newEmptyBin(expectedEntriesPerBin int64) bin {
+	result := bin(make([]binEntryBytes, 0, expectedEntriesPerBin))
 	return result
 }
 

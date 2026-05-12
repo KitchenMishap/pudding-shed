@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -18,7 +19,8 @@ type singlePassDetails struct {
 	bins              []bin
 }
 
-func newSinglePassDetails(firstBinNum int64, binsCount int64, binNumsWordFile wordfile.WriterAtWord) *singlePassDetails {
+func newSinglePassDetails(firstBinNum int64, binsCount int64,
+	binNumsWordFile wordfile.WriterAtWord, expectedEntriesPerBin int64) *singlePassDetails {
 	result := singlePassDetails{}
 	result.firstBinNum = firstBinNum
 	result.lastBinNumPlusOne = firstBinNum + binsCount
@@ -27,7 +29,7 @@ func newSinglePassDetails(firstBinNum int64, binsCount int64, binNumsWordFile wo
 	}
 	result.bins = make([]bin, binsCount)
 	for i := int64(0); i < binsCount; i++ {
-		result.bins[i] = newEmptyBin()
+		result.bins[i] = newEmptyBin(expectedEntriesPerBin)
 	}
 	return &result
 }
@@ -106,6 +108,8 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
+	phaseStart := time.Now()
+	fmt.Println("Begin writeFiles()\n")
 	for index, element := range spd.bins {
 		bn := spd.firstBinNum + int64(index)
 		err := saveBinToFiles(binNum(bn), element, mp.binStartsFile, mp.overflowFiles, mp.params)
@@ -113,8 +117,51 @@ func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
 			return err
 		}
 	}
+	timeTaken := time.Now().Sub(phaseStart)
+	mins := timeTaken.Minutes()
+	sTimeUpdate := fmt.Sprintf("End writeFiles: took %.1f mins", mins)
+	fmt.Println(sTimeUpdate)
 	return nil
 }
+
+/*
+// Google Gemini AI's rewrite, to alleviate the WriteAt()'s
+func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
+	// 1. Pre-calculate the total size of the "BinStarts" block for this pass
+	bytesPerBinTotal := mp.params.EntriesInBinStart() * mp.params.BytesPerBinEntry()
+	passBufferSize := int64(len(spd.bins)) * bytesPerBinTotal
+
+	// 2. Allocate one "Mega Buffer" for the whole pass
+	// We use the 64GB grant logic here.
+	megaBuffer := make([]byte, passBufferSize)
+
+	for index, b := range spd.bins {
+		bn := spd.firstBinNum + int64(index)
+
+		// Calculate where this bin starts in our Mega Buffer
+		destOffset := int64(index) * bytesPerBinTotal
+
+		numEntries := int64(len(b))
+		numEntriesBinStart := numEntries
+		if numEntriesBinStart > mp.params.EntriesInBinStart() {
+			numEntriesBinStart = mp.params.EntriesInBinStart()
+
+			// --- Handle Overflows (Keep these as individual files for now) ---
+			// (Your existing overflow logic is fine here, but use a reusable buffer if possible)
+			saveOverflow(binNum(bn), b, numEntriesBinStart, mp.overflowFiles, mp.params)
+		}
+
+		// 3. Copy the bin data into the Mega Buffer (No syscall yet!)
+		for entry := int64(0); entry < numEntriesBinStart; entry++ {
+			copy(megaBuffer[destOffset+(entry*mp.params.BytesPerBinEntry()):], b[entry])
+		}
+	}
+
+	// 4. ONE SINGLE SYSCALL for the entire pass
+	globalStartOffset := spd.firstBinNum * bytesPerBinTotal
+	_, err := mp.binStartsFile.WriteAt(megaBuffer, globalStartOffset)
+	return err
+}*/
 
 func (spd *singlePassDetails) checkThereAreNonEmptyBins() {
 	const verify = false

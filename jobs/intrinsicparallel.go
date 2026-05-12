@@ -2,8 +2,8 @@ package jobs
 
 import (
 	"fmt"
-	"math"
 	"os"
+	"runtime"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -80,24 +80,41 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 			return err
 		}
 
-		previousPercent := debug.SetGCPercent(-1) // Turn GC OFF for this bit
-		previousLimit := debug.SetMemoryLimit(math.MaxInt64)
-
+		stepStart := time.Now()
 		err = bpl.IndexTheHashes()
 		if err != nil {
 			return err
 		}
+		runtime.GC()
+		debug.FreeOSMemory()
+		timeTaken = time.Now().Sub(stepStart)
+		mins = timeTaken.Minutes()
+		sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+		fmt.Println(sTimeUpdate)
+
+		stepStart = time.Now()
 		err = tpl.IndexTheHashes()
 		if err != nil {
 			return err
 		}
+		runtime.GC()
+		debug.FreeOSMemory()
+		timeTaken = time.Now().Sub(stepStart)
+		mins = timeTaken.Minutes()
+		sTimeUpdate = fmt.Sprintf("%s\tTRANSACTIONS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+		fmt.Println(sTimeUpdate)
+
+		stepStart = time.Now()
 		err = apl.IndexTheHashes()
 		if err != nil {
 			return err
 		}
-
-		previousPercent = debug.SetGCPercent(previousPercent)
-		previousLimit = debug.SetMemoryLimit(previousLimit)
+		runtime.GC()
+		debug.FreeOSMemory()
+		timeTaken = time.Now().Sub(stepStart)
+		mins = timeTaken.Minutes()
+		sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+		fmt.Println(sTimeUpdate)
 
 		timeTaken = time.Now().Sub(phaseStart)
 		mins = timeTaken.Minutes()
