@@ -40,7 +40,7 @@ func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexin
 	bytesForSortNum := [8]byte{}
 	binary.LittleEndian.PutUint64(bytesForSortNum[0:8], uint64(sn))
 	for i := byteCount2; i < 8; i++ {
-		if bytesForHashIndex[i] != 0 {
+		if bytesForSortNum[i] != 0 {
 			panic("sort num didn't fit into bytes")
 		}
 	}
