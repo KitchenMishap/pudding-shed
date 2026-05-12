@@ -29,10 +29,17 @@ func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *
 			theBinBytes = append(theBinBytes, overflowBytes...)
 		}
 	}
-	// Now split into entries and construct a bin
-	theBin := make([]binEntryBytes, len(theBinBytes)/int(p.BytesPerBinEntry()))
-	for i := int64(0); i < int64(len(theBin)); i++ {
-		theBin[i] = theBinBytes[i*p.BytesPerBinEntry() : (i+1)*p.BytesPerBinEntry()]
+
+	entrySize := int(p.BytesPerBinEntry())
+	entries := len(theBinBytes) / entrySize
+	// Now copy into new contiguous memory of the exact appropriate size
+	bytes := make([]byte, len(theBinBytes))
+	copy(bytes, theBinBytes)
+
+	// The bin object itself will be a slice of slices that index into that memory
+	theBin := make([]binEntryBytes, entries)
+	for i := 0; i < entries; i++ {
+		theBin[i] = bytes[i*entrySize : (i+1)*entrySize]
 	}
 	return theBin, nil
 }
