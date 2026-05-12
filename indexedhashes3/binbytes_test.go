@@ -2,8 +2,10 @@ package indexedhashes3
 
 import "testing"
 
+const expectedBinEntryBytes = 8 // Fairly arbitrary
+
 func TestInsert(t *testing.T) {
-	b := newEmptyBin()
+	b := newEmptyBin(expectedBinEntryBytes)
 	if len(b) != 0 {
 		t.Error("new bin not empty")
 	}
@@ -33,7 +35,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestInsert12(t *testing.T) {
-	b := newEmptyBin()
+	b := newEmptyBin(expectedBinEntryBytes)
 	if len(b) != 0 {
 		t.Error("new bin not empty")
 	}
