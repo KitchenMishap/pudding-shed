@@ -19,7 +19,7 @@ import (
 )
 
 func RunIntrinsic(path string, transactionIndexingMethod string, years int, threads int, gbMem int,
-	doPhase1 bool, doPhase2 bool, doPhase3 bool) error {
+	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64) error {
 
 	dateFormat := "Mon Jan 2 15:04:05"
 
@@ -145,6 +145,11 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 		fmt.Println(phaseStart.Format(dateFormat)+"\tPHASE ", phase, "\t"+phaseName+"...")
 
 		lastBlock := blocksEachYear[years] - 1
+
+		if phase3BlockLimit != 0 && phase3BlockLimit < lastBlock {
+			lastBlock = phase3BlockLimit - 1
+		}
+
 		//transactionsCount := int64(0)
 		transactionsTarget := transactionsEachYear[years]
 		//lastTrans := int64(0)
@@ -155,7 +160,7 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 		acc, err := chainstorage.NewConcreteAppendableChainCreator(path,
 			[]string{"time", "mediantime", "difficulty", "strippedsize", "size", "weight"},
 			[]string{"size", "vsize", "weight"},
-			delegated, false)
+			delegated, false, true)
 		if err != nil {
 			return err
 		}
@@ -178,7 +183,12 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 		}
 
 		if parallel {
-			err = PhaseThreeParallelIntrinsic(blocks, lastBlock, transactionsTarget, ac, transactionIndexer, threads)
+			limitedBlocks := blocks
+			if phase3BlockLimit != 0 && phase3BlockLimit < limitedBlocks {
+				limitedBlocks = phase3BlockLimit
+			}
+
+			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, transactionsTarget, ac, transactionIndexer, threads)
 			if err != nil {
 				return err
 			}

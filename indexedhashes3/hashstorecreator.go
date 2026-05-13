@@ -2,16 +2,18 @@ package indexedhashes3
 
 import (
 	"encoding/json"
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
-	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"io"
 	"os"
+
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
 type ConcreteHashStoreCreator struct {
 	params                *HashIndexingParams
 	folderPath            string
 	binNumWordFileCreator wordfile.WordFileCreator
+	hashesInRamDANGER     bool
 }
 
 // Check that implements
@@ -27,7 +29,7 @@ func NewHashStoreCreatorAndPreloader(folder string, name string,
 	byts, _ := json.Marshal(params)
 	_, _ = fileParams.Write(byts)
 
-	creator := NewHashStoreCreatorPrivate(params, hashStoreFolderPath)
+	creator := NewHashStoreCreatorPrivate(params, hashStoreFolderPath, false)
 	filename := folder + sep + name + sep + "BinNums.int"
 	file, err := os.Create(filename)
 	if err != nil {
@@ -39,7 +41,7 @@ func NewHashStoreCreatorAndPreloader(folder string, name string,
 }
 
 func NewHashStoreCreatorFromFile(
-	folder string, name string) (indexedhashes.HashStoreCreator, error) {
+	folder string, name string, hashesInRamDANGER bool) (indexedhashes.HashStoreCreator, error) {
 	sep := string(os.PathSeparator)
 	paramsFilePath := folder + sep + name + sep + "HashIndexingParams.json"
 	paramsFile, err := os.Open(paramsFilePath)
@@ -58,16 +60,18 @@ func NewHashStoreCreatorFromFile(
 	}
 	params.calculateDerivedValues()
 
-	creator := NewHashStoreCreatorPrivate(&params, folder+sep+name)
+	creator := NewHashStoreCreatorPrivate(&params, folder+sep+name, hashesInRamDANGER)
 	return creator, nil
 }
 
-func NewHashStoreCreatorPrivate(params *HashIndexingParams, folderPath string) *ConcreteHashStoreCreator {
+func NewHashStoreCreatorPrivate(params *HashIndexingParams,
+	folderPath string, hashesInRamDANGER bool) *ConcreteHashStoreCreator {
 	result := ConcreteHashStoreCreator{}
 	result.params = params
 	result.folderPath = folderPath
 	result.binNumWordFileCreator = wordfile.NewConcreteWordFileCreator(
 		"BinNums", folderPath, params.BytesRoomForBinNum(), false, false)
+	result.hashesInRamDANGER = hashesInRamDANGER
 	return &result
 }
 
@@ -105,7 +109,7 @@ func (c *ConcreteHashStoreCreator) OpenHashStore() (indexedhashes.HashReadWriter
 	if err != nil {
 		return nil, err
 	}
-	hashStore, err := newHashStoreObject(c.params, c.folderPath, c.binNumWordFileCreator, binStartsFile)
+	hashStore, err := newHashStoreObject(c.params, c.folderPath, c.binNumWordFileCreator, binStartsFile, c.hashesInRamDANGER)
 	if err != nil {
 		return nil, err
 	}

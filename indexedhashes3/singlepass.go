@@ -109,7 +109,7 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
 	phaseStart := time.Now()
-	fmt.Println("Begin writeFiles()\n")
+	fmt.Println("Begin writeFiles()")
 	for index, element := range spd.bins {
 		bn := spd.firstBinNum + int64(index)
 		err := saveBinToFiles(binNum(bn), element, mp.binStartsFile, mp.overflowFiles, mp.params)

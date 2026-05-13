@@ -1,17 +1,21 @@
 package indexedhashes3
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
-	"os"
 )
 
 type hashStore struct {
-	params          *HashIndexingParams
-	overflowFiles   *overflowFiles
-	binNumFileWrite wordfile.ReadWriteAtWordCounter
-	binNumFileRead  wordfile.ReadAtWordCounter
-	binStartsFile   *os.File
+	params            *HashIndexingParams
+	overflowFiles     *overflowFiles
+	binNumFileWrite   wordfile.ReadWriteAtWordCounter
+	binNumFileRead    wordfile.ReadAtWordCounter
+	binStartsFile     *os.File
+	hashesInRamDANGER bool
+	binRam            []bin
 }
 
 // Compiler check that implements
@@ -20,7 +24,7 @@ var _ indexedhashes.HashReadWriter = (*hashStore)(nil)
 
 func newHashStoreObject(params *HashIndexingParams, folderPath string,
 	binNumWordFileCreator wordfile.WordFileCreator,
-	binStartsFile *os.File) (*hashStore, error) {
+	binStartsFile *os.File, hashesInRamDANGER bool) (*hashStore, error) {
 	result := hashStore{}
 	result.params = params
 	result.overflowFiles = newOverflowFiles(folderPath, params)
@@ -31,6 +35,15 @@ func newHashStoreObject(params *HashIndexingParams, folderPath string,
 		return nil, err
 	}
 	result.binStartsFile = binStartsFile
+	result.hashesInRamDANGER = hashesInRamDANGER
+
+	if hashesInRamDANGER {
+		err := result.loadHashesToRam()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &result, nil
 }
 
@@ -50,7 +63,11 @@ func newHashStoreObjectReadOnly(params *HashIndexingParams, folderPath string,
 	return &result, nil
 }
 
-func (h hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
+func (h *hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
+	if h.hashesInRamDANGER {
+		panic("cannot append hashes when hashes in ram")
+	}
+
 	hash3 := Hash(*hash)
 
 	// Split into truncated hash, bin number, and sort number
@@ -83,7 +100,7 @@ func (h hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 	return hashesSoFar, nil
 }
 
-func (h hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
+func (h *hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 	hash3 := Hash(*hash)
 
 	// Split into truncated hash, bin number, and sort number
@@ -92,16 +109,22 @@ func (h hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 	bn := abbr.toBinNum(h.params)
 	sn := abbr.toSortNum(h.params)
 
-	theBin, err := loadBinFromFiles(bn, h.binStartsFile, h.overflowFiles, h.params)
-	if err != nil {
-		return -1, err
+	var theBin bin
+	if h.hashesInRamDANGER {
+		theBin = h.binRam[bn]
+	} else {
+		var err error
+		theBin, err = loadBinFromFiles(bn, h.binStartsFile, h.overflowFiles, h.params)
+		if err != nil {
+			return -1, err
+		}
 	}
 
 	index := theBin.lookupByHash(trunc, sn, h.params)
 	return int64(index), nil
 }
 
-func (h hashStore) GetHashAtIndex(index int64, hash *indexedhashes.Sha256) error {
+func (h *hashStore) GetHashAtIndex(index int64, hash *indexedhashes.Sha256) error {
 	bn, err := h.binNumFileRead.ReadWordAt(index)
 	if err != nil {
 		return err
@@ -117,7 +140,7 @@ func (h hashStore) GetHashAtIndex(index int64, hash *indexedhashes.Sha256) error
 	return nil
 }
 
-func (h hashStore) CountHashes() (int64, error) {
+func (h *hashStore) CountHashes() (int64, error) {
 	count, err := h.binNumFileRead.CountWords()
 	if err != nil {
 		return -1, err
@@ -125,7 +148,7 @@ func (h hashStore) CountHashes() (int64, error) {
 	return count, nil
 }
 
-func (h hashStore) Close() error {
+func (h *hashStore) Close() error {
 	// if binNumFileWrite exists, it is equal to binNumFileRead
 	err := h.binNumFileRead.Close()
 	if err != nil {
@@ -138,7 +161,7 @@ func (h hashStore) Close() error {
 	return nil
 }
 
-func (h hashStore) Sync() error {
+func (h *hashStore) Sync() error {
 	err := h.binNumFileWrite.Sync()
 	if err != nil {
 		return err
@@ -147,5 +170,16 @@ func (h hashStore) Sync() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (h *hashStore) loadHashesToRam() error {
+	fmt.Println("loading hashes to ram")
+	var err error
+	h.binRam, err = loadAllBinsFromFiles(h.binStartsFile, h.overflowFiles, h.params)
+	if err != nil {
+		return err
+	}
+	fmt.Println("loaded hashes to ram")
 	return nil
 }

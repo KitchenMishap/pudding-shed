@@ -3,15 +3,16 @@ package chainstorage
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
+	"slices"
+
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
-	"os"
-	"path"
-	"slices"
 )
 
 type ConcreteAppendableChainCreator struct {
@@ -57,6 +58,7 @@ func NewConcreteAppendableChainCreator(
 	folder string, blkNeiNames []string, trnNeiNames []string,
 	transactionIndexingToBeDelegated bool,
 	holdInRamDANGER bool, // This will need LOTS of RAM, make sure you have it!
+	hashesInRamDANGER bool, // This will also need lots of ram
 ) (*ConcreteAppendableChainCreator, error) {
 	result := ConcreteAppendableChainCreator{}
 
@@ -80,17 +82,17 @@ func NewConcreteAppendableChainCreator(
 		fmt.Printf("Note that hashes are not (yet) held in RAM")
 	}
 	result.blockHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
-		result.blocksFolder, "Hashes")
+		result.blocksFolder, "Hashes", hashesInRamDANGER)
 	if err != nil {
 		return nil, err
 	}
 	result.transactionHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
-		result.transactionsFolder, "Hashes")
+		result.transactionsFolder, "Hashes", hashesInRamDANGER)
 	if err != nil {
 		return nil, err
 	}
 	result.addressHashStoreCreator, err = indexedhashes3.NewHashStoreCreatorFromFile(
-		result.addressesFolder, "Hashes")
+		result.addressesFolder, "Hashes", hashesInRamDANGER)
 	if err != nil {
 		return nil, err
 	}

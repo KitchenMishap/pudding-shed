@@ -87,7 +87,7 @@ func (mp *MultipassPreloader) TestTheHashes() error {
 			return err
 		}
 		wfc := wordfile.NewConcreteWordFileCreator("BinNums", mp.folderPath, mp.params.bytesRoomForBinNum, false, false)
-		hs, err := newHashStoreObject(mp.params, mp.folderPath, wfc, binStartsFile)
+		hs, err := newHashStoreObject(mp.params, mp.folderPath, wfc, binStartsFile, false)
 		if err != nil {
 			return err
 		}

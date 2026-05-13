@@ -1,6 +1,8 @@
 package jobs
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestStreamBlockHashes(t *testing.T) {
 	path := "E:\\Data\\TenYearsBinary"
@@ -10,7 +12,7 @@ func TestStreamBlockHashes(t *testing.T) {
 	do1 := true
 	do2 := true
 	do3 := true
-	err := RunIntrinsic(path, "delegated", years, threads, gbMem, do1, do2, do3)
+	err := RunIntrinsic(path, "delegated", years, threads, gbMem, do1, do2, do3, 0)
 
 	if err != nil {
 		t.Error(err)

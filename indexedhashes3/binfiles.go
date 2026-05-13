@@ -1,16 +1,23 @@
 package indexedhashes3
 
 import (
+	"bufio"
+	"io"
 	"os"
 )
 
 func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) (bin, error) {
-	// Start with just the binStart
 	theBinBytes := make([]byte, p.BytesPerBinEntry()*p.EntriesInBinStart())
 	_, err := binStartsFile.ReadAt(theBinBytes, int64(bn)*p.BytesPerBinEntry()*p.EntriesInBinStart())
 	if err != nil {
 		return nil, err
 	}
+
+	return loadBinFromSlice(theBinBytes, bn, ovf, p)
+}
+
+func loadBinFromSlice(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *HashIndexingParams) (bin, error) {
+	// Start with just the binStart
 
 	// See how many zero entries are at the end
 	zeroes := countZeroBytesAtEnd(theBinBytes)
@@ -42,6 +49,25 @@ func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *
 		theBin[i] = bytes[i*entrySize : (i+1)*entrySize]
 	}
 	return theBin, nil
+}
+
+func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) ([]bin, error) {
+	result := make([]bin, p.NumberOfBins())
+	theBinBytes := make([]byte, p.BytesPerBinEntry()*p.EntriesInBinStart())
+
+	reader := bufio.NewReaderSize(binStartsFile, 64*1024*1024)
+
+	for bn := binNum(0); int64(bn) < p.NumberOfBins(); bn++ {
+		_, err := io.ReadFull(reader, theBinBytes)
+		if err != nil {
+			return nil, err
+		}
+		result[int64(bn)], err = loadBinFromSlice(theBinBytes, bn, ovf, p)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func countZeroBytesAtEnd(bytes []byte) int64 {
