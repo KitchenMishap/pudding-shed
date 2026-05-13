@@ -4,11 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/KitchenMishap/pudding-shed/numberedfolders"
-	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"math"
 	"os"
 	"sync"
+
+	"github.com/KitchenMishap/pudding-shed/numberedfolders"
+	"github.com/KitchenMishap/pudding-shed/testpoints"
 )
 
 // The file formats for UniformHashStore are as follows.
@@ -270,7 +271,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 	passes := 1 + biggestAddressPlusOne/addressesPerPass
 
 	for pass := int64(0); pass < passes; pass++ {
-		sline := "\r" + fmt.Sprintf("%s: Pass %d of %d", mp.creator.folderPath(), pass, passes)
+		sline := fmt.Sprintf("%s: Pass %d of %d\n", mp.creator.folderPath(), pass+1, passes)
 		fmt.Print(sline)
 		firstAddress := pass * addressesPerPass
 		addresses := addressesPerPass

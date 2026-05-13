@@ -64,16 +64,8 @@ func StreamBlockHashesFromGenesis(numBlocks int64, channel chan indexedhashes.Sh
 			copy(hash[:], hashBytes)
 			channel <- hash
 
-			// The block height
-			blockHeight := sentBlocks
-
-			if blockHeight%10_000 == 0 {
-				fmt.Printf("Block %d initiated\n", blockHeight)
-			}
-
 			sentBlocks++
 			if sentBlocks == numBlocks {
-				fmt.Println("Sent all blocks")
 				close(channel)
 				return nil
 			}

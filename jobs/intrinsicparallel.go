@@ -2,11 +2,15 @@ package jobs
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"runtime/debug"
-	"sync"
 	"time"
+
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"github.com/KitchenMishap/pudding-shed/chainstorage"
 	"github.com/KitchenMishap/pudding-shed/concurrency"
@@ -19,11 +23,19 @@ import (
 )
 
 func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, years int, threads int, gbMem int,
-	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64) error {
+	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64, isTest bool) error {
+
+	var backslashR string
+	if isTest {
+		backslashR = "\n"
+	} else {
+		backslashR = "\r"
+	}
 
 	dateFormat := "Mon Jan 2 15:04:05"
 
 	blocks := blocksEachYear[years]
+	transactions := transactionsEachYear[years]
 
 	// ===============================
 	// FIRST we just gather the hashes
@@ -34,10 +46,11 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			return err
 		}
 
-		err = PhaseOneParallelIntrinsic(path, useJson, blocks, threads)
+		err = PhaseOneParallelIntrinsic(path, useJson, blocks, transactions, threads, backslashR)
 		if err != nil {
 			return err
 		}
+		fmt.Println("")
 	}
 
 	// ==========================
@@ -188,7 +201,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 				limitedBlocks = phase3BlockLimit
 			}
 
-			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, useJson, transactionsTarget, ac, transactionIndexer, threads)
+			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
 			if err != nil {
 				return err
 			}
@@ -205,7 +218,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 	return nil
 }
 
-func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads int) error {
+func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, transactions int64, threads int, backslashR string) error {
 	hcc := chainstorage.NewConcreteHashesChainCreator(path)
 	err := hcc.Create()
 	if err != nil {
@@ -219,7 +232,6 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 	// Now we start messing with channels and sequencers
 
 	orderedBlockHashesChannel := make(chan indexedhashes.Sha256)
-	fmt.Println("Starting to stream block hashes")
 	go func() {
 		err := corereader2.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
 		if err != nil {
@@ -232,7 +244,6 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
 
 	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
-	fmt.Println("Starting to pass hashes to GetBlocksBinary")
 	// They won't be ordered any more when they come out.
 	go func() {
 		for hash := range orderedBlockHashesChannel {
@@ -242,10 +253,8 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 		close(nobbledBlockHashesChannel)
 	}()
 
-	fmt.Println("Starting get and parse blocks")
 	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
 
-	fmt.Println("Starting output")
 	chain := intrinsicobjectscri.CreateOneBlockHolder(nil)
 	go func() {
 		for numberedBlock := range orderedNumberedBlockChannel {
@@ -254,9 +263,24 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 		close(chain.InChan)
 	}()
 
+	progress := NewProgress(0, transactions, 30,
+		"transactions", "Gather Hashes", backslashR)
+
 	blockHeight := int64(0)
+	transCount := int64(0)
 	hBlock := chain.GenesisBlock()
 	for !hBlock.IsInvalid() {
+		var blk chainreadinterface.IBlock
+		blk, err = chain.BlockInterface(hBlock)
+		if err != nil {
+			return err
+		}
+		var transactionsInBlock int64
+		transactionsInBlock, err = blk.TransactionCount()
+		if err != nil {
+			return err
+		}
+
 		err = hc.AppendHashesCri(chain, hBlock, blockHeight)
 		if err != nil {
 			return err
@@ -266,6 +290,9 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 			return err
 		}
 		blockHeight++
+		transCount += transactionsInBlock
+
+		progress.Update(transCount)
 	}
 
 	hc.Close()
@@ -274,21 +301,13 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads 
 
 func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 	transactionsTarget int64, ac chainstorage.IAppendableChain,
-	transactionIndexer transactionindexing.ITransactionIndexer, threads int) error {
+	transactionIndexer transactionindexing.ITransactionIndexer, threads int, backslashR string) error {
 
-	dateFormat := "Mon Jan 2 15:04:05"
-	progressInterval := 5 * time.Second
-	phaseStart := time.Now()
-	nextProgress := phaseStart.Add(progressInterval)
 	transactionsCount := int64(0)
-	lastTrans := int64(0)
-
-	statusMap := sync.Map{}
 
 	// Now we start messing with channels and sequencers
 
 	orderedBlockHashesChannel := make(chan indexedhashes.Sha256)
-	fmt.Println("Starting to stream block hashes")
 	go func() {
 		err := corereader2.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
 		if err != nil {
@@ -301,7 +320,6 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
 
 	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
-	fmt.Println("Starting to pass hashes to GetBlocksBinary")
 	// They won't be ordered any more when they come out.
 	go func() {
 		for hash := range orderedBlockHashesChannel {
@@ -311,7 +329,6 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 		close(nobbledBlockHashesChannel)
 	}()
 
-	fmt.Println("Starting get and parse blocks")
 	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
 
 	// Final destination for the sequenced blocks
@@ -319,16 +336,14 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 
 	// Squirt the sequenced blocks into the holder
 	go func() {
-		statusMap.Store("sequencedIntoHolder", "Starting")
 		for b := range orderedNumberedBlockChannel {
-			statusMap.Store("sequencedIntoHolder", "Squirting")
 			aOneBlockHolder.InChan <- &b.Block
-			statusMap.Store("sequencedIntoHolder", "Squirted")
 		}
-		statusMap.Store("sequencedIntoHolder", "FINISHING...")
 		close(aOneBlockHolder.InChan)
-		statusMap.Store("sequencedIntoHolder", "FINISHED")
 	}()
+
+	progress := NewProgress(0, transactionsTarget, 30,
+		"transactions", "gather blockchain", backslashR)
 
 	hBlock := aOneBlockHolder.GenesisBlock()
 	fmt.Println()
@@ -339,12 +354,7 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 			return err
 		}
 		height := block.Height()
-		if time.Now().Compare(nextProgress) > 0 || height == lastBlock {
-			nextProgress = time.Now().Add(progressInterval)
-			sLine := progressString(dateFormat, transactionsCount, transactionsCount-lastTrans, transactionsTarget, "transactions", progressInterval)
-			fmt.Print(sLine + "\r")
-			lastTrans = transactionsCount
-		}
+
 		// The sync is just so we can see
 		// file sizes in explorer during processing
 		if height%10000 == 0 {
@@ -354,28 +364,16 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 			}
 		}
 
-		/*		i := 0
-				statusMap.Range(func(key, value interface{}) bool {
-					fmt.Printf("\t%v: %v\n", key, value)
-					i++
-					return true
-				})*/
-
 		err = ac.AppendBlock(aOneBlockHolder, block)
 		if err != nil {
 			ac.Close()
 			return err
 		}
 
-		count, _ := block.TransactionCount()
+		var count int64
+		count, err = block.TransactionCount()
 		transactionsCount += count
-
-		/*		i = 0
-				statusMap.Range(func(key, value interface{}) bool {
-					fmt.Printf("\t%v: %v\n", key, value)
-					i++
-					return true
-				})*/
+		progress.Update(transactionsCount)
 
 		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
 		if err != nil {
@@ -386,4 +384,66 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
 	fmt.Println()
 	ac.Close()
 	return nil
+}
+
+type Progress struct {
+	startItem        int64
+	endItem          int64
+	intervalSeconds  int
+	itemsName        string
+	taskName         string
+	firstUpdateGiven bool
+
+	checkpointItem int64
+	checkpointTime time.Time
+	backslashR     string
+	printer        *message.Printer
+}
+
+func NewProgress(startItem int64, endItem int64, intervalSeconds int, itemsName string, taskName string, backslashR string) *Progress {
+	result := Progress{}
+	result.startItem = startItem
+	result.endItem = endItem
+	result.intervalSeconds = intervalSeconds
+	result.itemsName = itemsName
+	result.taskName = taskName
+	result.firstUpdateGiven = false
+
+	// Presume progress now is startItems
+	result.checkpointItem = startItem
+	result.checkpointTime = time.Now()
+	result.printer = message.NewPrinter(language.English)
+	result.backslashR = backslashR
+	return &result
+}
+
+func (p *Progress) Update(currentItem int64) {
+	const dateFormat = "Mon Jan 2 15:04:05"
+
+	now := time.Now()
+	sDate := now.Format(dateFormat)
+	if !p.firstUpdateGiven {
+		fmt.Printf("%s Start of task \"%s\"\n", sDate, p.taskName)
+		p.firstUpdateGiven = true
+	}
+	sinceCheckpoint := now.Sub(p.checkpointTime)
+	if sinceCheckpoint > time.Duration(p.intervalSeconds)*time.Second {
+		intervalItems := currentItem - p.checkpointItem
+		intervalSeconds := sinceCheckpoint / time.Second
+		itemsPerSecond := float64(intervalItems) / float64(intervalSeconds)
+		secondsLeft := float64(p.endItem-currentItem) / itemsPerSecond
+		prediction := now.Add(time.Duration(secondsLeft) * time.Second)
+		msg := p.printer.Sprintf("%s: %d of %d %s done (%.2f%%), expect completion of \"%s\" at %s (rate %d)",
+			sDate, currentItem-p.startItem, p.endItem-p.startItem, p.itemsName,
+			float64(100)*float64(currentItem-p.startItem)/float64(p.endItem-p.startItem),
+			p.taskName, prediction.Format(dateFormat), int(math.Round(itemsPerSecond)))
+		fmt.Printf("%s%s          ", p.backslashR, msg)
+		err := os.Stdout.Sync()
+		if err != nil {
+			panic(err)
+		}
+
+		p.checkpointTime = now
+		p.checkpointItem = currentItem
+	}
 }

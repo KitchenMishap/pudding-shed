@@ -52,15 +52,9 @@ func GetAndParseBlocks(inChan chan indexedhashes.Sha256, useJson bool,
 				if useJson {
 					// Request the block as json
 					blockReq = "http://127.0.0.1:8332/rest/block/" + hashString + ".json"
-					if numbered.BlockHeight%10_000 == 0 {
-						fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
-					}
 				} else {
 					// Request the block as binary
 					blockReq = "http://127.0.0.1:8332/rest/block/" + hashString + ".bin"
-					if numbered.BlockHeight%10_000 == 0 {
-						fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
-					}
 				}
 
 				success := false

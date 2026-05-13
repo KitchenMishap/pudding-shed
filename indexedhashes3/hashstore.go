@@ -174,12 +174,12 @@ func (h *hashStore) Sync() error {
 }
 
 func (h *hashStore) loadHashesToRam() error {
-	fmt.Println("loading hashes to ram")
+	fmt.Println("Loading hashes to ram...")
 	var err error
 	h.binRam, err = loadAllBinsFromFiles(h.binStartsFile, h.overflowFiles, h.params)
 	if err != nil {
 		return err
 	}
-	fmt.Println("loaded hashes to ram")
+	fmt.Println("...Done")
 	return nil
 }

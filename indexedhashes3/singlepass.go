@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
@@ -108,8 +107,6 @@ func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *Mult
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
-	phaseStart := time.Now()
-	fmt.Println("Begin writeFiles()")
 	for index, element := range spd.bins {
 		bn := spd.firstBinNum + int64(index)
 		err := saveBinToFiles(binNum(bn), element, mp.binStartsFile, mp.overflowFiles, mp.params)
@@ -117,10 +114,6 @@ func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
 			return err
 		}
 	}
-	timeTaken := time.Now().Sub(phaseStart)
-	mins := timeTaken.Minutes()
-	sTimeUpdate := fmt.Sprintf("End writeFiles: took %.1f mins", mins)
-	fmt.Println(sTimeUpdate)
 	return nil
 }
 

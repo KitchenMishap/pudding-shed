@@ -3,13 +3,29 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/KitchenMishap/pudding-shed/chainstorage"
-	"github.com/KitchenMishap/pudding-shed/jobs"
 	"strconv"
 	"time"
+
+	"github.com/KitchenMishap/pudding-shed/chainstorage"
+	"github.com/KitchenMishap/pudding-shed/jobs"
 )
 
-// Comment
+/*
+func main() {
+	path := "E:\\Data\\NineYearsNewJson"
+	years := 9 // Note that 9 years are needed to test the Segwit era
+	gbMem := 16
+	threads := 30
+	do1 := true
+	do2 := true
+	do3 := true
+	json := true
+	err := jobs.RunIntrinsic(path, json, "delegated", years, threads, gbMem, do1, do2, do3, 0, false)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+}*/
+
 func main() {
 	//																			Count at 15 years:
 	//roomFor16milBlocks := int64(3) // 256^3 = 16,777,216 blocks					There were 824,204 blocks
