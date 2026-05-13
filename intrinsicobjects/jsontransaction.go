@@ -3,9 +3,12 @@ package intrinsicobjects
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math"
 
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
+
+const satoshisPerBitcoin = float64(100_000_000)
 
 func ParseJsonTransaction(jsonBytes []byte, targetTrans *Transaction) error {
 	parsed, err := parseJsonTrans(jsonBytes)
@@ -47,7 +50,7 @@ func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction) 
 	txoCount := len(parsed.J_vout)
 	targetTrans.Txos = make([]Txo, txoCount)
 	for i := 0; i < txoCount; i++ {
-		targetTrans.Txos[i].Value = int64(parsed.J_vout[i].J_value)
+		targetTrans.Txos[i].Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
 		var scriptPubKey []byte
 		scriptPubKey, err = hex.DecodeString(parsed.J_vout[i].J_scriptPubKey.J_hex)
 		if err != nil {

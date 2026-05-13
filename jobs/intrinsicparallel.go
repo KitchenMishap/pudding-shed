@@ -18,7 +18,7 @@ import (
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
-func RunIntrinsic(path string, transactionIndexingMethod string, years int, threads int, gbMem int,
+func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, years int, threads int, gbMem int,
 	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64) error {
 
 	dateFormat := "Mon Jan 2 15:04:05"
@@ -34,7 +34,7 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 			return err
 		}
 
-		err = PhaseOneParallelIntrinsic(path, blocks, threads)
+		err = PhaseOneParallelIntrinsic(path, useJson, blocks, threads)
 		if err != nil {
 			return err
 		}
@@ -188,7 +188,7 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 				limitedBlocks = phase3BlockLimit
 			}
 
-			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, transactionsTarget, ac, transactionIndexer, threads)
+			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, useJson, transactionsTarget, ac, transactionIndexer, threads)
 			if err != nil {
 				return err
 			}
@@ -205,7 +205,7 @@ func RunIntrinsic(path string, transactionIndexingMethod string, years int, thre
 	return nil
 }
 
-func PhaseOneParallelIntrinsic(path string, blocks int64, threads int) error {
+func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, threads int) error {
 	hcc := chainstorage.NewConcreteHashesChainCreator(path)
 	err := hcc.Create()
 	if err != nil {
@@ -243,7 +243,7 @@ func PhaseOneParallelIntrinsic(path string, blocks int64, threads int) error {
 	}()
 
 	fmt.Println("Starting get and parse blocks")
-	corereader2.GetAndParseBlocksBinary(nobbledBlockHashesChannel, seq.InChan, threads)
+	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
 
 	fmt.Println("Starting output")
 	chain := intrinsicobjectscri.CreateOneBlockHolder(nil)
@@ -272,7 +272,8 @@ func PhaseOneParallelIntrinsic(path string, blocks int64, threads int) error {
 	return nil
 }
 
-func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, transactionsTarget int64, ac chainstorage.IAppendableChain,
+func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
+	transactionsTarget int64, ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer, threads int) error {
 
 	dateFormat := "Mon Jan 2 15:04:05"
@@ -311,7 +312,7 @@ func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, transactionsTarg
 	}()
 
 	fmt.Println("Starting get and parse blocks")
-	corereader2.GetAndParseBlocksBinary(nobbledBlockHashesChannel, seq.InChan, threads)
+	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
 
 	// Final destination for the sequenced blocks
 	var aOneBlockHolder = intrinsicobjectscri.CreateOneBlockHolder(transactionIndexer)

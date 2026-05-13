@@ -20,7 +20,8 @@ func (hnb *HeightNumberedBlock) SequenceNumber() int64 { return hnb.BlockHeight 
 
 // GetAndParseBlocksBinary takes unnumbered block hashes at its input channel, in height sequence.
 // Parsed blocks come out, numbered but out of sequence
-func GetAndParseBlocksBinary(inChan chan indexedhashes.Sha256, outChan chan *HeightNumberedBlock, threads int) {
+func GetAndParseBlocks(inChan chan indexedhashes.Sha256, useJson bool,
+	outChan chan *HeightNumberedBlock, threads int) {
 	// Adorn the hashes with block heights and squirt them into a channel
 	chanNumbered := make(chan *HeightNumberedBlock)
 	go func() {
@@ -47,10 +48,19 @@ func GetAndParseBlocksBinary(inChan chan indexedhashes.Sha256, outChan chan *Hei
 				// Convert binary hash to string hash
 				hashString := ToHexHash(numbered.BlockHash[0:32])
 
-				// Request the block as binary
-				blockReq := "http://127.0.0.1:8332/rest/block/" + hashString + ".bin"
-				if numbered.BlockHeight%10_000 == 0 {
-					fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
+				var blockReq string
+				if useJson {
+					// Request the block as json
+					blockReq = "http://127.0.0.1:8332/rest/block/" + hashString + ".json"
+					if numbered.BlockHeight%10_000 == 0 {
+						fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
+					}
+				} else {
+					// Request the block as binary
+					blockReq = "http://127.0.0.1:8332/rest/block/" + hashString + ".bin"
+					if numbered.BlockHeight%10_000 == 0 {
+						fmt.Printf("Block %d: %s\n", numbered.BlockHeight, blockReq)
+					}
 				}
 
 				success := false
@@ -65,14 +75,27 @@ func GetAndParseBlocksBinary(inChan chan indexedhashes.Sha256, outChan chan *Hei
 							if err == nil {
 								err = resp.Body.Close()
 								if err == nil {
-									intrinsicobjects.ParseBinaryBlock(bodyOutBlock, &numbered.Block)
-									outChan <- numbered
-									// Success! Break out of retry loop
-									if retry > 0 {
-										fmt.Printf("Retry succeeded\n")
+									if useJson {
+										err = intrinsicobjects.ParseJsonBlock(bodyOutBlock, &numbered.Block)
+										if err != nil {
+											success = false
+											fmt.Println(err.Error())
+											fmt.Println("Error parsing JSON")
+										} else {
+											success = true
+										}
+									} else {
+										intrinsicobjects.ParseBinaryBlock(bodyOutBlock, &numbered.Block)
+										success = true
 									}
-									success = true
-									break
+									if success {
+										outChan <- numbered
+										// Break out of retry loop
+										if retry > 0 {
+											fmt.Printf("Retry succeeded\n")
+										}
+										break
+									}
 								} else {
 									fmt.Println(err.Error())
 									fmt.Printf("Error closing response body\n")
