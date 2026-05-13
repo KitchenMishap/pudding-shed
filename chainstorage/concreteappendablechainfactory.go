@@ -116,11 +116,12 @@ func NewConcreteAppendableChainCreator(
 	// Trying 5 digits per file...
 	result.addrAdditionalTxosIaaCreator = intarrayarray.NewConcreteMapStoreCreator("additionaltxos", result.addressesFolder, 5, 2, roomFor1trilTxxs, true)
 	result.supportedBlkNeis = map[string]int{
-		"version":      4,
-		"time":         4,
-		"mediantime":   4,
-		"nonce":        4,
-		"difficulty":   8, // Actually real not int, but we truncate to integer part. We might still run out of bytes
+		"version":    4,
+		"time":       4,
+		"mediantime": 4,
+		"nonce":      4,
+		"difficulty": 8, // Actually real not int, but we round to integer part. (We might one day run out of bytes!)
+		// Difficulty as of May 2026 is 132472011079030.52, and rounded this takes 47 bits (6 bytes)
 		"strippedsize": 4,
 		"size":         4,
 		"weight":       4,

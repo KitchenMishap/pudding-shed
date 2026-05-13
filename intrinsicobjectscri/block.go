@@ -1,6 +1,8 @@
 package intrinsicobjectscri
 
 import (
+	"math"
+
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
@@ -47,7 +49,7 @@ func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64, mediantime u
 	result.neisMap["size"] = int64(intrinsic.Size)
 	result.neisMap["strippedsize"] = int64(intrinsic.StrippedSize)
 	result.neisMap["weight"] = int64(intrinsic.Weight)
-	result.neisMap["difficulty"] = int64(intrinsic.Difficulty) // ToDo round this for JSON and Here
+	result.neisMap["difficulty"] = int64(math.Round(intrinsic.Difficulty))
 
 	return &result, nil
 }
