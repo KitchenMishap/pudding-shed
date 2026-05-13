@@ -5,8 +5,8 @@ import (
 )
 
 func TestStreamBlockHashes(t *testing.T) {
-	path := "E:\\Data\\TenYearsBinary"
-	years := 10
+	path := "E:\\Data\\TwoYearsBinary"
+	years := 2
 	gbMem := 16
 	threads := 30
 	do1 := true

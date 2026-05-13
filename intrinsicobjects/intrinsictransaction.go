@@ -27,7 +27,6 @@ type Txi struct {
 }
 
 type Txo struct {
-	Value int64
-	// ToDo replace this with script bytes? Hash it later, that would make this package more independent of pudding-shed
-	AddressPuddingHash3 indexedhashes.Sha256 // PuddingHash3 is not a hash familiar to bitcoiners (peculiar to pudding-shed software)
+	Value        int64
+	ScriptPubKey []byte
 }

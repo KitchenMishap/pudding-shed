@@ -134,7 +134,8 @@ var _ chainreadinterface.ITxo = (*Txo)(nil) // Check that implements
 func (txo *Txo) Satoshis() (int64, error) { return txo.intrinsic.Value, nil }
 func (txo *Txo) Address() (chainreadinterface.IAddressHandle, error) {
 	result := AddressHandle{}
-	result.puddingHash3 = txo.intrinsic.AddressPuddingHash3
+	// puddingHash3 (hash of ScriptPubKey bytes) is peculiar to pudding-shed software, and is not generally known to bitcoiners
+	result.puddingHash3 = indexedhashes.HashOfBytes(txo.intrinsic.ScriptPubKey)
 	return &result, nil
 }
 

@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash"
-
-	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 )
 
 // Returns number of bytes read
@@ -84,8 +82,7 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 		scriptPubKey := bin[byteIndex : byteIndex+int(spkLen)]
 		byteIndex += int(spkLen)
 
-		// Take the hash of it (this is puddingHash3, unique to pudding-shed, not a proper bitcoin thing)
-		targetTrans.Txos[i].AddressPuddingHash3 = indexedhashes.HashOfBytes(scriptPubKey)
+		targetTrans.Txos[i].ScriptPubKey = scriptPubKey
 	}
 
 	segwitByteOffset := byteIndex // This is used for skipping segwit for txid hash
