@@ -4,50 +4,75 @@ import (
 	"math"
 )
 
-// A bin is a slice of binEntryBytes.
+// A bin is conceptually a container (which can grow) of items which are binEntryBytes.
 // It is the way a bin is held whilst in memory.
-// Note that it is not directly a whole slice of bytes... you'd have to do some rearranging to get such a thing.
+// It is implemented as a contiguous slice of bytes.
+// (This design is re-factored after a previous "slice of slices" design caused horrendous gc avalanches)
+// Index parameters in this code file are indices of entries (not bytes)
+type bin struct {
+	bytes []byte
+}
 
-type bin []binEntryBytes
-
-func newEmptyBin(expectedEntriesPerBin int64) bin {
-	result := bin(make([]binEntryBytes, 0, expectedEntriesPerBin))
+func newEmptyBin(expectedEntriesPerBin int64, bytesPerEntry int64) bin {
+	result := bin{}
+	result.bytes = make([]byte, 0, expectedEntriesPerBin*bytesPerEntry)
 	return result
 }
 
+func (b *bin) getEntry(index int64, p *HashIndexingParams) binEntryBytes {
+	bytesPerEntry := p.BytesPerBinEntry()
+	return b.bytes[bytesPerEntry*index : bytesPerEntry*(index+1)]
+}
+
+func (b *bin) setEntry(index int64, val binEntryBytes) {
+	bytesPerEntry := int64(len(val))
+	copy(b.bytes[bytesPerEntry*index:], val)
+}
+
+func (b *bin) length(bytesPerEntry int64) int64 {
+	return int64(len(b.bytes)) / bytesPerEntry
+}
+
 func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th truncatedHash, p *HashIndexingParams) int64 {
+	bytesPerEntry := p.BytesPerBinEntry()
+
 	newEntry := newBinEntryBytes(th, hi, sn, p)
 	insertionPoint := b.findIndexBasedOnSortNum(sn, p)
-
+	if insertionPoint > b.length(bytesPerEntry) {
+		panic("insertionPoint too large")
+	}
 	// For some reason I couldn't get slices.Insert() to compile
 	// Alternative insertion algorithm:
-	if len(*b) == 0 {
+	if len(b.bytes) == 0 {
 		// Special case if empty
-		*b = append(*b, newEntry)
+		b.bytes = append(b.bytes, newEntry...)
 	} else {
 		// First append a copy of the last item
-		*b = append(*b, (*b)[len(*b)-1])
+		count := b.length(bytesPerEntry)
+		b.bytes = append(b.bytes, b.bytes[bytesPerEntry*(count-1):bytesPerEntry*count]...)
+		count++
 
-		// Then copy everything forward by one
-		copy((*b)[insertionPoint+1:], (*b)[insertionPoint:len(*b)-1])
+		// Then copy stuff forward by one
+		copy(b.bytes[bytesPerEntry*(insertionPoint+1):], b.bytes[bytesPerEntry*insertionPoint:bytesPerEntry*(count-1)])
 
 		// Finally drop in the inserted value
-		(*b)[insertionPoint] = newEntry
+		b.setEntry(insertionPoint, newEntry)
 	}
 	return insertionPoint
 }
 
 func (b *bin) lookupByHash(th truncatedHash, sn sortNum, p *HashIndexingParams) hashIndex {
+	bytesPerEntry := p.BytesPerBinEntry()
 	firstMatchingIndex := b.findIndexBasedOnSortNum(sn, p)
 	// Search sequentially from here until everything matches or sn does not match
-	for index := firstMatchingIndex; index < int64(len(*b)); index++ {
-		hiFound, snFound := (*b)[index].getHashIndexSortNum(p)
+	for index := firstMatchingIndex; index < b.length(bytesPerEntry); index++ {
+		entry := b.getEntry(index, p)
+		hiFound, snFound := entry.getHashIndexSortNum(p)
 		if snFound != sn {
 			return -1 // hash not present in bin
 		}
-		thFound := (*b)[index].getTruncatedHash()
+		thFound := entry.getTruncatedHash()
 		if thFound.equals(th) {
-			//fmt.Println("Found in ", index, "-th bin entry")
 			return hiFound
 		}
 	}
@@ -58,11 +83,13 @@ func (b *bin) lookupByHash(th truncatedHash, sn sortNum, p *HashIndexingParams) 
 // currently cannot find some of those repeated hashes by index. In that circumstance,
 // we return a hash of all zeroes!
 func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Hash {
+	bytesPerEntry := p.BytesPerBinEntry()
 	// No shortcut. Sequential search
-	for index := 0; index < len(*b); index++ {
-		hiFound, snFound := (*b)[index].getHashIndexSortNum(p)
+	for index := int64(0); index < b.length(bytesPerEntry); index++ {
+		entry := b.getEntry(index, p)
+		hiFound, snFound := entry.getHashIndexSortNum(p)
 		if hiFound == hi {
-			th := (*b)[index].getTruncatedHash()
+			th := entry.getTruncatedHash()
 			ah := newAbbreviatedHashFromBinNumSortNum(bn, snFound, p)
 			h := NewHashFromTruncatedHashAbbreviatedHash(th, ah)
 			return h
@@ -79,15 +106,16 @@ func (b *bin) lookupByIndex(hi hashIndex, bn binNum, p *HashIndexingParams) *Has
 // or it COULD be the index after the interval where sortNum is crossed.
 // If you need to know which of these is the case, you'll need to do a further check.
 func (b *bin) findIndexBasedOnSortNum(sn sortNum, p *HashIndexingParams) int64 {
-	if len(*b) == 0 {
+	if len(b.bytes) == 0 {
 		return 0
 	}
 	startIndex := int64(0)
-	endIndex := int64(len(*b) - 1)
+	endIndex := b.length(p.BytesPerBinEntry()) - 1
 
 	// Special case: if just one in sequence, but sn > sn in sequence...
 	if endIndex == startIndex {
-		_, snOnly := (*b)[startIndex].getHashIndexSortNum(p)
+		entry := b.getEntry(startIndex, p)
+		_, snOnly := entry.getHashIndexSortNum(p)
 		if sn > snOnly {
 			return startIndex + 1
 		}
@@ -107,12 +135,14 @@ func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *H
 	if startIndex == endIndex {
 		panic("homeInOnSortNum(): you should have already finished the iteration")
 	}
-	_, snStart := (*b)[startIndex].getHashIndexSortNum(p)
+	entryStart := b.getEntry(startIndex, p)
+	_, snStart := entryStart.getHashIndexSortNum(p)
 	// First check for an easy out
 	if sn <= snStart {
 		return startIndex, startIndex // END
 	}
-	_, snEnd := (*b)[endIndex].getHashIndexSortNum(p)
+	entryEnd := b.getEntry(endIndex, p)
+	_, snEnd := entryEnd.getHashIndexSortNum(p)
 	// Check for another easy out
 	if sn > snEnd {
 		return endIndex + 1, endIndex + 1 // END
@@ -143,7 +173,8 @@ func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *H
 			midIndex--
 		}
 		// Find actual sn on the "curve" at intIndex
-		_, snMid := (*b)[midIndex].getHashIndexSortNum(p)
+		entryMid := b.getEntry(midIndex, p)
+		_, snMid := entryMid.getHashIndexSortNum(p)
 		if snMid < sn {
 			return midIndex, endIndex
 		} else if snMid > sn {
@@ -161,7 +192,8 @@ func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *H
 		snEndSequence := sn
 		for snEndSequence == sn {
 			endSequenceIndex--
-			_, snEndSequence = (*b)[endSequenceIndex].getHashIndexSortNum(p)
+			endSequenceEntry := b.getEntry(endSequenceIndex, p)
+			_, snEndSequence = endSequenceEntry.getHashIndexSortNum(p)
 		}
 		return endSequenceIndex + 1, endSequenceIndex + 1 // END
 	}

@@ -15,7 +15,7 @@ type hashStore struct {
 	binNumFileRead    wordfile.ReadAtWordCounter
 	binStartsFile     *os.File
 	hashesInRamDANGER bool
-	binRam            []bin
+	binRam            []*bin
 }
 
 // Compiler check that implements
@@ -92,7 +92,7 @@ func (h *hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 	}
 
 	theBin.insertBinEntry(sn, hashIndex(hashesSoFar), trunc, h.params)
-	err = saveBinToFiles(bn, theBin, h.binStartsFile, h.overflowFiles, h.params)
+	err = saveBinToFiles(bn, *theBin, h.binStartsFile, h.overflowFiles, h.params)
 	if err != nil {
 		return -1, err
 	}
@@ -109,7 +109,7 @@ func (h *hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 	bn := abbr.toBinNum(h.params)
 	sn := abbr.toSortNum(h.params)
 
-	var theBin bin
+	var theBin *bin
 	if h.hashesInRamDANGER {
 		theBin = h.binRam[bn]
 	} else {

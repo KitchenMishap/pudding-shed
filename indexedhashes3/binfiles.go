@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) (bin, error) {
+func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) (*bin, error) {
 	theBinBytes := make([]byte, p.BytesPerBinEntry()*p.EntriesInBinStart())
 	_, err := binStartsFile.ReadAt(theBinBytes, int64(bn)*p.BytesPerBinEntry()*p.EntriesInBinStart())
 	if err != nil {
@@ -16,7 +16,7 @@ func loadBinFromFiles(bn binNum, binStartsFile *os.File, ovf *overflowFiles, p *
 	return loadBinFromSlice(theBinBytes, bn, ovf, p)
 }
 
-func loadBinFromSlice(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *HashIndexingParams) (bin, error) {
+func loadBinFromSlice(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *HashIndexingParams) (*bin, error) {
 	// Start with just the binStart
 
 	// See how many zero entries are at the end
@@ -37,22 +37,18 @@ func loadBinFromSlice(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *Hash
 		}
 	}
 
-	entrySize := int(p.BytesPerBinEntry())
-	entries := len(theBinBytes) / entrySize
 	// Now copy into new contiguous memory of the exact appropriate size
 	bytes := make([]byte, len(theBinBytes))
 	copy(bytes, theBinBytes)
 
 	// The bin object itself will be a slice of slices that index into that memory
-	theBin := make([]binEntryBytes, entries)
-	for i := 0; i < entries; i++ {
-		theBin[i] = bytes[i*entrySize : (i+1)*entrySize]
-	}
-	return theBin, nil
+	theBin := bin{}
+	theBin.bytes = bytes
+	return &theBin, nil
 }
 
-func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) ([]bin, error) {
-	result := make([]bin, p.NumberOfBins())
+func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) ([]*bin, error) {
+	result := make([]*bin, p.NumberOfBins())
 	theBinBytes := make([]byte, p.BytesPerBinEntry()*p.EntriesInBinStart())
 
 	reader := bufio.NewReaderSize(binStartsFile, 64*1024*1024)
@@ -84,17 +80,13 @@ func countZeroBytesAtEnd(bytes []byte) int64 {
 func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) error {
 	// Zeroes at the end of binStarts only ever get overwritten as bin gets bigger, the bin never gets smaller.
 	// So we don't have to write zeroes after the bins, as they are already in the file.
-	numEntries := int64(len(b))
+	bytesPerBinEntry := p.BytesPerBinEntry()
+	numEntries := b.length(bytesPerBinEntry)
 	numEntriesBinStart := numEntries
 	if numEntriesBinStart > p.EntriesInBinStart() {
 		numEntriesBinStart = p.EntriesInBinStart()
 		// Write the overflows file (to bytes first)
-		overflowByteCount := (numEntries - numEntriesBinStart) * p.BytesPerBinEntry()
-		overflowBytes := make([]byte, overflowByteCount)
-		for entry := numEntriesBinStart; entry < numEntries; entry++ {
-			copy(overflowBytes[(entry-numEntriesBinStart)*p.BytesPerBinEntry():], b[entry])
-		}
-		// (now to file)
+		overflowBytes := b.bytes[bytesPerBinEntry*numEntriesBinStart:]
 		overflowFolderpath, overflowFilepath := ovf.overflowFolderpathFilepath(bn)
 		err := os.MkdirAll(overflowFolderpath, os.ModePerm)
 		if err != nil {
@@ -106,15 +98,13 @@ func saveBinToFiles(bn binNum, b bin, binStartsFile *os.File, ovf *overflowFiles
 		}
 	}
 	// Write the binStarts (not bothering with zeroes after)
-	binStartByteCount := numEntriesBinStart * p.BytesPerBinEntry()
-	binStartBytes := make([]byte, binStartByteCount)
-	for entry := int64(0); entry < numEntriesBinStart; entry++ {
-		copy(binStartBytes[entry*p.BytesPerBinEntry():], b[entry][:])
-	}
+	binStartByteCount := numEntriesBinStart * bytesPerBinEntry
+	binStartBytes := b.bytes[:binStartByteCount]
 	_, err := binStartsFile.WriteAt(binStartBytes, int64(bn)*p.EntriesInBinStart()*p.BytesPerBinEntry())
 	return err
 }
 
+/*
 // For Gemini's rewrite
 func saveOverflow(bn binNum, b bin, numEntriesBinStart int64, ovf *overflowFiles, p *HashIndexingParams) error {
 	numEntries := int64(len(b))
@@ -135,4 +125,4 @@ func saveOverflow(bn binNum, b bin, numEntriesBinStart int64, ovf *overflowFiles
 		return err
 	}
 	return nil
-}
+}*/

@@ -18,7 +18,8 @@ type singlePassDetails struct {
 }
 
 func newSinglePassDetails(firstBinNum int64, binsCount int64,
-	binNumsWordFile wordfile.WriterAtWord, expectedEntriesPerBin int64) *singlePassDetails {
+	binNumsWordFile wordfile.WriterAtWord, expectedEntriesPerBin int64,
+	bytesPerBinEntry int64) *singlePassDetails {
 	result := singlePassDetails{}
 	result.firstBinNum = firstBinNum
 	result.lastBinNumPlusOne = firstBinNum + binsCount
@@ -27,7 +28,7 @@ func newSinglePassDetails(firstBinNum int64, binsCount int64,
 	}
 	result.bins = make([]bin, binsCount)
 	for i := int64(0); i < binsCount; i++ {
-		result.bins[i] = newEmptyBin(expectedEntriesPerBin)
+		result.bins[i] = newEmptyBin(expectedEntriesPerBin, bytesPerBinEntry)
 	}
 	return &result
 }
@@ -190,7 +191,7 @@ func (spd *singlePassDetails) checkThereAreNonEmptyBins() {
 	const verify = false
 	if verify {
 		for _, element := range spd.bins {
-			if len(element) > 0 {
+			if len(element.bytes) > 0 {
 				return // OK
 			}
 		}

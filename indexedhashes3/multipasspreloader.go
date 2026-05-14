@@ -58,7 +58,7 @@ func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 			bins = mp.params.NumberOfBins() - firstBinNum
 		}
 
-		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile, expectedEntriesPerBin)
+		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile, expectedEntriesPerBin, mp.params.BytesPerBinEntry())
 		err = passDetails.readIn(mp, threads)
 		if err != nil {
 			return err
