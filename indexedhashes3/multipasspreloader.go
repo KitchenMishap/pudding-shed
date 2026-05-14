@@ -30,7 +30,7 @@ func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNum
 	return &result
 }
 
-func (mp *MultipassPreloader) IndexTheHashes() error {
+func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 	err := mp.createInitialFiles()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (mp *MultipassPreloader) IndexTheHashes() error {
 		}
 
 		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile, expectedEntriesPerBin)
-		err = passDetails.readIn(mp)
+		err = passDetails.readIn(mp, threads)
 		if err != nil {
 			return err
 		}

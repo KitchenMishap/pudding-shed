@@ -168,15 +168,15 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 		if err != nil {
 			return err
 		}
-		err = bpl.IndexTheHashes()
+		err = bpl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
-		err = tpl.IndexTheHashes()
+		err = tpl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
-		err = apl.IndexTheHashes()
+		err = apl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}

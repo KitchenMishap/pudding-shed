@@ -94,7 +94,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		}
 
 		stepStart := time.Now()
-		err = bpl.IndexTheHashes()
+		err = bpl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		fmt.Println(sTimeUpdate)
 
 		stepStart = time.Now()
-		err = tpl.IndexTheHashes()
+		err = tpl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		fmt.Println(sTimeUpdate)
 
 		stepStart = time.Now()
-		err = apl.IndexTheHashes()
+		err = apl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}

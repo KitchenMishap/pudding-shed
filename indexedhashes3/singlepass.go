@@ -2,11 +2,10 @@ package indexedhashes3
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
+	"sync"
 
-	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
@@ -33,7 +32,7 @@ func newSinglePassDetails(firstBinNum int64, binsCount int64,
 	return &result
 }
 
-func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
+func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error {
 	sep := string(os.PathSeparator)
 	hashesFilepath := mp.folderPath + sep + "Hashes.hsh"
 	hashesFile, err := os.Open(hashesFilepath)
@@ -44,11 +43,39 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
 
 	reader := bufio.NewReaderSize(hashesFile, 8*1024*1024) // Google Gemini AI says this will be much faster
 
-	hashIndex := int64(0)
-	hash := [32]byte{}
+	// We will fan-out to some workers; each worker has exclusive access to a subset of the bins
+	type workItem struct {
+		// A work item relates to one hash
+		aBin *bin
+		sn   sortNum
+		hi   int64
+		th   *truncatedHash
+	}
+	workerChans := make([]chan workItem, threads)
+	var wg sync.WaitGroup
+	for i := range threads {
+		workerChans[i] = make(chan workItem, 1000)
+	}
+	for i := 0; i < threads; i++ {
+		wg.Add(1)
+		go func(workerIndex int) {
+			defer wg.Done()
+			for item := range workerChans[workerIndex] {
+				spd.dealWithOneHash(item.aBin, item.sn, item.hi, item.th, mp.params)
+			}
+		}(i)
+	}
+
+	hi := int64(0)
 	for {
+		// We will prepare a work item
+		// Prepare a work item
+		wi := workItem{}
+		wi.hi = hi
+
 		// Read 32 bytes directly from the buffer
 		// This is MUCH faster than manual chunking
+		var hash [32]byte
 		_, err = io.ReadFull(reader, hash[:])
 		if err == io.EOF {
 			break
@@ -56,54 +83,57 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader) error {
 		if err != nil {
 			return err
 		}
-		err = spd.dealWithOneHash(hashIndex, &hash, mp)
-		if err != nil {
-			return err
+
+		hash3 := Hash(hash)
+		abbr := hash3.toAbbreviatedHash()
+		bn := abbr.toBinNum(mp.params)
+
+		if spd.firstBinNum == 0 {
+			// First pass, store the binNum in a wordfile
+			err = spd.binNumsWordFile.WriteWordAt(int64(bn), hi)
+			if err != nil {
+				return err
+			}
 		}
-		hashIndex++
+
+		// This single pass only deals with a certain range of bin numbers
+		if int64(bn) < spd.firstBinNum || int64(bn) >= spd.lastBinNumPlusOne {
+			hi++
+			continue
+		}
+
+		wi.th = hash3.toTruncatedHash() // This creates a new object
+		wi.sn = abbr.toSortNum(mp.params)
+
+		passBinNumber := int64(bn) - spd.firstBinNum
+		wi.aBin = &(spd.bins[passBinNumber])
+
+		// It's crucial that each worker deals with bins that no other worker handles
+		// So send the work to the CORRECT worker
+		workerNum := passBinNumber % int64(threads)
+		workerChans[workerNum] <- wi
+
+		hi++
 	}
+	// Close all the channels into the workers
+	for i := range threads {
+		close(workerChans[i])
+	}
+
+	wg.Wait()
+
 	return nil
 }
 
-func (spd *singlePassDetails) dealWithOneHash(hi int64, hash *[32]byte, mp *MultipassPreloader) error {
-	// === TestPoint ===
-	// TestPoint for when inserting nth hash (but hit for nth block, nth transaction, and nth address)
-	if testpoints.TestPointBlockEnable && hi == testpoints.TestPointBlock {
-		fmt.Println("TESTPOINT: SinglePassDetails.dealWithOneHash(index = ", testpoints.TestPointBlock, ")")
-	}
-
-	hash3 := Hash(*hash)
-	abbr := hash3.toAbbreviatedHash()
-	bn := abbr.toBinNum(mp.params)
-
-	if spd.firstBinNum == 0 {
-		// First pass, store the binNum in a wordfile
-		err := spd.binNumsWordFile.WriteWordAt(int64(bn), hi)
-		if err != nil {
-			return err
-		}
-	}
-
-	// This single pass only deals with a certain range of bin numbers
-	if int64(bn) < spd.firstBinNum || int64(bn) >= spd.lastBinNumPlusOne {
-		return nil
-	}
-
-	th := hash3.toTruncatedHash()
-	sn := abbr.toSortNum(mp.params)
-
-	passBinNumber := int64(bn) - spd.firstBinNum
-	theBin := &(spd.bins[passBinNumber])
+func (spd *singlePassDetails) dealWithOneHash(theBin *bin,
+	sn sortNum, hi int64, th *truncatedHash, p *HashIndexingParams) {
 
 	// Is it in the bin already?
-	if theBin.lookupByHash(th, sn, mp.params) != -1 {
-		spd.checkThereAreNonEmptyBins()
-		return nil
+	if theBin.lookupByHash(th, sn, p) != -1 {
+		return
 	}
 
-	theBin.insertBinEntry(sn, hashIndex(hi), th, mp.params)
-	spd.checkThereAreNonEmptyBins()
-	return nil
+	theBin.insertBinEntry(sn, hashIndex(hi), th, p)
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
