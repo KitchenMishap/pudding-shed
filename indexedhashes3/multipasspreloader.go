@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
@@ -64,10 +66,16 @@ func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 
 		//passDetails.checkThereAreNonEmptyBins()
 
+		fmt.Println("Writing files...")
 		err := passDetails.writeFiles(mp)
 		if err != nil {
 			return err
 		}
+
+		// Each pass can take a LOT of ram. Make sure it's freed properly before the next pass's memory is alloc'd!
+		passDetails = nil
+		runtime.GC()
+		debug.FreeOSMemory()
 	}
 	fmt.Println()
 	err = mp.binNumsWordFile.Close()
