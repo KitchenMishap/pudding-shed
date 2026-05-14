@@ -67,10 +67,10 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 	}
 
 	hi := int64(0)
+	wi := workItem{}
 	for {
 		// We will prepare a work item
 		// Prepare a work item
-		wi := workItem{}
 		wi.hi = hi
 
 		// Read 32 bytes directly from the buffer
