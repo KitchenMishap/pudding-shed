@@ -49,7 +49,7 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 		aBin *bin
 		sn   sortNum
 		hi   int64
-		th   *truncatedHash
+		th   truncatedHash
 	}
 	workerChans := make([]chan workItem, threads)
 	var wg sync.WaitGroup
@@ -126,7 +126,7 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 }
 
 func (spd *singlePassDetails) dealWithOneHash(theBin *bin,
-	sn sortNum, hi int64, th *truncatedHash, p *HashIndexingParams) {
+	sn sortNum, hi int64, th truncatedHash, p *HashIndexingParams) {
 
 	// Is it in the bin already?
 	if theBin.lookupByHash(th, sn, p) != -1 {

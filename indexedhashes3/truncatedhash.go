@@ -4,6 +4,6 @@ package indexedhashes3
 
 type truncatedHash [24]byte
 
-func (tr *truncatedHash) equals(tr2 *truncatedHash) bool {
-	return *tr == *tr2
+func (tr *truncatedHash) equals(tr2 truncatedHash) bool {
+	return *tr == tr2
 }

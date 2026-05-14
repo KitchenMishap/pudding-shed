@@ -18,11 +18,11 @@ import "encoding/binary"
 
 type binEntryBytes []byte // The number of bytes in the slice is fixed for a given hash indexing store
 
-func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) binEntryBytes {
+func newBinEntryBytes(t truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) binEntryBytes {
 	result := make([]byte, p.BytesPerBinEntry())
 
 	// Write in the truncated hash
-	copy(result[0:24], (*t)[0:24])
+	copy(result[0:24], t[0:24])
 
 	// Write the hash index
 	byteCount1 := p.BytesPerHashIndex()
@@ -49,10 +49,10 @@ func newBinEntryBytes(t *truncatedHash, hi hashIndex, sn sortNum, p *HashIndexin
 	return result
 }
 
-func (beb *binEntryBytes) getTruncatedHash() *truncatedHash {
+func (beb *binEntryBytes) getTruncatedHash() truncatedHash {
 	result := truncatedHash{}
 	copy(result[0:24], (*beb)[0:24])
-	return &result
+	return result
 }
 
 func (beb *binEntryBytes) getHashIndexSortNum(p *HashIndexingParams) (hashIndex, sortNum) {

@@ -15,7 +15,7 @@ func newEmptyBin(expectedEntriesPerBin int64) bin {
 	return result
 }
 
-func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *HashIndexingParams) int64 {
+func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th truncatedHash, p *HashIndexingParams) int64 {
 	newEntry := newBinEntryBytes(th, hi, sn, p)
 	insertionPoint := b.findIndexBasedOnSortNum(sn, p)
 
@@ -37,7 +37,7 @@ func (b *bin) insertBinEntry(sn sortNum, hi hashIndex, th *truncatedHash, p *Has
 	return insertionPoint
 }
 
-func (b *bin) lookupByHash(th *truncatedHash, sn sortNum, p *HashIndexingParams) hashIndex {
+func (b *bin) lookupByHash(th truncatedHash, sn sortNum, p *HashIndexingParams) hashIndex {
 	firstMatchingIndex := b.findIndexBasedOnSortNum(sn, p)
 	// Search sequentially from here until everything matches or sn does not match
 	for index := firstMatchingIndex; index < int64(len(*b)); index++ {
