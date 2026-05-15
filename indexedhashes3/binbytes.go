@@ -13,10 +13,37 @@ type bin struct {
 	bytes []byte
 }
 
-func newEmptyBin(expectedEntriesPerBin int64, bytesPerEntry int64) bin {
-	result := bin{}
-	result.bytes = make([]byte, 0, expectedEntriesPerBin*bytesPerEntry)
-	return result
+type BinsArray struct {
+	bins []*bin
+}
+
+// Reset reuses existing bins as far as possible
+func (a BinsArray) Reuse(expectedEntriesPerBin int64, bytesPerEntry int64, numberOfBins int64) {
+	// First empty each existing bin (keeping any capacity)
+	for i := 0; i < len(a.bins); i++ {
+		a.bins[i].bytes = a.bins[i].bytes[:0]
+	}
+	// Append extra bins if needed (with new capacity)
+	for i := int64(len(a.bins)); i < numberOfBins; i++ {
+		a.bins = append(a.bins, &bin{})
+		a.bins[i].bytes = make([]byte, 0, expectedEntriesPerBin*bytesPerEntry)
+	}
+	// Trim down the outer array if necessary (keeping capacity)
+	a.bins = a.bins[:numberOfBins]
+
+	// We now have the right number of empty bins, and each has sensible capacity
+}
+
+func NewBinsArray(expectedEntriesPerBin int64, bytesPerEntry int64, numberOfBins int64) *BinsArray {
+	result := BinsArray{}
+	result.bins = make([]*bin, numberOfBins)
+	for i := range numberOfBins {
+		item := bin{}
+		// Empty but with capacity
+		item.bytes = make([]byte, 0, expectedEntriesPerBin*bytesPerEntry)
+		result.bins[i] = &item
+	}
+	return &result
 }
 
 func (b *bin) getEntry(index int64, p *HashIndexingParams) binEntryBytes {

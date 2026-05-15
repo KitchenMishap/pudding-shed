@@ -14,26 +14,27 @@ type singlePassDetails struct {
 	firstBinNum       int64
 	lastBinNumPlusOne int64
 	binNumsWordFile   wordfile.WriterAtWord
-	bins              []bin
+	bins              *BinsArray
 }
 
 func newSinglePassDetails(firstBinNum int64, binsCount int64,
 	binNumsWordFile wordfile.WriterAtWord, expectedEntriesPerBin int64,
-	bytesPerBinEntry int64) *singlePassDetails {
+	bytesPerBinEntry int64, ba *BinsArray) *singlePassDetails {
 	result := singlePassDetails{}
 	result.firstBinNum = firstBinNum
 	result.lastBinNumPlusOne = firstBinNum + binsCount
 	if firstBinNum == 0 {
 		result.binNumsWordFile = binNumsWordFile
 	}
-	result.bins = make([]bin, binsCount)
-	for i := int64(0); i < binsCount; i++ {
-		result.bins[i] = newEmptyBin(expectedEntriesPerBin, bytesPerBinEntry)
-	}
+	result.bins = ba
 	return &result
 }
 
 func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error {
+
+	// Clear out the bins (retaining capacity) from any previous use
+	spd.bins.Reuse(mp.params.EntriesInBinStart(), mp.params.BytesPerBinEntry(), mp.params.NumberOfBins())
+
 	sep := string(os.PathSeparator)
 	hashesFilepath := mp.folderPath + sep + "Hashes.hsh"
 	hashesFile, err := os.Open(hashesFilepath)
@@ -107,7 +108,7 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 		wi.sn = abbr.toSortNum(mp.params)
 
 		passBinNumber := int64(bn) - spd.firstBinNum
-		wi.aBin = &(spd.bins[passBinNumber])
+		wi.aBin = spd.bins.bins[passBinNumber]
 
 		// It's crucial that each worker deals with bins that no other worker handles
 		// So send the work to the CORRECT worker
@@ -138,9 +139,9 @@ func (spd *singlePassDetails) dealWithOneHash(theBin *bin,
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
-	for index, element := range spd.bins {
+	for index, element := range spd.bins.bins {
 		bn := spd.firstBinNum + int64(index)
-		err := saveBinToFiles(binNum(bn), element, mp.binStartsFile, mp.overflowFiles, mp.params)
+		err := saveBinToFiles(binNum(bn), *element, mp.binStartsFile, mp.overflowFiles, mp.params)
 		if err != nil {
 			return err
 		}
@@ -190,7 +191,7 @@ func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
 func (spd *singlePassDetails) checkThereAreNonEmptyBins() {
 	const verify = false
 	if verify {
-		for _, element := range spd.bins {
+		for _, element := range spd.bins.bins {
 			if len(element.bytes) > 0 {
 				return // OK
 			}

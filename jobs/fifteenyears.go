@@ -156,15 +156,21 @@ func SeveralYearsPrimaries(years int, transactionIndexingMethod string, doPhase1
 			tParams = indexedhashes3.Sensible16YearsTransactionHashParams()
 			aParams = indexedhashes3.Sensible16YearsAddressHashParams()
 		}
-		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem)
+
+		// We use the same BinsArray for Address hashes, Transaction hashes, and Block hashes
+		// (We clear it out and re-use it)
+		// We start with the sizes for address hashes, as that is biggest
+		ba := indexedhashes3.NewBinsArray(aParams.EntriesInBinStart(), aParams.BytesPerBinEntry(), aParams.NumberOfBins())
+
+		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem, ba)
 		if err != nil {
 			return err
 		}
-		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem)
+		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem, ba)
 		if err != nil {
 			return err
 		}
-		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem)
+		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem, ba)
 		if err != nil {
 			return err
 		}

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"runtime"
-	"runtime/debug"
 	"time"
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
@@ -80,15 +78,21 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			tParams = indexedhashes3.Sensible16YearsTransactionHashParams()
 			aParams = indexedhashes3.Sensible16YearsAddressHashParams()
 		}
-		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem)
+
+		// We use the same BinsArray for Address hashes, Transaction hashes, and Block hashes
+		// (We clear it out and re-use it)
+		// We start with the sizes for address hashes, as that is biggest
+		ba := indexedhashes3.NewBinsArray(aParams.EntriesInBinStart(), aParams.BytesPerBinEntry(), aParams.NumberOfBins())
+
+		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem, ba)
 		if err != nil {
 			return err
 		}
-		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem)
+		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem, ba)
 		if err != nil {
 			return err
 		}
-		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem)
+		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem, ba)
 		if err != nil {
 			return err
 		}
@@ -98,8 +102,6 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		if err != nil {
 			return err
 		}
-		runtime.GC()
-		debug.FreeOSMemory()
 		timeTaken = time.Now().Sub(stepStart)
 		mins = timeTaken.Minutes()
 		sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
@@ -110,8 +112,6 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		if err != nil {
 			return err
 		}
-		runtime.GC()
-		debug.FreeOSMemory()
 		timeTaken = time.Now().Sub(stepStart)
 		mins = timeTaken.Minutes()
 		sTimeUpdate = fmt.Sprintf("%s\tTRANSACTIONS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
@@ -122,8 +122,6 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		if err != nil {
 			return err
 		}
-		runtime.GC()
-		debug.FreeOSMemory()
 		timeTaken = time.Now().Sub(stepStart)
 		mins = timeTaken.Minutes()
 		sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)

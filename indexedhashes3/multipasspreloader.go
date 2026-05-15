@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
-	"runtime/debug"
 	"strconv"
 
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
@@ -19,9 +17,11 @@ type MultipassPreloader struct {
 	binNumsWordFile wordfile.WriterAtWord
 	bytesPerPass    int64
 	overflowFiles   *overflowFiles
+	bins            *BinsArray
 }
 
-func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNumsWordFile wordfile.WriterAtWord, gbMem int) *MultipassPreloader {
+func NewMultipassPreloader(params *HashIndexingParams, folderPath string,
+	binNumsWordFile wordfile.WriterAtWord, gbMem int, ba *BinsArray) *MultipassPreloader {
 	result := MultipassPreloader{}
 	result.params = params
 	result.folderPath = folderPath
@@ -29,6 +29,7 @@ func NewMultipassPreloader(params *HashIndexingParams, folderPath string, binNum
 	result.binNumsWordFile = binNumsWordFile
 	result.bytesPerPass = int64(gbMem * 1024 * 1024 * 1024)
 	result.overflowFiles = newOverflowFiles(folderPath, params)
+	result.bins = ba
 	return &result
 }
 
@@ -58,7 +59,7 @@ func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 			bins = mp.params.NumberOfBins() - firstBinNum
 		}
 
-		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile, expectedEntriesPerBin, mp.params.BytesPerBinEntry())
+		passDetails := newSinglePassDetails(firstBinNum, bins, mp.binNumsWordFile, expectedEntriesPerBin, mp.params.BytesPerBinEntry(), mp.bins)
 		err = passDetails.readIn(mp, threads)
 		if err != nil {
 			return err
@@ -71,11 +72,6 @@ func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 		if err != nil {
 			return err
 		}
-
-		// Each pass can take a LOT of ram. Make sure it's freed properly before the next pass's memory is alloc'd!
-		passDetails = nil
-		runtime.GC()
-		debug.FreeOSMemory()
 	}
 	fmt.Println()
 	err = mp.binNumsWordFile.Close()
