@@ -85,7 +85,7 @@ type AddressHandle struct {
 // intrinsicobjectscri.AddressHandle implements chainreadinterface.IAddressHandle
 var _ chainreadinterface.IAddressHandle = (*AddressHandle)(nil) // Check that implements
 
-// Functions in jsonblock.AddressHandle to implement chainreadinterface.IAddressHandle
+// Functions in intrinsicobjectscri.AddressHandle to implement chainreadinterface.IAddressHandle
 func (ah *AddressHandle) Hash() indexedhashes.Sha256 { return ah.puddingHash3 }
 func (ah *AddressHandle) Height() int64              { return -1 }
 func (ah *AddressHandle) HashSpecified() bool        { return true }
