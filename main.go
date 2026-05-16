@@ -58,8 +58,10 @@ func main() {
 	chainstorage.PrevFirstTxo = -1
 	chainstorage.PrevTrans = -1
 
-	err := jobs.SeveralYearsPrimaries(*nYrsFlag, "delegated",
-		true, true, true, *sDirFlag, *nGbFlag, *nThreadsFlag)
+	// We have now transitioned to the "intrinsic objects" codebase
+	useJson := false
+	err := jobs.RunIntrinsic(*sDirFlag, useJson, "delegated", *nYrsFlag,
+		*nThreadsFlag, *nGbFlag, true, true, true, 0, false)
 
 	if err != nil {
 		fmt.Println("==================")

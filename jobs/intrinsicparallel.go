@@ -16,7 +16,6 @@ import (
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes3"
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjectscri"
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
@@ -192,23 +191,20 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		if transactionIndexingMethod == "delegated" {
 			transactionIndexer = ind
 		} else if transactionIndexingMethod == "separate files" {
-			transactionIndexer = jsonblock.CreateOpenTransactionIndexerFiles(path)
+			panic("No longer supported")
+			//transactionIndexer = jsonblock.CreateOpenTransactionIndexerFiles(path)
 		} else {
 			panic("incorrect parameter " + transactionIndexingMethod)
 		}
 
-		if parallel {
-			limitedBlocks := blocks
-			if phase3BlockLimit != 0 && phase3BlockLimit < limitedBlocks {
-				limitedBlocks = phase3BlockLimit
-			}
+		limitedBlocks := blocks
+		if phase3BlockLimit != 0 && phase3BlockLimit < limitedBlocks {
+			limitedBlocks = phase3BlockLimit
+		}
 
-			err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
-			if err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("serial mode not yet implemented")
+		err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		if err != nil {
+			return err
 		}
 
 		timeTaken := time.Now().Sub(phaseStart)

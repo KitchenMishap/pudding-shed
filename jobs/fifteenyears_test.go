@@ -16,36 +16,6 @@ func TestIndexHashes(t *testing.T) {
 	}
 }
 
-//func TestFiveYearsDelegated(t *testing.T) {
-//	SeveralYearsParallel(4, "delegated")
-//}
-
-//func TestOneYearUndelegated(t *testing.T) {
-//	SeveralYearsPrimaries(1, "separate files")
-//}
-
-func TestTwoYearsPrimaries(t *testing.T) {
-	err := SeveralYearsPrimaries(2, "delegated",
-		true, true, true, "E:\\Data\\TwoYearsJson", 64, 30)
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-// TestOneYearFileSizes was written for seeing whether NonEssentialInts were getting truncated (they were, now fixed)
-func TestOneYearFileSizes(t *testing.T) {
-	var sDir = "E:\\Data\\OneYearTest"
-	var nGb = 16
-	var nThreads = 20
-	var nYrs = 1
-	err := SeveralYearsPrimaries(nYrs, "delegated", true, true, true,
-		sDir, nGb, nThreads)
-	if err != nil {
-		t.Error(err)
-	}
-	// Look at file sizes manually to determine pass/fail
-}
-
 /*
 func TestMemoryLeak(t *testing.T) {
 	cr := indexedhashes.NewUniformHashStoreCreator(1000000000, "F:\\Data\\TestMemLeak", "TestName", 2)
