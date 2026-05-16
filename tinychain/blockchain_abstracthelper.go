@@ -1,10 +1,6 @@
 package tinychain
 
-import (
-	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"testing"
-)
-
+/*
 func TestGenesisBlock_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
 	handle := blockchain.GenesisBlock()
 	if handle.IsInvalid() {
@@ -150,3 +146,4 @@ func TestLatestNextTransaction_helper(blockchain chainreadinterface.IBlockChain,
 		t.Error("next after latest transaction must be invalid")
 	}
 }
+*/

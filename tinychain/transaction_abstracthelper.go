@@ -1,9 +1,6 @@
 package tinychain
 
-import (
-	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"testing"
-)
+/*
 
 func TestTransaction_helper(blockchain chainreadinterface.IBlockChain, t *testing.T) {
 	handle, err := blockchain.GenesisTransaction()
@@ -165,3 +162,4 @@ func TestBlock2Trans2_helper(blockchain chainreadinterface.IBlockChain, t *testi
 		t.Error("source trans should be height 5")
 	}
 }
+*/

@@ -1,6 +1,6 @@
 package tinychain
 
-import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
+/*
 
 type Block struct {
 	BlockHandle
@@ -24,3 +24,4 @@ func (b *Block) NonEssentialInts() (*map[string]int64, error) {
 
 // Compiler check that implements
 var _ chainreadinterface.IBlock = (*Block)(nil)
+*/

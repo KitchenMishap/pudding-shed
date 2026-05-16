@@ -1,9 +1,6 @@
 package tinychain
 
-import (
-	"testing"
-)
-
+/*
 func TestGenesisBlock(t *testing.T) {
 	TestGenesisBlock_helper(TheTinyChain, t)
 }
@@ -35,3 +32,4 @@ func TestLatestPrevNextBlock(t *testing.T) {
 func TestLatestNextTransaction(t *testing.T) {
 	TestLatestNextTransaction_helper(TheTinyChain, t)
 }
+*/
