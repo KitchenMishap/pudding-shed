@@ -347,6 +347,7 @@ func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 	progress := NewProgress(0, transactionsTarget, 30,
 		"transactions", "gather blockchain", backslashR)
 
+	height := int64(0)
 	hBlock := aOneBlockHolder.GenesisBlock()
 	fmt.Println()
 	for !hBlock.IsInvalid() {
@@ -355,7 +356,6 @@ func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 			ac.Close()
 			return err
 		}
-		height := block.Height()
 
 		// The sync is just so we can see
 		// file sizes in explorer during processing
@@ -377,11 +377,15 @@ func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 		transactionsCount += count
 		progress.Update(transactionsCount)
 
+		// Because we had an 888,888 block run stuck at 87.12% and never found out why...
+		fmt.Printf(" %d", height)
+
 		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
 		if err != nil {
 			ac.Close()
 			return err
 		}
+		height++
 	}
 	fmt.Println()
 	ac.Close()
