@@ -1,10 +1,10 @@
 package chainstorage
 
 import (
-	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
-	"github.com/KitchenMishap/pudding-shed/tinychain"
 	"testing"
+
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/tinychain"
 )
 
 func TestCopyOfTinyChain_Helper(bc chainreadinterface.IBlockChain, t *testing.T) {
@@ -23,6 +23,7 @@ func TestCopyOfTinyChain_Helper(bc chainreadinterface.IBlockChain, t *testing.T)
 	tinychain.TestGenesisHandle_helper(bc, t)
 }
 
+/*
 func TestCopyOfJsonRealChain_Helper(bc chainreadinterface.IBlockChain, t *testing.T) {
 	tinychain.TestLatestNextTransaction_helper(bc, t) // These tinychain tests also apply to JsonRealChain
 	tinychain.TestLatestPrevNextBlock_helper(bc, t)
@@ -35,7 +36,7 @@ func TestCopyOfJsonRealChain_Helper(bc chainreadinterface.IBlockChain, t *testin
 	tinychain.TestInvalidHandle_helper(bc, t)
 	tinychain.TestGenesisHandle_helper(bc, t)
 	jsonblock.TestJustFiveCoinbaseBlocks_helper(bc, t)
-}
+}*/
 
 func TestBlockNeiExistance_Helper(bc chainreadinterface.IBlockChain, neiName string, neiExpectedExistance bool, t *testing.T) {
 	genesisHandle := bc.GenesisBlock()

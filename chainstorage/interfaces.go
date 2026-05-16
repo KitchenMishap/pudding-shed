@@ -2,14 +2,13 @@ package chainstorage
 
 import (
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
 // Just stores hashes (block, transaction, address) associated with each appended block
 type IAppendableHashesChain interface {
-	AppendHashes(hashes *jsonblock.JsonBlockHashes) error
+	//AppendHashes(hashes *jsonblock.JsonBlockHashes) error
 	AppendHashesCri(chain chainreadinterface.IBlockChain, hBlock chainreadinterface.IBlockHandle, blockHeight int64) error
 	Close()
 	Sync() error

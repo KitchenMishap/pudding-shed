@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
-	"github.com/KitchenMishap/pudding-shed/jsonblock"
 	"github.com/KitchenMishap/pudding-shed/testpoints"
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
@@ -18,6 +17,7 @@ type concreteHashesChain struct {
 // Check that implements
 var _ IAppendableHashesChain = (*concreteHashesChain)(nil)
 
+/*
 func (chc *concreteHashesChain) AppendHashes(block *jsonblock.JsonBlockHashes) error {
 	// === TestPoint ===
 	if testpoints.TestPointBlockEnable && block.J_height == testpoints.TestPointBlock {
@@ -56,7 +56,7 @@ func (chc *concreteHashesChain) AppendHashes(block *jsonblock.JsonBlockHashes) e
 		}
 	}
 	return nil
-}
+}*/
 
 func (chc *concreteHashesChain) AppendHashesCri(chain chainreadinterface.IBlockChain,
 	hBlock chainreadinterface.IBlockHandle, blockHeight int64) error {
