@@ -82,7 +82,10 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		// We use the same BinsArray for Address hashes, Transaction hashes, and Block hashes
 		// (We clear it out and re-use it)
 		// We start with the sizes for address hashes, as that is biggest
-		ba := indexedhashes3.NewBinsArray(aParams.EntriesInBinStart(), aParams.BytesPerBinEntry(), aParams.NumberOfBins())
+		// We will need to count the number of bins per pass based on granted gigabytes
+		estimatedEntriesPerBin := aParams.EntriesInBinStart()
+		estimatedBinsPerPass := int64(gbMem*1024*1024*1024) / (aParams.BytesPerBinEntry() * estimatedEntriesPerBin)
+		ba := indexedhashes3.NewBinsArray(estimatedEntriesPerBin, aParams.BytesPerBinEntry(), estimatedBinsPerPass)
 
 		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem, ba)
 		if err != nil {
@@ -97,14 +100,15 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			return err
 		}
 
+		// We do addresses first, so that bins don't need to grow
 		stepStart := time.Now()
-		err = bpl.IndexTheHashes(threads)
+		err = apl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
 		timeTaken = time.Now().Sub(stepStart)
 		mins = timeTaken.Minutes()
-		sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+		sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
 		fmt.Println(sTimeUpdate)
 
 		stepStart = time.Now()
@@ -118,13 +122,13 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 		fmt.Println(sTimeUpdate)
 
 		stepStart = time.Now()
-		err = apl.IndexTheHashes(threads)
+		err = bpl.IndexTheHashes(threads)
 		if err != nil {
 			return err
 		}
 		timeTaken = time.Now().Sub(stepStart)
 		mins = timeTaken.Minutes()
-		sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+		sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
 		fmt.Println(sTimeUpdate)
 
 		timeTaken = time.Now().Sub(phaseStart)
@@ -199,7 +203,7 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 				limitedBlocks = phase3BlockLimit
 			}
 
-			err = PhaseThreeParallelIntrinsic(limitedBlocks, lastBlock, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+			err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
 			if err != nil {
 				return err
 			}
@@ -297,7 +301,7 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, transact
 	return nil
 }
 
-func PhaseThreeParallelIntrinsic(blocks int64, lastBlock int64, useJson bool,
+func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 	transactionsTarget int64, ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer, threads int, backslashR string) error {
 

@@ -5,8 +5,8 @@ import (
 )
 
 func TestStreamBlockHashes(t *testing.T) {
-	path := "E:\\Data\\888888Binary"
-	years := 17 // Note that 9 years are needed to test the Segwit era
+	path := "E:\\Data\\TwoYearsBinary"
+	years := 2 // Note that 9 years are needed to test the Segwit era
 	gbMem := 64
 	threads := 30
 	do1 := true

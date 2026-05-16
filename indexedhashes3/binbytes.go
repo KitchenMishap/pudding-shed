@@ -18,7 +18,7 @@ type BinsArray struct {
 }
 
 // Reset reuses existing bins as far as possible
-func (a BinsArray) Reuse(expectedEntriesPerBin int64, bytesPerEntry int64, numberOfBins int64) {
+func (a *BinsArray) Reuse(expectedEntriesPerBin int64, bytesPerEntry int64, numberOfBins int64) {
 	// First empty each existing bin (keeping any capacity)
 	for i := 0; i < len(a.bins); i++ {
 		a.bins[i].bytes = a.bins[i].bytes[:0]
@@ -31,16 +31,19 @@ func (a BinsArray) Reuse(expectedEntriesPerBin int64, bytesPerEntry int64, numbe
 	// Trim down the outer array if necessary (keeping capacity)
 	a.bins = a.bins[:numberOfBins]
 
+	if int64(len(a.bins)) != numberOfBins {
+		panic("Number of bins not equal to numberOfBins")
+	}
 	// We now have the right number of empty bins, and each has sensible capacity
 }
 
-func NewBinsArray(expectedEntriesPerBin int64, bytesPerEntry int64, numberOfBins int64) *BinsArray {
+func NewBinsArray(estimatedEntriesPerBin int64, estimatedBytesPerEntry int64, estimatedNumberOfBins int64) *BinsArray {
 	result := BinsArray{}
-	result.bins = make([]*bin, numberOfBins)
-	for i := range numberOfBins {
+	result.bins = make([]*bin, estimatedNumberOfBins)
+	for i := range estimatedNumberOfBins {
 		item := bin{}
 		// Empty but with capacity
-		item.bytes = make([]byte, 0, expectedEntriesPerBin*bytesPerEntry)
+		item.bytes = make([]byte, 0, estimatedEntriesPerBin*estimatedBytesPerEntry)
 		result.bins[i] = &item
 	}
 	return &result

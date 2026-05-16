@@ -17,12 +17,11 @@ type singlePassDetails struct {
 	bins              *BinsArray
 }
 
-func newSinglePassDetails(firstBinNum int64, binsCount int64,
-	binNumsWordFile wordfile.WriterAtWord, expectedEntriesPerBin int64,
-	bytesPerBinEntry int64, ba *BinsArray) *singlePassDetails {
+func newSinglePassDetails(firstBinNum int64, binsThisPass int64,
+	binNumsWordFile wordfile.WriterAtWord, ba *BinsArray) *singlePassDetails {
 	result := singlePassDetails{}
 	result.firstBinNum = firstBinNum
-	result.lastBinNumPlusOne = firstBinNum + binsCount
+	result.lastBinNumPlusOne = firstBinNum + binsThisPass
 	if firstBinNum == 0 {
 		result.binNumsWordFile = binNumsWordFile
 	}
@@ -33,7 +32,7 @@ func newSinglePassDetails(firstBinNum int64, binsCount int64,
 func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error {
 
 	// Clear out the bins (retaining capacity) from any previous use
-	spd.bins.Reuse(mp.params.EntriesInBinStart(), mp.params.BytesPerBinEntry(), mp.params.NumberOfBins())
+	spd.bins.Reuse(mp.params.EntriesInBinStart(), mp.params.BytesPerBinEntry(), spd.lastBinNumPlusOne-spd.firstBinNum)
 
 	sep := string(os.PathSeparator)
 	hashesFilepath := mp.folderPath + sep + "Hashes.hsh"
@@ -41,7 +40,7 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 	if err != nil {
 		return err
 	}
-	defer hashesFile.Close()
+	defer func() { _ = hashesFile.Close() }()
 
 	reader := bufio.NewReaderSize(hashesFile, 8*1024*1024) // Google Gemini AI says this will be much faster
 
