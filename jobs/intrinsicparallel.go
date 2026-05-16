@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/KitchenMishap/pudding-shed/chainhandleinterface"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/intrinsicobjectschi"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -43,7 +45,9 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			return err
 		}
 
-		err = PhaseOneParallelIntrinsic(path, useJson, blocks, transactions, threads, backslashR)
+		//err = PhaseOneParallelIntrinsic(path, useJson, blocks, transactions, threads, backslashR)
+		err = PhaseOneParallelIntrinsicChi(path, useJson, blocks, transactions, threads, backslashR)
+
 		if err != nil {
 			return err
 		}
@@ -283,6 +287,92 @@ func PhaseOneParallelIntrinsic(path string, useJson bool, blocks int64, transact
 		if err != nil {
 			return err
 		}
+
+		hBlock, err = chain.NextBlock(hBlock)
+		if err != nil {
+			return err
+		}
+		blockHeight++
+		transCount += transactionsInBlock
+
+		progress.Update(transCount)
+	}
+
+	hc.Close()
+	return nil
+}
+
+func PhaseOneParallelIntrinsicChi(path string, useJson bool, blocks int64, transactions int64, threads int, backslashR string) error {
+	hcc := chainstorage.NewConcreteHashesChainCreator(path)
+	err := hcc.Create()
+	if err != nil {
+		return err
+	}
+	hc, err := hcc.Open()
+	if err != nil {
+		return err
+	}
+
+	// Now we start messing with channels and sequencers
+
+	orderedBlockHashesChannel := make(chan indexedhashes.Sha256)
+	go func() {
+		err := corereader2.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
+		if err != nil {
+			panic(err) // ToDo
+		}
+	}()
+
+	// These are used further downstream, but we need seq back here in order to ask if it's bloated
+	orderedNumberedBlockChannel := make(chan *corereader2.HeightNumberedBlock)
+	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
+
+	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
+	// They won't be ordered any more when they come out.
+	go func() {
+		for hash := range orderedBlockHashesChannel {
+			seq.WaitForNotBloated() // Nobble the flow if it's bloated further downstream
+			nobbledBlockHashesChannel <- hash
+		}
+		close(nobbledBlockHashesChannel)
+	}()
+
+	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
+
+	chain := intrinsicobjectschi.CreateOneBlockHolder()
+	go func() {
+		for numberedBlock := range orderedNumberedBlockChannel {
+			chain.InChan <- &numberedBlock.Block
+		}
+		close(chain.InChan)
+	}()
+
+	progress := NewProgress(0, transactions, 30,
+		"transactions", "Gather Hashes", backslashR)
+
+	blockHeight := int64(0)
+	transCount := int64(0)
+	hBlock, err := chain.GenesisBlock()
+	if err != nil {
+		return err
+	}
+	for !chain.IsBlockHandleInvalid(hBlock) {
+		var blk chainhandleinterface.IBlock
+		blk, err = chain.BlockInterface(hBlock)
+		if err != nil {
+			return err
+		}
+		var transactionsInBlock int64
+		transactionsInBlock, err = blk.TransactionCount()
+		if err != nil {
+			return err
+		}
+
+		err = hc.AppendHashesChi(chain, hBlock)
+		if err != nil {
+			return err
+		}
+
 		hBlock, err = chain.NextBlock(hBlock)
 		if err != nil {
 			return err
