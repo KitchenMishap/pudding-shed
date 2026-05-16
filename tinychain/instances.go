@@ -1,7 +1,5 @@
 package tinychain
 
-/*
-
 // ------------------
 // Block 0 (Genesis)
 // Transaction 0 (Coinbase)
@@ -134,4 +132,3 @@ var theTinyChain = Blockchain{
 	blocks:       []Block{block_b0, block_b1, block_b2},
 	transactions: []Transaction{trans_b0_t0, trans_b1_t0, trans_b1_t1, trans_b2_t0, trans_b2_t1, trans_b2_t2},
 }
-*/

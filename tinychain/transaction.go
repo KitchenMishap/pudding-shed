@@ -1,6 +1,6 @@
 package tinychain
 
-/*
+import "github.com/KitchenMishap/pudding-shed/chainreadinterface"
 
 // Transaction implements ITransaction
 type Transaction struct {
@@ -39,4 +39,3 @@ func (t *Transaction) NonEssentialInts() (*map[string]int64, error) {
 
 // Compiler check that implements
 var _ chainreadinterface.ITransaction = (*Transaction)(nil)
-*/

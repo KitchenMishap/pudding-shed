@@ -1,6 +1,9 @@
 package tinychain
 
-/*
+import (
+	"testing"
+)
+
 func TestGenesisHandle(t *testing.T) {
 	TestGenesisHandle_helper(TheTinyChain, t)
 }
@@ -18,4 +21,3 @@ func TestHashEquality(t *testing.T) {
 	hBlock1.height = 1
 	TestHashEquality_helper(&hBlock0, &hBlock00, &hBlock1, t)
 }
-*/

@@ -1,6 +1,9 @@
 package tinychain
 
-/*
+import (
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"testing"
+)
 
 // Helpers that test TheTinyChain OR a copy of TheTinyChain stored in some other format.
 // These helpers are passed an IBlockChain as per chainreadinterface rather than testing TheTinyChain directly.
@@ -55,4 +58,3 @@ func TestHashEquality_helper(hBlock0 chainreadinterface.IBlockHandle,
 		t.Error("block height 1 must have different hash from block height 0")
 	}
 }
-*/

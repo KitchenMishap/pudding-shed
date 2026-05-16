@@ -1,6 +1,9 @@
 package tinychain
 
-/*
+import (
+	"errors"
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+)
 
 // A transaction output supporting the ITxo interface
 type Txo struct {
@@ -18,4 +21,3 @@ func (txo Txo) Address() (chainreadinterface.IAddressHandle, error) {
 
 // Compiler check that it implements
 var _ chainreadinterface.ITxo = (*Txo)(nil)
-*/

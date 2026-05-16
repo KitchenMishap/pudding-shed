@@ -1,6 +1,9 @@
 package tinychain
 
-/*
+import (
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+	"github.com/KitchenMishap/pudding-shed/indexedhashes"
+)
 
 // A HashHeight for tinychain that doesn't store a hash
 // The hash is merely the hash of the height number
@@ -113,4 +116,3 @@ func (txo *TxoHandle) TxoHeightSpecified() bool {
 }
 func (txo *TxoHandle) IndicesPath() (int64, int64, int64) { return -1, -1, -1 }
 func (txo *TxoHandle) IndicesPathSpecified() bool         { return false }
-*/

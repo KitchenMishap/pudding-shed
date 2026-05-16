@@ -1,6 +1,9 @@
 package tinychain
 
-/*
+import (
+	"errors"
+	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
+)
 
 // Blockchain implements IBlockchain (and so implicitly IBlockTree)
 type Blockchain struct {
@@ -164,4 +167,3 @@ func (bc *Blockchain) NextTransaction(t chainreadinterface.ITransHandle) (chainr
 	next.height = nextHeight
 	return &next, nil
 }
-*/
