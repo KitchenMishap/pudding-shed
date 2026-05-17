@@ -356,17 +356,17 @@ func PhaseOneParallelIntrinsicChi(path string, useJson bool, blocks int64, trans
 	if err != nil {
 		return err
 	}
+
+	// Re-use this same objects through the loop
+	blockInfo := chainhandleinterface.NewBlockReceiver()
+
 	for !chain.IsBlockHandleInvalid(hBlock) {
-		var blk chainhandleinterface.IBlock
-		blk, err = chain.BlockInterface(hBlock)
+
+		err = chain.GetBlockInfo(hBlock, blockInfo)
 		if err != nil {
 			return err
 		}
-		var transactionsInBlock int64
-		transactionsInBlock, err = blk.TransactionCount()
-		if err != nil {
-			return err
-		}
+		transactionsInBlock := int64(len(blockInfo.TransactionHandles))
 
 		err = hc.AppendHashesChi(chain, hBlock)
 		if err != nil {
