@@ -7,26 +7,33 @@ import (
 type HashFile struct {
 	file      memfile.AppendableLookupFile
 	hashCount int64
+
+	scratch []byte
 }
 
 func NewHashFile(file memfile.AppendableLookupFile, hashCount int64) *HashFile {
 	p := new(HashFile)
 	p.file = file
 	p.hashCount = hashCount
+	p.scratch = make([]byte, 32)
 	return p
 }
 
 func (wf *HashFile) ReadHashAt(off int64) ([32]byte, error) {
+	// Using scracth avoids MASSES of tiny heap allocations (slice headers)
+	_, err := wf.file.ReadAt(wf.scratch, off*32)
 	var hashBytes [32]byte
-	_, err := wf.file.ReadAt(hashBytes[0:32], off*32)
 	if err != nil {
 		return hashBytes, err
 	}
+	copy(hashBytes[:], wf.scratch)
 	return hashBytes, nil
 }
 
 func (wf *HashFile) WriteHashAt(val [32]byte, off int64) error {
-	_, err := wf.file.WriteAt(val[0:32], off*32)
+	// Using scratch avoids MASSES of tiny heap allocations (slice headers)
+	copy(wf.scratch[:], val[:])
+	_, err := wf.file.WriteAt(wf.scratch, off*32)
 	if err != nil {
 		return err
 	}
