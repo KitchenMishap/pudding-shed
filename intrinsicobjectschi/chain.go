@@ -162,7 +162,7 @@ func (obh *OneBlockHolder) GetTransactionInfo(transHandle chainhandleinterface.T
 
 	txiHandle := chainhandleinterface.TxiHandle{}
 	txiHandle.TH = transHandle
-	for txiIndex := range trans.BitcoinCoreTxis {
+	for txiIndex := range trans.Txis {
 		txiHandle.TXISH = makeTxiSubHandle(int64(txiIndex))
 		// pudding shed (this software) treats coinbase transactions differently from Bitcoin Core
 		// in pudding shed, coinbase transactions have NO txis
@@ -189,7 +189,7 @@ func (obh *OneBlockHolder) GetTxiInfo(txiHandle chainhandleinterface.TxiHandle,
 	txIndex := indexInBlockFromTransactionSubHandle(txiHandle.TH.TSH)
 	trans := &obh.currentBlock.intrinsic.Transactions[txIndex]
 	txiIndex := txiIndexFromTxiSubHandle(txiHandle.TXISH)
-	txi := &trans.BitcoinCoreTxis[txiIndex]
+	txi := &trans.Txis[txiIndex]
 	// Send info about the txi to the receiver
 	receiver.ReceiveParentTransactionHandle(txiHandle.TH)
 	receiver.ReceiveIncomingTxid(txi.TxId)

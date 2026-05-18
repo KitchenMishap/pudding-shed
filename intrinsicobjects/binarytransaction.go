@@ -37,16 +37,16 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 	var bytes int
 	txiCount, bytes = ReadCompactSize(bin, byteIndex)
 	byteIndex += bytes
-	targetTrans.BitcoinCoreTxis = make([]Txi, txiCount)
+	targetTrans.Txis = make([]Txi, txiCount)
 
 	// Loop through the txis
 	for i := uint64(0); i < txiCount; i++ {
 		// Read TxId of vin
-		copy(targetTrans.BitcoinCoreTxis[i].TxId[:], bin[byteIndex:byteIndex+32])
+		copy(targetTrans.Txis[i].TxId[:], bin[byteIndex:byteIndex+32])
 		byteIndex += 32
 
 		// Read 4 bytes of vout of vin
-		(*targetTrans).BitcoinCoreTxis[i].VOut = int64(binary.LittleEndian.Uint32(bin[byteIndex : byteIndex+4]))
+		(*targetTrans).Txis[i].VOut = int64(binary.LittleEndian.Uint32(bin[byteIndex : byteIndex+4]))
 		byteIndex += 4
 
 		// Read ScriptSig length

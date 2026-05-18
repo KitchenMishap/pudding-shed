@@ -34,18 +34,18 @@ func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction) 
 	}
 
 	txiCount := len(parsed.J_vin)
-	targetTrans.BitcoinCoreTxis = make([]Txi, txiCount)
+	targetTrans.Txis = make([]Txi, txiCount)
 	for i := 0; i < txiCount; i++ {
 		if parsed.J_vin[i].J_txid == "" {
 			// Must be a coinbase transaction
-			targetTrans.BitcoinCoreTxis[i].TxId = indexedhashes.Sha256{} // All zeroes
+			targetTrans.Txis[i].TxId = indexedhashes.Sha256{} // All zeroes
 		} else {
-			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &targetTrans.BitcoinCoreTxis[i].TxId)
+			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &targetTrans.Txis[i].TxId)
 			if err != nil {
 				return err
 			}
 		}
-		targetTrans.BitcoinCoreTxis[i].VOut = int64(parsed.J_vin[i].J_vout)
+		targetTrans.Txis[i].VOut = int64(parsed.J_vin[i].J_vout)
 	}
 	txoCount := len(parsed.J_vout)
 	targetTrans.Txos = make([]Txo, txoCount)

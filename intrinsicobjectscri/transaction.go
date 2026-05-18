@@ -34,9 +34,9 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 	if isCoinbase {
 		result.puddingShedTxis = make([]Txi, 0)
 	} else {
-		result.puddingShedTxis = make([]Txi, len(intrinsic.BitcoinCoreTxis))
-		for i := range len(intrinsic.BitcoinCoreTxis) {
-			result.puddingShedTxis[i].intrinsic = &intrinsic.BitcoinCoreTxis[i]
+		result.puddingShedTxis = make([]Txi, len(intrinsic.Txis))
+		for i := range len(intrinsic.Txis) {
+			result.puddingShedTxis[i].intrinsic = &intrinsic.Txis[i]
 			result.puddingShedTxis[i].parentTransaction = &result
 			result.puddingShedTxis[i].parentIndex = int64(i)
 		}
