@@ -10,19 +10,20 @@ import (
 
 const satoshisPerBitcoin = float64(100_000_000)
 
-func ParseJsonTransaction(jsonBytes []byte, targetTrans *Transaction) error {
+func ParseJsonTransaction(jsonBytes []byte, targetTrans *Transaction, storage *MultiTransactionStorage) error {
 	parsed, err := parseJsonTrans(jsonBytes)
 	if err != nil {
 		return err
 	}
-	err = parseJsonTransaction(parsed, targetTrans)
+	err = parseJsonTransaction(parsed, targetTrans, storage)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction) error {
+func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction,
+	storage *MultiTransactionStorage) error {
 	targetTrans.Version = uint32(parsed.J_version)
 	targetTrans.Size = int(parsed.J_size)
 	targetTrans.Weight = int(parsed.J_weight)
@@ -34,29 +35,40 @@ func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction) 
 	}
 
 	txiCount := len(parsed.J_vin)
-	targetTrans.TxisTEMP = make([]Txi, txiCount)
+	targetTrans.TxisCount = int64(txiCount)
+	targetTrans.TxisStart = int64(len(storage.Txis))
+
 	for i := 0; i < txiCount; i++ {
+		thisTxi := Txi{}
+
 		if parsed.J_vin[i].J_txid == "" {
 			// Must be a coinbase transaction
-			targetTrans.TxisTEMP[i].TxId = indexedhashes.Sha256{} // All zeroes
+			thisTxi.TxId = indexedhashes.Sha256{} // All zeroes
 		} else {
-			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &targetTrans.TxisTEMP[i].TxId)
+			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &thisTxi.TxId)
 			if err != nil {
 				return err
 			}
 		}
-		targetTrans.TxisTEMP[i].VOut = int64(parsed.J_vin[i].J_vout)
+		thisTxi.VOut = int64(parsed.J_vin[i].J_vout)
+
+		storage.Txis = append(storage.Txis, thisTxi)
 	}
 	txoCount := len(parsed.J_vout)
-	targetTrans.TxosTEMP = make([]Txo, txoCount)
+	targetTrans.TxosCount = int64(txoCount)
+	targetTrans.TxosStart = int64(len(storage.Txos))
 	for i := 0; i < txoCount; i++ {
-		targetTrans.TxosTEMP[i].Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
+		thisTxo := Txo{}
+
+		thisTxo.Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
 		var scriptPubKey []byte
 		scriptPubKey, err = hex.DecodeString(parsed.J_vout[i].J_scriptPubKey.J_hex)
 		if err != nil {
 			return err
 		}
-		targetTrans.TxosTEMP[i].ScriptPubKey = scriptPubKey
+		thisTxo.ScriptPubKey = scriptPubKey
+
+		storage.Txos = append(storage.Txos, thisTxo)
 	}
 	// Google Gemini AI told me this bit
 	targetTrans.StrippedSize = (int(parsed.J_weight) - int(parsed.J_size)) / 3

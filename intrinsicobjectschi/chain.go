@@ -191,7 +191,7 @@ func (obh *OneBlockHolder) GetTxiInfo(txiHandle chainhandleinterface.TxiHandle,
 	txIndex := indexInBlockFromTransactionSubHandle(txiHandle.TH.TSH)
 	trans := &obh.currentBlock.intrinsic.Transactions[txIndex]
 	txiIndex := txiIndexFromTxiSubHandle(txiHandle.TXISH)
-	txi := trans.GetTxi(nil, txiIndex)
+	txi := trans.GetTxi(obh.currentBlock.intrinsic.Storage, txiIndex)
 	// Send info about the txi to the receiver
 	receiver.ReceiveParentTransactionHandle(txiHandle.TH)
 	receiver.ReceiveIncomingTxid(txi.TxId)
@@ -209,7 +209,7 @@ func (obh *OneBlockHolder) GetTxoInfo(txoHandle chainhandleinterface.TxoHandle,
 	txIndex := indexInBlockFromTransactionSubHandle(txoHandle.TH.TSH)
 	trans := &obh.currentBlock.intrinsic.Transactions[txIndex]
 	txoIndex := txoIndexFromTxiSubHandle(txoHandle.TXOSH)
-	txo := trans.GetTxo(nil, txoIndex)
+	txo := trans.GetTxo(obh.currentBlock.intrinsic.Storage, txoIndex)
 	// Send info about the txo to the receiver
 	receiver.ReceiveParentTransactionHandle(txoHandle.TH)
 	receiver.ReceiveSatoshisValue(txo.Value)

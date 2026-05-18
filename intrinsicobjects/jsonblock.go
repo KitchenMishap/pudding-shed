@@ -46,7 +46,7 @@ func ParseJsonBlock(jsonBytes []byte, targetBlock *Block) error {
 	txCount := len(parsed.J_tx)
 	targetBlock.Transactions = make([]Transaction, txCount)
 	for i := 0; i < txCount; i++ {
-		err = parseJsonTransaction(&parsed.J_tx[i], &targetBlock.Transactions[i])
+		err = parseJsonTransaction(&parsed.J_tx[i], &targetBlock.Transactions[i], targetBlock.Storage)
 		if err != nil {
 			return err
 		}

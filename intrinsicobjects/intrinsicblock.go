@@ -22,4 +22,6 @@ type Block struct {
 	Weight       int
 	StrippedSize int
 	Difficulty   float64
+
+	Storage *MultiTransactionStorage
 }

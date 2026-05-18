@@ -20,7 +20,8 @@ type Transaction struct {
 	neisMap map[string]int64 // Non Essential Ints
 }
 
-func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
+func NewTransaction(intrinsic *intrinsicobjects.Transaction,
+	storage *intrinsicobjects.MultiTransactionStorage, isCoinbase bool,
 	parentBlock *Block, parentIndex int64) (*Transaction, error) {
 
 	result := Transaction{}
@@ -37,7 +38,7 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 		txiCount := intrinsic.TxiCount()
 		result.puddingShedTxis = make([]Txi, txiCount)
 		for i := range txiCount {
-			result.puddingShedTxis[i].intrinsicCopy = intrinsic.GetTxi(nil, i)
+			result.puddingShedTxis[i].intrinsicCopy = intrinsic.GetTxi(storage, i)
 			result.puddingShedTxis[i].parentTransaction = &result
 			result.puddingShedTxis[i].parentIndex = int64(i)
 		}
@@ -46,7 +47,7 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 	txoCount := intrinsic.TxoCount()
 	result.txos = make([]Txo, txoCount)
 	for i := range txoCount {
-		result.txos[i].intrinsicCopy = intrinsic.GetTxo(nil, i)
+		result.txos[i].intrinsicCopy = intrinsic.GetTxo(storage, i)
 		result.txos[i].parentTransaction = &result
 		result.txos[i].parentIndex = int64(i)
 	}

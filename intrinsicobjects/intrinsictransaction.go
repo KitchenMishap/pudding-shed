@@ -9,11 +9,13 @@ import (
 // But a transaction may not hold an index addressing a previous transaction, because that index is a consequence of the order of transactions.
 
 type Transaction struct {
-	TxId     indexedhashes.Sha256
-	Version  uint32
-	IsSegWit bool
-	TxisTEMP []Txi
-	TxosTEMP []Txo
+	TxId      indexedhashes.Sha256
+	Version   uint32
+	IsSegWit  bool
+	TxisStart int64 // An index into the supplied MultiTransactionStorage
+	TxisCount int64
+	TxosStart int64 // An index into the supplied MultiTransactionStorage
+	TxosCount int64
 
 	Size         int
 	Weight       int
@@ -21,13 +23,13 @@ type Transaction struct {
 	StrippedSize int
 }
 
-func (t *Transaction) TxiCount() int64 { return int64(len(t.TxisTEMP)) }
-func (t *Transaction) TxoCount() int64 { return int64(len(t.TxosTEMP)) }
+func (t *Transaction) TxiCount() int64 { return t.TxisCount }
+func (t *Transaction) TxoCount() int64 { return t.TxosCount }
 func (t *Transaction) GetTxi(storage *MultiTransactionStorage, index int64) Txi {
-	return t.TxisTEMP[index]
+	return storage.Txis[t.TxisStart+index]
 }
 func (t *Transaction) GetTxo(storage *MultiTransactionStorage, index int64) Txo {
-	return t.TxosTEMP[index]
+	return storage.Txos[t.TxosStart+index]
 }
 
 type Txi struct {

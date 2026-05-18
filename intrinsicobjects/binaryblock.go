@@ -7,6 +7,12 @@ import (
 )
 
 func ParseBinaryBlock(bin []byte, targetBlock *Block) {
+	if targetBlock.Storage == nil {
+		targetBlock.Storage = NewMultiTransactionStorage()
+	} else {
+		targetBlock.Storage.Reset()
+	}
+
 	//-------
 	// Header
 	//-------
@@ -56,7 +62,7 @@ func ParseBinaryBlock(bin []byte, targetBlock *Block) {
 
 	// Now read the transactions (txCount of them)
 	for tx := range txCount {
-		bytes = ParseBinaryTransaction(bin, byteIndex, h, &(targetBlock.Transactions[tx]))
+		bytes = ParseBinaryTransaction(bin, byteIndex, h, &(targetBlock.Transactions[tx]), targetBlock.Storage)
 		byteIndex += bytes
 		targetBlock.Weight += targetBlock.Transactions[tx].Weight
 		targetBlock.StrippedSize += targetBlock.Transactions[tx].StrippedSize

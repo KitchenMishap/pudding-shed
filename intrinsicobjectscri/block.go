@@ -34,7 +34,8 @@ func NewBlock(intrinsic *intrinsicobjects.Block, blockHeight int64, mediantime u
 	for i := range intrinsic.Transactions {
 		isCoinbase := i == 0 // First transaction of block is coinbase transaction (reward plus miners' fees)
 		var err error
-		result.transactions[i], err = NewTransaction(&intrinsic.Transactions[i], isCoinbase,
+		result.transactions[i], err = NewTransaction(&intrinsic.Transactions[i],
+			intrinsic.Storage, isCoinbase,
 			&result, int64(i))
 		if err != nil {
 			return nil, err
