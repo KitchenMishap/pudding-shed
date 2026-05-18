@@ -22,7 +22,7 @@ import (
 )
 
 func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, years int, threads int, gbMem int,
-	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64, isTest bool) error {
+	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64, isTest bool, useHandlesInterface bool) error {
 
 	var backslashR string
 	if isTest {
@@ -45,9 +45,12 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			return err
 		}
 
-		//err = PhaseOneParallelIntrinsic(path, useJson, blocks, transactions, threads, backslashR)
-		err = PhaseOneParallelIntrinsicChi(path, useJson, blocks, transactions, threads, backslashR)
-
+		if useHandlesInterface {
+			err = PhaseOneParallelIntrinsicChi(path, useJson, blocks, transactions, threads, backslashR)
+		} else {
+			// Old way
+			err = PhaseOneParallelIntrinsic(path, useJson, blocks, transactions, threads, backslashR)
+		}
 		if err != nil {
 			return err
 		}
@@ -206,8 +209,12 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			limitedBlocks = phase3BlockLimit
 		}
 
-		//err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
-		err = PhaseThreeParallelIntrinsicChi(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		if useHandlesInterface {
+			err = PhaseThreeParallelIntrinsicChi(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		} else {
+			// Old way
+			err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		}
 		if err != nil {
 			return err
 		}

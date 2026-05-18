@@ -61,12 +61,16 @@ func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction,
 		thisTxo := Txo{}
 
 		thisTxo.Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
+
 		var scriptPubKey []byte
 		scriptPubKey, err = hex.DecodeString(parsed.J_vout[i].J_scriptPubKey.J_hex)
 		if err != nil {
 			return err
 		}
-		thisTxo.ScriptPubKey = scriptPubKey
+		// Copy it into storage
+		thisTxo.ScriptPubKeyStart = int32(len(storage.Scripts))
+		thisTxo.ScriptPubKeyLen = int32(len(scriptPubKey))
+		storage.Scripts = append(storage.Scripts, scriptPubKey...)
 
 		storage.Txos = append(storage.Txos, thisTxo)
 	}

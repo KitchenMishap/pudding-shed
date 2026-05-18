@@ -138,7 +138,11 @@ func (txo *Txo) Satoshis() (int64, error) { return txo.intrinsicCopy.Value, nil 
 func (txo *Txo) Address() (chainreadinterface.IAddressHandle, error) {
 	result := AddressHandle{}
 	// puddingHash3 (hash of ScriptPubKey bytes) is peculiar to pudding-shed software, and is not generally known to bitcoiners
-	result.puddingHash3 = indexedhashes.HashOfBytes(txo.intrinsicCopy.ScriptPubKey)
+	scriptStorage := txo.parentTransaction.parentBlock.intrinsic.Storage.Scripts // A bit clunky :-O
+	scriptStart := txo.intrinsicCopy.ScriptPubKeyStart
+	scriptLen := txo.intrinsicCopy.ScriptPubKeyLen
+	scriptPubKey := scriptStorage[scriptStart : scriptStart+scriptLen]
+	result.puddingHash3 = indexedhashes.HashOfBytes(scriptPubKey)
 	return &result, nil
 }
 

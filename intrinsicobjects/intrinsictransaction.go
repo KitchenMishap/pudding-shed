@@ -38,6 +38,7 @@ type Txi struct {
 }
 
 type Txo struct {
-	Value        int64
-	ScriptPubKey []byte
+	Value             int64
+	ScriptPubKeyStart int32 // An index into the supplied MultiTransactionStorage
+	ScriptPubKeyLen   int32
 }

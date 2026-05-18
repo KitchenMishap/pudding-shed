@@ -213,8 +213,11 @@ func (obh *OneBlockHolder) GetTxoInfo(txoHandle chainhandleinterface.TxoHandle,
 	// Send info about the txo to the receiver
 	receiver.ReceiveParentTransactionHandle(txoHandle.TH)
 	receiver.ReceiveSatoshisValue(txo.Value)
-	for byteIndex := range txo.ScriptPubKey {
-		receiver.ReceiveScriptPubByteToAppend(txo.ScriptPubKey[byteIndex])
+	scriptStorage := obh.currentBlock.intrinsic.Storage.Scripts
+	start := txo.ScriptPubKeyStart
+	length := txo.ScriptPubKeyLen
+	for byteIndex := start; byteIndex < start+length; byteIndex++ {
+		receiver.ReceiveScriptPubByteToAppend(scriptStorage[byteIndex])
 	}
 	return nil
 }

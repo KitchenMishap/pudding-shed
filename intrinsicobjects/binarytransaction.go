@@ -90,8 +90,10 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 		// Read that number of bytes
 		scriptPubKey := bin[byteIndex : byteIndex+int(spkLen)]
 		byteIndex += int(spkLen)
-
-		thisTxo.ScriptPubKey = scriptPubKey
+		// Copy it into storage
+		thisTxo.ScriptPubKeyStart = int32(len(storage.Scripts))
+		thisTxo.ScriptPubKeyLen = int32(len(scriptPubKey))
+		storage.Scripts = append(storage.Scripts, scriptPubKey...)
 
 		storage.Txos = append(storage.Txos, thisTxo)
 	}
