@@ -2,10 +2,11 @@ package wordfile
 
 import (
 	"encoding/binary"
-	"github.com/KitchenMishap/pudding-shed/memfile"
 	"io"
 	"log"
 	"os"
+
+	"github.com/KitchenMishap/pudding-shed/memfile"
 )
 
 type WordFile struct {
@@ -13,6 +14,9 @@ type WordFile struct {
 	underlying *os.File
 	wordSize   int64
 	wordCount  int64
+
+	scratch  []byte
+	scratch8 [8]byte
 }
 
 func NewWordFile(file memfile.AppendableLookupFile, underlying *os.File, wordSize int64, wordCount int64) *WordFile {
@@ -21,6 +25,8 @@ func NewWordFile(file memfile.AppendableLookupFile, underlying *os.File, wordSiz
 	p.underlying = underlying
 	p.wordSize = wordSize
 	p.wordCount = wordCount
+
+	p.scratch = p.scratch8[0:wordSize]
 	return p
 }
 
@@ -30,23 +36,23 @@ func NewWordFileEx(file memfile.LookupFile, wordSize int64, wordCount int64) *Wo
 	p.underlying = nil
 	p.wordSize = wordSize
 	p.wordCount = wordCount
+
+	p.scratch = p.scratch8[0:wordSize]
 	return p
 }
 
 func (wf *WordFile) ReadWordAt(off int64) (int64, error) {
-	var intBytes [8]byte
-	_, err := wf.file.ReadAt(intBytes[0:wf.wordSize], off*wf.wordSize)
+	_, err := wf.file.ReadAt(wf.scratch, off*wf.wordSize)
 	if err != nil {
 		return -1, err
 	}
-	word := int64(binary.LittleEndian.Uint64(intBytes[0:8]))
+	word := int64(binary.LittleEndian.Uint64(wf.scratch8[:])) // Remember scratch's data is INSIDE scratch8
 	return word, nil
 }
 
 func (wf *WordFile) WriteWordAt(val int64, off int64) error {
-	var intBytes [8]byte
-	binary.LittleEndian.PutUint64(intBytes[0:8], uint64(val))
-	_, err := wf.file.WriteAt(intBytes[0:wf.wordSize], off*wf.wordSize)
+	binary.LittleEndian.PutUint64(wf.scratch8[:], uint64(val))
+	_, err := wf.file.WriteAt(wf.scratch, off*wf.wordSize)
 	if err != nil {
 		return err
 	}
