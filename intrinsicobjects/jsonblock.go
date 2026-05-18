@@ -8,6 +8,12 @@ import (
 )
 
 func ParseJsonBlock(jsonBytes []byte, targetBlock *Block) error {
+	if targetBlock.Storage == nil {
+		targetBlock.Storage = NewMultiTransactionStorage()
+	} else {
+		targetBlock.Storage.Reset()
+	}
+
 	parsed, err := parseJsonBlock(jsonBytes)
 	if err != nil {
 		return err

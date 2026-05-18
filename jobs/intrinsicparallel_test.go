@@ -12,7 +12,7 @@ func TestStreamBlockHashes(t *testing.T) {
 	do1 := true
 	do2 := true
 	do3 := true
-	json := false
+	json := true
 	err := RunIntrinsic(path, json, "delegated", years, threads, gbMem, do1, do2, do3, 0, true)
 
 	if err != nil {
