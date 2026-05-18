@@ -12,13 +12,22 @@ type Transaction struct {
 	TxId     indexedhashes.Sha256
 	Version  uint32
 	IsSegWit bool
-	Txis     []Txi
-	Txos     []Txo
+	TxisTEMP []Txi
+	TxosTEMP []Txo
 
 	Size         int
 	Weight       int
 	VSize        int
 	StrippedSize int
+}
+
+func (t *Transaction) TxiCount() int64 { return int64(len(t.TxisTEMP)) }
+func (t *Transaction) TxoCount() int64 { return int64(len(t.TxosTEMP)) }
+func (t *Transaction) GetTxi(storage *MultiTransactionStorage, index int64) Txi {
+	return t.TxisTEMP[index]
+}
+func (t *Transaction) GetTxo(storage *MultiTransactionStorage, index int64) Txo {
+	return t.TxosTEMP[index]
 }
 
 type Txi struct {

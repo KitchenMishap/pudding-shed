@@ -37,16 +37,16 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 	var bytes int
 	txiCount, bytes = ReadCompactSize(bin, byteIndex)
 	byteIndex += bytes
-	targetTrans.Txis = make([]Txi, txiCount)
+	targetTrans.TxisTEMP = make([]Txi, txiCount)
 
 	// Loop through the txis
 	for i := uint64(0); i < txiCount; i++ {
 		// Read TxId of vin
-		copy(targetTrans.Txis[i].TxId[:], bin[byteIndex:byteIndex+32])
+		copy(targetTrans.TxisTEMP[i].TxId[:], bin[byteIndex:byteIndex+32])
 		byteIndex += 32
 
 		// Read 4 bytes of vout of vin
-		(*targetTrans).Txis[i].VOut = int64(binary.LittleEndian.Uint32(bin[byteIndex : byteIndex+4]))
+		(*targetTrans).TxisTEMP[i].VOut = int64(binary.LittleEndian.Uint32(bin[byteIndex : byteIndex+4]))
 		byteIndex += 4
 
 		// Read ScriptSig length
@@ -65,12 +65,12 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 	var txoCount uint64
 	txoCount, bytes = ReadCompactSize(bin, byteIndex)
 	byteIndex += bytes
-	targetTrans.Txos = make([]Txo, txoCount)
+	targetTrans.TxosTEMP = make([]Txo, txoCount)
 
 	// Loop through the txos
 	for i := uint64(0); i < txoCount; i++ {
 		// Eight bytes of satoshis value
-		targetTrans.Txos[i].Value = int64(binary.LittleEndian.Uint64(bin[byteIndex : byteIndex+8]))
+		targetTrans.TxosTEMP[i].Value = int64(binary.LittleEndian.Uint64(bin[byteIndex : byteIndex+8]))
 		byteIndex += 8
 
 		// Read ScriptPubKey length
@@ -82,7 +82,7 @@ func ParseBinaryTransaction(bin []byte, byteIndex int, h hash.Hash, targetTrans 
 		scriptPubKey := bin[byteIndex : byteIndex+int(spkLen)]
 		byteIndex += int(spkLen)
 
-		targetTrans.Txos[i].ScriptPubKey = scriptPubKey
+		targetTrans.TxosTEMP[i].ScriptPubKey = scriptPubKey
 	}
 
 	segwitByteOffset := byteIndex // This is used for skipping segwit for txid hash

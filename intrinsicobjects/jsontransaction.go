@@ -34,29 +34,29 @@ func parseJsonTransaction(parsed *JsonTransEssential, targetTrans *Transaction) 
 	}
 
 	txiCount := len(parsed.J_vin)
-	targetTrans.Txis = make([]Txi, txiCount)
+	targetTrans.TxisTEMP = make([]Txi, txiCount)
 	for i := 0; i < txiCount; i++ {
 		if parsed.J_vin[i].J_txid == "" {
 			// Must be a coinbase transaction
-			targetTrans.Txis[i].TxId = indexedhashes.Sha256{} // All zeroes
+			targetTrans.TxisTEMP[i].TxId = indexedhashes.Sha256{} // All zeroes
 		} else {
-			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &targetTrans.Txis[i].TxId)
+			err = indexedhashes.HashHexToSha256(parsed.J_vin[i].J_txid, &targetTrans.TxisTEMP[i].TxId)
 			if err != nil {
 				return err
 			}
 		}
-		targetTrans.Txis[i].VOut = int64(parsed.J_vin[i].J_vout)
+		targetTrans.TxisTEMP[i].VOut = int64(parsed.J_vin[i].J_vout)
 	}
 	txoCount := len(parsed.J_vout)
-	targetTrans.Txos = make([]Txo, txoCount)
+	targetTrans.TxosTEMP = make([]Txo, txoCount)
 	for i := 0; i < txoCount; i++ {
-		targetTrans.Txos[i].Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
+		targetTrans.TxosTEMP[i].Value = int64(math.Round(parsed.J_vout[i].J_value * satoshisPerBitcoin))
 		var scriptPubKey []byte
 		scriptPubKey, err = hex.DecodeString(parsed.J_vout[i].J_scriptPubKey.J_hex)
 		if err != nil {
 			return err
 		}
-		targetTrans.Txos[i].ScriptPubKey = scriptPubKey
+		targetTrans.TxosTEMP[i].ScriptPubKey = scriptPubKey
 	}
 	// Google Gemini AI told me this bit
 	targetTrans.StrippedSize = (int(parsed.J_weight) - int(parsed.J_size)) / 3

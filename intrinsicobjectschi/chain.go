@@ -162,7 +162,8 @@ func (obh *OneBlockHolder) GetTransactionInfo(transHandle chainhandleinterface.T
 
 	txiHandle := chainhandleinterface.TxiHandle{}
 	txiHandle.TH = transHandle
-	for txiIndex := range trans.Txis {
+	txiCount := trans.TxiCount()
+	for txiIndex := range txiCount {
 		txiHandle.TXISH = makeTxiSubHandle(int64(txiIndex))
 		// pudding shed (this software) treats coinbase transactions differently from Bitcoin Core
 		// in pudding shed, coinbase transactions have NO txis
@@ -173,7 +174,8 @@ func (obh *OneBlockHolder) GetTransactionInfo(transHandle chainhandleinterface.T
 
 	txoHandle := chainhandleinterface.TxoHandle{}
 	txoHandle.TH = transHandle
-	for txoIndex := range trans.Txos {
+	txoCount := trans.TxoCount()
+	for txoIndex := range txoCount {
 		txoHandle.TXOSH = makeTxoSubHandle(int64(txoIndex))
 		receiver.ReceiveTxoHandleToAppend(txoHandle)
 	}
@@ -189,7 +191,7 @@ func (obh *OneBlockHolder) GetTxiInfo(txiHandle chainhandleinterface.TxiHandle,
 	txIndex := indexInBlockFromTransactionSubHandle(txiHandle.TH.TSH)
 	trans := &obh.currentBlock.intrinsic.Transactions[txIndex]
 	txiIndex := txiIndexFromTxiSubHandle(txiHandle.TXISH)
-	txi := &trans.Txis[txiIndex]
+	txi := trans.GetTxi(nil, txiIndex)
 	// Send info about the txi to the receiver
 	receiver.ReceiveParentTransactionHandle(txiHandle.TH)
 	receiver.ReceiveIncomingTxid(txi.TxId)
@@ -207,7 +209,7 @@ func (obh *OneBlockHolder) GetTxoInfo(txoHandle chainhandleinterface.TxoHandle,
 	txIndex := indexInBlockFromTransactionSubHandle(txoHandle.TH.TSH)
 	trans := &obh.currentBlock.intrinsic.Transactions[txIndex]
 	txoIndex := txoIndexFromTxiSubHandle(txoHandle.TXOSH)
-	txo := &trans.Txos[txoIndex]
+	txo := trans.GetTxo(nil, txoIndex)
 	// Send info about the txo to the receiver
 	receiver.ReceiveParentTransactionHandle(txoHandle.TH)
 	receiver.ReceiveSatoshisValue(txo.Value)

@@ -34,17 +34,19 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 	if isCoinbase {
 		result.puddingShedTxis = make([]Txi, 0)
 	} else {
-		result.puddingShedTxis = make([]Txi, len(intrinsic.Txis))
-		for i := range len(intrinsic.Txis) {
-			result.puddingShedTxis[i].intrinsic = &intrinsic.Txis[i]
+		txiCount := intrinsic.TxiCount()
+		result.puddingShedTxis = make([]Txi, txiCount)
+		for i := range txiCount {
+			result.puddingShedTxis[i].intrinsicCopy = intrinsic.GetTxi(nil, i)
 			result.puddingShedTxis[i].parentTransaction = &result
 			result.puddingShedTxis[i].parentIndex = int64(i)
 		}
 	}
 
-	result.txos = make([]Txo, len(intrinsic.Txos))
-	for i := range intrinsic.Txos {
-		result.txos[i].intrinsic = &intrinsic.Txos[i]
+	txoCount := intrinsic.TxoCount()
+	result.txos = make([]Txo, txoCount)
+	for i := range txoCount {
+		result.txos[i].intrinsicCopy = intrinsic.GetTxo(nil, i)
 		result.txos[i].parentTransaction = &result
 		result.txos[i].parentIndex = int64(i)
 	}
@@ -58,13 +60,13 @@ func NewTransaction(intrinsic *intrinsicobjects.Transaction, isCoinbase bool,
 }
 
 type Txi struct {
-	intrinsic         *intrinsicobjects.Txi
+	intrinsicCopy     intrinsicobjects.Txi
 	parentTransaction *Transaction
 	parentIndex       int64
 }
 
 type Txo struct {
-	intrinsic         *intrinsicobjects.Txo
+	intrinsicCopy     intrinsicobjects.Txo
 	parentTransaction *Transaction
 	parentIndex       int64
 }
@@ -82,7 +84,7 @@ func (t *Transaction) NonEssentialInts() (*map[string]int64, error)          { r
 func (t *Transaction) AllTxoSatoshis() ([]int64, error) {
 	result := make([]int64, len(t.txos))
 	for i := range len(t.txos) {
-		result[i] = t.txos[i].intrinsic.Value
+		result[i] = t.txos[i].intrinsicCopy.Value
 	}
 	return result, nil
 }
@@ -106,8 +108,8 @@ var _ chainreadinterface.ITxi = (*Txi)(nil) // Check that implements
 
 func (txi *Txi) SourceTxo() (chainreadinterface.ITxoHandle, error) {
 	hTxo := TxoHandle{}
-	hTxo.txId = txi.intrinsic.TxId
-	hTxo.vIndex = txi.intrinsic.VOut
+	hTxo.txId = txi.intrinsicCopy.TxId
+	hTxo.vIndex = txi.intrinsicCopy.VOut
 	return &hTxo, nil
 }
 
@@ -131,11 +133,11 @@ func (txi *Txi) ParentSpecified() bool { return true }
 // intrinsicobjectscri.Txo implements chainreadinterface.ITxo
 var _ chainreadinterface.ITxo = (*Txo)(nil) // Check that implements
 
-func (txo *Txo) Satoshis() (int64, error) { return txo.intrinsic.Value, nil }
+func (txo *Txo) Satoshis() (int64, error) { return txo.intrinsicCopy.Value, nil }
 func (txo *Txo) Address() (chainreadinterface.IAddressHandle, error) {
 	result := AddressHandle{}
 	// puddingHash3 (hash of ScriptPubKey bytes) is peculiar to pudding-shed software, and is not generally known to bitcoiners
-	result.puddingHash3 = indexedhashes.HashOfBytes(txo.intrinsic.ScriptPubKey)
+	result.puddingHash3 = indexedhashes.HashOfBytes(txo.intrinsicCopy.ScriptPubKey)
 	return &result, nil
 }
 
