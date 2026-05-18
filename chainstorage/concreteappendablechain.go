@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/KitchenMishap/pudding-shed/chainhandleinterface"
 	"github.com/KitchenMishap/pudding-shed/chainreadinterface"
 	"github.com/KitchenMishap/pudding-shed/indexedhashes"
 	"github.com/KitchenMishap/pudding-shed/intarrayarray"
@@ -38,6 +39,12 @@ type concreteAppendableChain struct {
 	blkFirstTrans      wordfile.ReadWriteAtWordCounter
 	trnHashes          indexedhashes.HashReadWriter
 	parentBlockOfTrans wordfile.ReadWriteAtWordCounter
+
+	// These are re-used objects in the interest of the "zero allocations" aspiration
+	za_blockReceiver       *chainhandleinterface.BlockReceiver
+	za_transactionReceiver *chainhandleinterface.BitcoinCoreTransactionReceiver
+	za_txiReceiver         *chainhandleinterface.TxiReceiver
+	za_txoReceiver         *chainhandleinterface.TxoReceiver
 }
 
 // Check that implements
@@ -512,6 +519,402 @@ func (cac *concreteAppendableChain) appendTxo(blockChain chainreadinterface.IBlo
 		return -1, err
 	}
 	addressEncountered := (fileCount > addressHeight)
+
+	if addressEncountered {
+		abc := 123
+		abc++ // Breakpoint here to find first re-used address in the blockchain
+		// Transaction f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16
+		// contains the first address re-use in the blockchain. It is transaction index 171, and is in block 170.
+		// It is a block reward going to two txos. txoHeight is 172, and addressHeight is 9 (the previous occurrence
+		// of the address). It is NOT TRUE that "From here on, addressHeight should always be less than txoHeight."
+		// It is not true, because the initial list of address hashes is not a list of unique hashes.
+	}
+
+	// If we've not encountered an address, this is the first txo that uses it
+	if !addressEncountered {
+		err = cac.addrFirstTxo.WriteWordAt(txoHeight, addressHeight)
+		if err != nil {
+			return -1, err
+		}
+
+		const TestHere = true
+		// We've been finding that that the val just written ends up zero later.
+		// Let's look at it right now!
+		if TestHere && addressHeight == testpoints.TestPointAddressIndex {
+			val, err := cac.addrFirstTxo.ReadWordAt(addressHeight)
+			if err != nil {
+				return -1, err
+			}
+			if val != txoHeight {
+				panic("Value just written reads back as different")
+			} else if val == 0 {
+				panic("Didn't expect value written to be zero")
+			}
+		}
+	} else {
+		// We've seen this address before. Add this txo to the address's list of additional txos
+		err = cac.addrAdditionalTxos.AppendToArray(addressHeight, txoHeight)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	// This txo needs to reference the address height
+	err = cac.txoAddress.WriteWordAt(addressHeight, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	// This txo is so far unspent
+	err = cac.txoSpentTxi.WriteWordAt(0, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	return txoHeight, nil
+}
+
+func (cac *concreteAppendableChain) AppendBlockChi(blockChain chainhandleinterface.IBlockChain,
+	hBlock chainhandleinterface.BlockHandle) error {
+
+	if cac.za_blockReceiver == nil {
+		cac.za_blockReceiver = chainhandleinterface.NewBlockReceiver()
+	}
+	if cac.za_transactionReceiver == nil {
+		cac.za_transactionReceiver = chainhandleinterface.NewBitcoinCoreTransactionReceiver()
+	}
+	if cac.za_txiReceiver == nil {
+		cac.za_txiReceiver = chainhandleinterface.NewTxiReceiver()
+	}
+	if cac.za_txoReceiver == nil {
+		cac.za_txoReceiver = chainhandleinterface.NewTxoReceiver()
+	}
+
+	err := blockChain.GetBlockInfo(hBlock, cac.za_blockReceiver)
+	if err != nil {
+		return err
+	}
+
+	// === TestPoint ===
+	if testpoints.TestPointBlockEnable && cac.za_blockReceiver.BlockHeight == testpoints.TestPointBlock {
+		fmt.Println("TESTPOINT: concreteAppendableChain.AppendBlock(", testpoints.TestPointBlock, ")")
+	}
+
+	// We now assume that all hashes have already been stored and indexed
+	blkHash := indexedhashes.Sha256(cac.za_blockReceiver.BlockHash)
+	var blkNum int64
+	blkNum, err = cac.blkHashes.IndexOfHash(&blkHash)
+	if err != nil {
+		return err
+	}
+	if blkNum == -1 {
+		return errors.New("must be able to find index of block hash")
+	}
+	if cac.za_blockReceiver.BlockHeight != blkNum {
+		return errors.New("cannot append a block out of sequence")
+	}
+
+	theMap := cac.za_blockReceiver.FieldMap
+	for name, wfile := range cac.blkNonEssentialInts {
+		val, success := theMap[name]
+		if !success {
+			return errors.New("could not read block non-essential int named: " + name)
+		}
+		err = wfile.WriteWordAt(val, blkNum)
+		if err != nil {
+			return err
+		}
+	}
+
+	// First the "frames" of the transactions
+	nTrans := len(cac.za_blockReceiver.TransactionHandles)
+	if nTrans == 0 {
+		panic("this code assumes at least one transaction per block")
+		// Otherwise, not every entry in blkFirstTrans will be written
+	}
+	firstTransOfBlock := int64(-1)
+	for t, hTrans := range cac.za_blockReceiver.TransactionHandles {
+		err = blockChain.GetTransactionInfo(hTrans, cac.za_transactionReceiver)
+		if err != nil {
+			return err
+		}
+		var transNum int64
+		transNum, err = cac.appendTransactionFrameChi(blkNum, int64(t), cac.za_transactionReceiver)
+		if err != nil {
+			return err
+		}
+
+		if t == 0 {
+			if transNum < PrevTrans {
+				panic("Trans num going backwards!")
+			}
+			// We will need this soon, as duplicate transaction hashes
+			// in blocks 91812 and 91842 mean we can't look up by hash!
+			firstTransOfBlock = transNum
+
+			if !cac.transactionIndexingIsDelegated {
+				err = cac.blkFirstTrans.WriteWordAt(transNum, blkNum)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Then the "contents" of the transactions
+	for t, hTrans := range cac.za_blockReceiver.TransactionHandles {
+		if t == 0 && (firstTransOfBlock == 142726 || firstTransOfBlock == 142783) {
+			// These transactions have identical txid!
+			abc := 123 // Useful breakpoint here if things are going awry...
+			abc++
+		}
+		err = blockChain.GetTransactionInfo(hTrans, cac.za_transactionReceiver)
+		if err != nil {
+			return err
+		}
+		isCoinbaseTransaction := t == 0
+		_, err = cac.appendTransactionContentsChi(blockChain, cac.za_transactionReceiver, firstTransOfBlock+int64(t), isCoinbaseTransaction)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cac *concreteAppendableChain) appendTransactionFrameChi(
+	blkNum int64, nthTrans int64, trans *chainhandleinterface.BitcoinCoreTransactionReceiver) (int64, error) {
+
+	if blkNum == 91842 {
+		// This block contains a txid that is repeated in the blockchain!
+		abc := 123 // Useful breakpoint here if things are going awry...
+		abc++
+	}
+
+	transHash := indexedhashes.Sha256(trans.TransactionHash)
+	if !cac.transactionIndexingIsDelegated {
+		// We now assume that all hashes have already been stored and indexed
+		transNum, err := cac.trnHashes.IndexOfHash(&transHash) // ToDo is this legal in the face of duplicate trans hashes?
+		err = cac.parentBlockOfTrans.WriteWordAt(blkNum, transNum)
+		if err != nil {
+			return -1, err
+		}
+		return transNum, nil
+	}
+	blkFirstTrans, err := cac.RetrieveBlockHeightToFirstTrans(blkNum)
+	if err != nil {
+		return -1, err
+	}
+	transNum := blkFirstTrans + nthTrans
+	return transNum, nil
+}
+
+func (cac *concreteAppendableChain) appendTransactionContentsChi(blockChain chainhandleinterface.IBlockChain,
+	trans *chainhandleinterface.BitcoinCoreTransactionReceiver, transHeight int64, isCoinbaseTransaction bool) (int64, error) {
+
+	theMap := trans.FieldMap
+	for name, wFile := range cac.trnNonEssentialInts {
+		val, success := theMap[name]
+		if !success {
+			return -1, errors.New("could not read non-essential int named " + name)
+		}
+		err := wFile.WriteWordAt(val, transHeight)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	// Txis can (we hope) be written in parallel to txos. We therefore branch off a goroutine for the txis
+	myChan := make(chan error)
+	go func() {
+		// We MUST write to the trnFirstTxi file, REGARDLESS of whether there ARE any Txis
+		putativeTxiHeight, err := cac.txiTx.CountWords() // Count all the txis by counting the txiTx field file
+		if err != nil {
+			myChan <- err
+			return
+		}
+		err = cac.trnFirstTxi.WriteWordAt(putativeTxiHeight, transHeight)
+		if err != nil {
+			myChan <- err
+			return
+		}
+		// Here is where we THROW AWAY coinbase txis (pudding shed storage does not include them!)
+		if !isCoinbaseTransaction {
+			for _, hTxi := range trans.TxiHandles {
+				err = blockChain.GetTxiInfo(hTxi, cac.za_txiReceiver)
+				if err != nil {
+					myChan <- err
+					return
+				}
+				_, err = cac.appendTxiChi(cac.za_txiReceiver, transHeight)
+				if err != nil {
+					myChan <- err
+					return
+				}
+			}
+		}
+		myChan <- nil
+	}()
+
+	// We MUST write to the trnFirstTxo file, REGARDLESS of whether there ARE any Txos
+	putativeTxoHeight, err := cac.txoSats.CountWords() // Count all the txos by counting the txoSats field file
+	if err != nil {
+		return -1, err
+	}
+	if PrevFirstTxo != -1 {
+		if putativeTxoHeight < PrevFirstTxo {
+			panic("txo going backwards")
+		}
+		if transHeight < PrevTrans {
+			panic("trans going backwards")
+		}
+	}
+	err = cac.trnFirstTxo.WriteWordAt(putativeTxoHeight, transHeight)
+	if err != nil {
+		return -1, err
+	}
+	PrevFirstTxo = putativeTxoHeight
+	PrevTrans = transHeight
+
+	for _, hTxo := range trans.TxoHandles {
+		err = blockChain.GetTxoInfo(hTxo, cac.za_txoReceiver)
+		if err != nil {
+			return -1, err
+		}
+		_, err = cac.appendTxoChi(cac.za_txoReceiver, transHeight)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	// Wait for the txis to be done
+	err = <-myChan
+	if err != nil {
+		return -1, err
+	}
+
+	return transHeight, nil
+}
+
+func (cac *concreteAppendableChain) appendTxiChi(txi *chainhandleinterface.TxiReceiver, transIndex int64) (int64, error) {
+	// Note that we store to disk no concept of a "coinbase txi". Instead we of course have coinbase transactions,
+	// but these are DEFINED as having no txis within pudding shed storage.
+	// This is in contrast to Bitcoin Core's JSON and binary formats.
+	// THE CALLER OF THIS FUNCTION SHOULD HAVE ALREADY FILTERED OUT COINBASE TXIS (ie not call us here)
+
+	// Txi's here therefore always have a source txo
+
+	sourceTxid := txi.IncomingTxid
+	sourceVout := txi.IncomingVout
+	// For a concreteAppendableChain (in particular, in chainstorage), we need to store the sourceTransHeight
+	// But the source chain (for example, Bitcoin Core) might not have heights for transactions
+	sourceTransHeight := int64(-1)
+	// We try the following order:
+	// NOT (a) sourceTransHeight directly specified (NOT ANY MORE!)
+	// NOT (b) sourceTrans specified by indices path (block height and nthTransInBlock) (NOT ANY MORE!)
+	// YES (c) sourceTrans specified hash <== ALWAYS THIS ONE NOW
+
+	// We'll need to use the hash to determine the source transaction height, as the source hash is all we've got
+	sourceTransHash := indexedhashes.Sha256(sourceTxid)
+	// To determine the height of the transaction (from the hash),
+	// ironically we'll have to use the chain we're appending to
+	var err error
+	sourceTransHeight, err = cac.trnHashes.IndexOfHash(&sourceTransHash) // ToDo Does this work with duplicate trans hashes?
+	if err != nil {
+		return -1, err
+	}
+
+	var txiHeight int64
+	txiHeight, err = cac.txiTx.CountWords()
+	if err != nil {
+		return -1, err
+	}
+
+	err = cac.txiTx.WriteWordAt(sourceTransHeight, txiHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	err = cac.txiVout.WriteWordAt(sourceVout, txiHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	err = cac.parentTransOfTxi.WriteWordAt(transIndex, txiHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	/* This was causing errors. DO AWAY WITH IT FOR NOW
+	// This is a txi, so a txo has been spent to it
+	// We need to tell the txo
+	// First, find the txo
+	firstTxoOfTrans, err := cac.trnFirstTxo.ReadWordAt(sourceTransHeight)
+	if err != nil {
+		return -1, err
+	}
+	txoHeight := firstTxoOfTrans + sourceIndex
+	// Then write to the txo
+	err = cac.txoSpentTxi.WriteWordAt(txiHeight, txoHeight)
+	if err != nil {
+		return -1, err
+	}*/
+
+	return txiHeight, nil
+}
+
+func (cac *concreteAppendableChain) appendTxoChi(txo *chainhandleinterface.TxoReceiver, transIndex int64) (int64, error) {
+
+	// Check we are storing txos in sequence
+	txoHeight, err := cac.txoSats.CountWords()
+	if err != nil {
+		return -1, err
+	}
+
+	// Store the sats
+	sats := txo.SatoshisValue
+	err = cac.txoSats.WriteWordAt(sats, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+	err = cac.parentTransOfTxo.WriteWordAt(transIndex, txoHeight)
+	if err != nil {
+		return -1, err
+	}
+
+	// chainhandleinterface doesn't give us a textual address, nor an address index, nor an address hash.
+	// Because chainhandleinterface may be sourced from somewhere like BitcoinCore, the only "address" that
+	// is consistently available is the scriptPubBytes (the bytes that comprise the locking script)
+	scriptPubBytes := txo.ScriptPubBytes
+	// In this program (pudding shed), we hash it so that we have something that's always the same size.
+	puddingHash3 := indexedhashes.HashOfBytes(scriptPubBytes)
+
+	// We now assume that hashes of addresses are already stored and indexed.
+
+	// To know whether we've not encountered an address before (when we DO know
+	// that its hash has been stored and indexed), we'll have to check the size
+	// of the addrFirstTxo file.
+
+	// We'll first have to get the height of the address, using its hash
+	var addressHeight int64
+	addressHeight, err = cac.addrHashes.IndexOfHash(&puddingHash3)
+	if err != nil {
+		return -1, err
+	}
+	if addressHeight == -1 {
+		return -1, errors.New("hash of address should already be known")
+	}
+
+	if testpoints.TestPointAddressIndexEnable && addressHeight == testpoints.TestPointAddressIndex {
+		fmt.Println("TESTPOINT: ConcreteAppendableChain.appendTxo(): Dealing with address index ", addressHeight)
+	}
+
+	var fileCount int64
+	fileCount, err = cac.addrFirstTxo.CountWords()
+	if err != nil {
+		return -1, err
+	}
+	addressEncountered := fileCount > addressHeight
 
 	if addressEncountered {
 		abc := 123

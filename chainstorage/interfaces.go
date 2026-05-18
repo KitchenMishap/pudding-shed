@@ -18,6 +18,7 @@ type IAppendableHashesChain interface {
 
 type IAppendableChain interface {
 	AppendBlock(chainreadinterface.IBlockChain, chainreadinterface.IBlockHandle) error
+	AppendBlockChi(chainhandleinterface.IBlockChain, chainhandleinterface.BlockHandle) error
 	Close()
 	Sync() error
 	GetAsChainReadInterface() chainreadinterface.IBlockChain

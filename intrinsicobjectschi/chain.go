@@ -9,6 +9,7 @@ import (
 
 	"github.com/KitchenMishap/pudding-shed/chainhandleinterface"
 	"github.com/KitchenMishap/pudding-shed/intrinsicobjects"
+	"github.com/KitchenMishap/pudding-shed/transactionindexing"
 )
 
 type OneBlockHolder struct {
@@ -16,17 +17,23 @@ type OneBlockHolder struct {
 	currentBlock *Block // intrinsicobjects.Block are converted to intrinsicobjectschi.Block on receipt
 
 	timestampsForMedian []uint32
+
+	transactionIndexer       transactionindexing.ITransactionIndexer
+	latestTransactionVisited int64
 }
 
 // intrinsicobjectschi.OneBlockHolder implements chainhandleinterface.IBlockChain
 var _ chainhandleinterface.IBlockChain = (*OneBlockHolder)(nil) // Check that implements
 
-func CreateOneBlockHolder() *OneBlockHolder {
+func CreateOneBlockHolder(transactionIndexer transactionindexing.ITransactionIndexer) *OneBlockHolder {
 	result := OneBlockHolder{}
 	result.InChan = make(chan *intrinsicobjects.Block)
 	result.currentBlock = nil
 
 	result.timestampsForMedian = make([]uint32, 0, 12) // Empty, capacity for 11 plus 1 spare
+
+	result.transactionIndexer = transactionIndexer
+	result.latestTransactionVisited = -1
 
 	return &result
 }
@@ -42,6 +49,10 @@ func (obh *OneBlockHolder) GenesisBlock() (chainhandleinterface.BlockHandle, err
 	timestamp := intrinsicBlock.Time
 	mediantime := obh.PostIntrinsicCalculateMedianTime(timestamp)
 	obh.currentBlock, err = NewBlock(intrinsicBlock, 0, mediantime)
+	if err != nil {
+		return makeInvalidBlockHandle(), err
+	}
+	err = obh.PostIntrinsicGatherTransHashes(obh.currentBlock)
 	if err != nil {
 		return makeInvalidBlockHandle(), err
 	}
@@ -88,6 +99,10 @@ func (obh *OneBlockHolder) NextBlock(handle chainhandleinterface.BlockHandle) (c
 		}
 		if obh.currentBlock.intrinsic.PrevHash != existingBlockHash {
 			panic("blocks supplied out of sequence")
+		}
+		err = obh.PostIntrinsicGatherTransHashes(obh.currentBlock)
+		if err != nil {
+			return makeInvalidBlockHandle(), err
 		}
 		return makeBlockHandle(obh.currentBlock.blockHeight), nil
 	}
@@ -199,6 +214,36 @@ func (obh *OneBlockHolder) GetTxoInfo(txoHandle chainhandleinterface.TxoHandle,
 	for byteIndex := range txo.ScriptPubKey {
 		receiver.ReceiveScriptPubByteToAppend(txo.ScriptPubKey[byteIndex])
 	}
+	return nil
+}
+
+func (obh *OneBlockHolder) PostIntrinsicGatherTransHashes(block *Block) error {
+	// (Only needs doing if we have a transaction indexer)
+	if obh.transactionIndexer == nil {
+		return nil
+	}
+	// Some things that need doing for new blocks encountered, after the intrinsic parsing is done,
+	// and in the context of a growing chain of blocks
+	blockHeight := int64(block.blockHeight)
+	firstTransHeight := obh.latestTransactionVisited + 1
+	err := obh.transactionIndexer.StoreBlockHeightToFirstTrans(blockHeight, firstTransHeight)
+	if err != nil {
+		return err
+	}
+	transHeight := obh.latestTransactionVisited
+	for nthTrans := range block.intrinsic.Transactions {
+		transHeight++
+		err = obh.transactionIndexer.StoreTransHeightToParentBlock(transHeight, blockHeight)
+		if err != nil {
+			return err
+		}
+		transPtr := &(block.intrinsic.Transactions[nthTrans])
+		err = obh.transactionIndexer.StoreTransHashToHeight(&((*transPtr).TxId), transHeight)
+		if err != nil {
+			return err
+		}
+	}
+	obh.latestTransactionVisited = transHeight
 	return nil
 }
 

@@ -206,7 +206,8 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			limitedBlocks = phase3BlockLimit
 		}
 
-		err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		//err = PhaseThreeParallelIntrinsic(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
+		err = PhaseThreeParallelIntrinsicChi(limitedBlocks, useJson, transactionsTarget, ac, transactionIndexer, threads, backslashR)
 		if err != nil {
 			return err
 		}
@@ -339,7 +340,7 @@ func PhaseOneParallelIntrinsicChi(path string, useJson bool, blocks int64, trans
 
 	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
 
-	chain := intrinsicobjectschi.CreateOneBlockHolder()
+	chain := intrinsicobjectschi.CreateOneBlockHolder(nil)
 	go func() {
 		for numberedBlock := range orderedNumberedBlockChannel {
 			chain.InChan <- &numberedBlock.Block
@@ -387,7 +388,7 @@ func PhaseOneParallelIntrinsicChi(path string, useJson bool, blocks int64, trans
 	return nil
 }
 
-func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
+func PhaseThreeParallelIntrinsicChi(blocks int64, useJson bool,
 	transactionsTarget int64, ac chainstorage.IAppendableChain,
 	transactionIndexer transactionindexing.ITransactionIndexer, threads int, backslashR string) error {
 
@@ -406,6 +407,101 @@ func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 	// These are used further downstream, but we need seq back here in order to ask if it's bloated
 	orderedNumberedBlockChannel := make(chan *corereader2.HeightNumberedBlock)
 	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 100, orderedNumberedBlockChannel)
+
+	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
+	// They won't be ordered any more when they come out.
+	go func() {
+		for hash := range orderedBlockHashesChannel {
+			seq.WaitForNotBloated() // Nobble the flow if it's bloated further downstream
+			nobbledBlockHashesChannel <- hash
+		}
+		close(nobbledBlockHashesChannel)
+	}()
+
+	corereader2.GetAndParseBlocks(nobbledBlockHashesChannel, useJson, seq.InChan, threads)
+
+	// Final destination for the sequenced blocks
+	var aOneBlockHolder = intrinsicobjectschi.CreateOneBlockHolder(transactionIndexer)
+
+	// Squirt the sequenced blocks into the holder
+	go func() {
+		for b := range orderedNumberedBlockChannel {
+			aOneBlockHolder.InChan <- &b.Block
+		}
+		close(aOneBlockHolder.InChan)
+	}()
+
+	progress := NewProgress(0, transactionsTarget, 30,
+		"transactions", "gather blockchain", backslashR)
+
+	height := int64(0)
+	hBlock, err := aOneBlockHolder.GenesisBlock()
+	if err != nil {
+		ac.Close()
+		return err
+	}
+	fmt.Println()
+	blockReceiver := chainhandleinterface.NewBlockReceiver()
+	for !aOneBlockHolder.IsBlockHandleInvalid(hBlock) {
+		err = aOneBlockHolder.GetBlockInfo(hBlock, blockReceiver)
+		if err != nil {
+			ac.Close()
+			return err
+		}
+
+		// The sync is just so we can see
+		// file sizes in explorer during processing
+		if height%10000 == 0 {
+			err = ac.Sync()
+			if err != nil {
+				return err
+			}
+		}
+
+		err = ac.AppendBlockChi(aOneBlockHolder, hBlock)
+		if err != nil {
+			ac.Close()
+			return err
+		}
+
+		count := int64(len(blockReceiver.TransactionHandles))
+		transactionsCount += count
+		progress.Update(transactionsCount)
+
+		// Because we had an 888,888 block run stuck at 87.12% and never found out why...
+		//fmt.Printf(" %d", height)
+
+		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
+		if err != nil {
+			ac.Close()
+			return err
+		}
+		height++
+	}
+	fmt.Println()
+	ac.Close()
+	return nil
+}
+
+func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
+	transactionsTarget int64, ac chainstorage.IAppendableChain,
+	transactionIndexer transactionindexing.ITransactionIndexer, threads int, backslashR string) error {
+
+	transactionsCount := int64(0)
+
+	// Now we start messing with channels and sequencers
+
+	orderedBlockHashesChannel := make(chan indexedhashes.Sha256)
+	go func() {
+		err := corereader2.StreamBlockHashesFromGenesis(blocks, orderedBlockHashesChannel)
+		if err != nil {
+			panic(err) // ToDo
+		}
+	}()
+
+	// These are used further downstream, but we need seq back here in order to ask if it's bloated
+	orderedNumberedBlockChannel := make(chan *corereader2.HeightNumberedBlock)
+	seq := concurrency.NewSequencerContainer[*corereader2.HeightNumberedBlock](0, 1000, orderedNumberedBlockChannel)
 
 	nobbledBlockHashesChannel := make(chan indexedhashes.Sha256)
 	// They won't be ordered any more when they come out.
@@ -464,7 +560,7 @@ func PhaseThreeParallelIntrinsic(blocks int64, useJson bool,
 		progress.Update(transactionsCount)
 
 		// Because we had an 888,888 block run stuck at 87.12% and never found out why...
-		fmt.Printf(" %d", height)
+		//fmt.Printf(" %d", height)
 
 		hBlock, err = aOneBlockHolder.NextBlock(hBlock)
 		if err != nil {
