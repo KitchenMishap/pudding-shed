@@ -5,14 +5,14 @@ import (
 )
 
 func TestStreamBlockHashes(t *testing.T) {
-	path := "E:\\Data\\TwoYearsBinary"
-	years := 2 // Note that 9 years are needed to test the Segwit era
-	gbMem := 64
-	threads := 40
-	do1 := true
-	do2 := true
-	do3 := true
-	json := true
+	const path = "E:\\Data\\TwoYearsJson"
+	const years = 2 // Note that 9 years are needed to test the Segwit era
+	const gbMem = 64
+	const threads = 40
+	const do1 = true
+	const do2 = true
+	const do3 = true
+	const json = true
 	err := RunIntrinsic(path, json, "delegated", years, threads, gbMem, do1, do2, do3, 0, true)
 
 	if err != nil {
