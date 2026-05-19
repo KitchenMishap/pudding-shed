@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
@@ -129,12 +130,8 @@ func (spd *singlePassDetails) readIn(mp *MultipassPreloader, threads int) error 
 func (spd *singlePassDetails) dealWithOneHash(theBin *bin,
 	sn sortNum, hi int64, th truncatedHash, p *HashIndexingParams) {
 
-	// Is it in the bin already?
-	if theBin.lookupByHash(th, sn, p) != -1 {
-		return
-	}
-
-	theBin.insertBinEntry(sn, hashIndex(hi), th, p)
+	// Append blindly, we will sort and de-duplicate later
+	theBin.appendBinEntry(sn, hashIndex(hi), th, p)
 }
 
 func (spd *singlePassDetails) writeFiles(mp *MultipassPreloader) error {
@@ -197,4 +194,38 @@ func (spd *singlePassDetails) checkThereAreNonEmptyBins() {
 		}
 		panic("There are no non-empty Bins")
 	}
+}
+
+func (spd *singlePassDetails) sortAndDeduplicateBins(params *HashIndexingParams, threads int) {
+	var wg sync.WaitGroup
+
+	// 2. Use an atomic int64 counter to act as our thread-safe shared work index.
+	// We initialize it to the first bin number.
+	var currentBin int64 = int64(spd.firstBinNum)
+	lastBin := int64(spd.lastBinNumPlusOne)
+
+	// 3. Launch the fixed pool of concurrent workers
+	for i := 0; i < threads; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				// Atomically increment the bin index so workers never collide or duplicate work.
+				// AddInt64 returns the NEW value, so we subtract 1 to get the slot we actually claimed.
+				b := atomic.AddInt64(&currentBin, 1) - 1
+
+				// If we've processed all the bins, this worker thread exits gracefully.
+				if b >= lastBin {
+					break
+				}
+
+				// Execute the O(N log N) sorting and deduplication on this thread's core
+				spd.bins.bins[b-spd.firstBinNum].SortAndDeduplicate(params)
+			}
+		}()
+	}
+
+	// 4. Block and wait here until every worker thread has completed its share of the bins
+	wg.Wait()
 }

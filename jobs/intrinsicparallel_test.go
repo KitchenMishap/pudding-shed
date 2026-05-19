@@ -5,7 +5,7 @@ import (
 )
 
 func TestStreamBlockHashes(t *testing.T) {
-	const path = "E:\\Data\\FourYearsBinary"
+	const path = "E:\\Data\\FourYearsNewSort"
 	const years = 4 // Note that 9 years are needed to test the Segwit era
 	const gbMem = 64
 	const threads = 40

@@ -15,7 +15,7 @@ type hashStore struct {
 	binNumFileRead    wordfile.ReadAtWordCounter
 	binStartsFile     *os.File
 	hashesInRamDANGER bool
-	binRam            []*bin
+	binRam            []bin
 }
 
 // Compiler check that implements
@@ -91,6 +91,8 @@ func (h *hashStore) AppendHash(hash *indexedhashes.Sha256) (int64, error) {
 		return -1, err
 	}
 
+	// ToDo - AppendHash() deals with hash files on disk
+	// Can we use Gemini's "append all then sort and de-duplicate each bin" method here? See theBin.appendBinEntry()
 	theBin.insertBinEntry(sn, hashIndex(hashesSoFar), trunc, h.params)
 	err = saveBinToFiles(bn, *theBin, h.binStartsFile, h.overflowFiles, h.params)
 	if err != nil {
@@ -111,7 +113,7 @@ func (h *hashStore) IndexOfHash(hash *indexedhashes.Sha256) (int64, error) {
 
 	var theBin *bin
 	if h.hashesInRamDANGER {
-		theBin = h.binRam[bn]
+		theBin = &h.binRam[bn]
 	} else {
 		var err error
 		theBin, err = loadBinFromFiles(bn, h.binStartsFile, h.overflowFiles, h.params)

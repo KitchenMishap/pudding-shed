@@ -60,10 +60,12 @@ func (mp *MultipassPreloader) IndexTheHashes(threads int) error {
 		}
 
 		passDetails := newSinglePassDetails(firstBinNum, binsThisPass, mp.binNumsWordFile, mp.bins)
-		err = passDetails.readIn(mp, threads)
+		err = passDetails.readIn(mp, threads) // This reuses / resets mp.bins
 		if err != nil {
 			return err
 		}
+
+		passDetails.sortAndDeduplicateBins(mp.params, threads)
 
 		//passDetails.checkThereAreNonEmptyBins()
 

@@ -2,7 +2,9 @@ package indexedhashes3
 
 import (
 	"bufio"
+	"encoding/binary"
 	"io"
+	"math/bits"
 	"os"
 )
 
@@ -47,8 +49,37 @@ func loadBinFromSlice(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *Hash
 	return &theBin, nil
 }
 
-func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) ([]*bin, error) {
-	result := make([]*bin, p.NumberOfBins())
+func loadBinFromSliceIntoSlot(theBinBytes []byte, bn binNum, ovf *overflowFiles, p *HashIndexingParams, targetBin *bin) error {
+	// Start with just the binStart
+
+	// See how many zero entries are at the end
+	zeroes := countZeroBytesAtEnd(theBinBytes)
+	zeroEntries := zeroes / p.BytesPerBinEntry()
+
+	if zeroEntries > 0 {
+		// If there are some zero entries, truncate
+		theBinBytes = theBinBytes[0 : p.BytesPerBinEntry()*(p.EntriesInBinStart()-zeroEntries)]
+	} else {
+		// Otherwise try to append any entries from overflow file
+		_, overflowsFilepath := ovf.overflowFolderpathFilepath(bn)
+		overflowBytes, err := os.ReadFile(overflowsFilepath)
+		if err != nil {
+			// Do nothing when file doesn't exist
+		} else {
+			theBinBytes = append(theBinBytes, overflowBytes...)
+		}
+	}
+
+	// Now copy into new contiguous memory of the exact appropriate size
+	bytes := make([]byte, len(theBinBytes))
+	copy(bytes, theBinBytes)
+
+	targetBin.bytes = bytes
+	return nil
+}
+
+func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashIndexingParams) ([]bin, error) {
+	result := make([]bin, p.NumberOfBins())
 	theBinBytes := make([]byte, p.BytesPerBinEntry()*p.EntriesInBinStart())
 
 	reader := bufio.NewReaderSize(binStartsFile, 64*1024*1024)
@@ -58,7 +89,7 @@ func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashInd
 		if err != nil {
 			return nil, err
 		}
-		result[int64(bn)], err = loadBinFromSlice(theBinBytes, bn, ovf, p)
+		err = loadBinFromSliceIntoSlot(theBinBytes, bn, ovf, p, &result[int64(bn)])
 		if err != nil {
 			return nil, err
 		}
@@ -66,14 +97,40 @@ func loadAllBinsFromFiles(binStartsFile *os.File, ovf *overflowFiles, p *HashInd
 	return result, nil
 }
 
-func countZeroBytesAtEnd(bytes []byte) int64 {
-	l := int64(len(bytes))
-	for result := int64(0); result < l; result++ {
-		if bytes[l-result-1] != 0 {
-			return result
+// Faster function by Google Gemini AI:
+func countZeroBytesAtEnd(data []byte) int64 {
+	var count int64 = 0
+	n := len(data)
+
+	// 1. Step backward in fast 8-byte chunks
+	for n >= 8 {
+		// Grab the last 8 bytes
+		chunk := binary.LittleEndian.Uint64(data[n-8 : n])
+
+		if chunk == 0 {
+			count += 8
+			n -= 8
+			continue
+		}
+
+		// If it's not entirely zero, find exactly how many trailing bytes are zero
+		// Since it's Little Endian, the last bytes in the slice are the most significant bits.
+		// Leading zeros in the uint64 / 8 tells us how many whole bytes at the end are 0.
+		zeroBits := bits.LeadingZeros64(chunk)
+		count += int64(zeroBits / 8)
+		return count
+	}
+
+	// 2. Clean up any remaining bytes if the total size wasn't a multiple of 8
+	for i := n - 1; i >= 0; i-- {
+		if data[i] == 0 {
+			count++
+		} else {
+			break
 		}
 	}
-	return l
+
+	return count
 }
 
 // This fn is still used somewhere despite a re-write...

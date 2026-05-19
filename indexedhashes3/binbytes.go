@@ -2,6 +2,7 @@ package indexedhashes3
 
 import (
 	"math"
+	"slices"
 )
 
 // A bin is conceptually a container (which can grow) of items which are binEntryBytes.
@@ -227,4 +228,79 @@ func (b *bin) homeInOnSortNum(startIndex int64, endIndex int64, sn sortNum, p *H
 		}
 		return endSequenceIndex + 1, endSequenceIndex + 1 // END
 	}
+}
+
+// The following code is by Google Gemini AI.
+// Broadly, it allows us to blindly append binEntries (the ones that belong in this bin) from the hashes file.
+// Only at the end of this process do we sort and "de-duplicate" the bin.
+// De-duplication is slightly subtle, we ignore hashindex in the "equality" detection, and must
+// take the duplicate with the smallest hashindex as the "representative" of those duplicates.
+
+func (b *bin) appendBinEntry(sn sortNum, hi hashIndex, th truncatedHash, p *HashIndexingParams) {
+	newEntry := newBinEntryBytes(th, hi, sn, p)
+	b.bytes = append(b.bytes, newEntry...)
+}
+
+func compareBinEntries(a, b []byte, p *HashIndexingParams) int {
+	bebA := binEntryBytes(a)
+	bebB := binEntryBytes(b)
+
+	hiA, snA := bebA.getHashIndexSortNum(p)
+	hiB, snB := bebB.getHashIndexSortNum(p)
+
+	// Tier 1: Sort by SortNum (Strictly required for Secant Search)
+	if snA < snB {
+		return -1
+	}
+	if snA > snB {
+		return 1
+	}
+
+	// Tier 2: Sort by HashIndex (Preserves strict arrival order)
+	if hiA < hiB {
+		return -1
+	}
+	if hiA > hiB {
+		return 1
+	}
+
+	return 0
+}
+
+func (b *bin) SortAndDeduplicate(p *HashIndexingParams) {
+	bytesPerEntry := p.BytesPerBinEntry()
+	totalBytes := int64(len(b.bytes))
+	if totalBytes <= bytesPerEntry {
+		return
+	}
+
+	count := totalBytes / bytesPerEntry
+	entries := make([][]byte, count)
+	for i := int64(0); i < count; i++ {
+		entries[i] = b.bytes[i*bytesPerEntry : (i+1)*bytesPerEntry]
+	}
+
+	// 1. Sort using your strict numerical sortNum order with a chronological tie-breaker
+	slices.SortFunc(entries, func(a, b []byte) int {
+		return compareBinEntries(a, b, p)
+	})
+
+	// 2. Build the final data into a fresh, isolated scratch buffer.
+	// This ensures that we NEVER read or preserve any trailing capacity garbage.
+	cleanBytes := make([]byte, 0, totalBytes)
+	seenHashes := make(map[truncatedHash]bool)
+
+	for readIdx := int64(0); readIdx < count; readIdx++ {
+		entryBytes := binEntryBytes(entries[readIdx])
+		th := entryBytes.getTruncatedHash()
+
+		if !seenHashes[th] {
+			seenHashes[th] = true
+			// Append the unique entry to our clean buffer
+			cleanBytes = append(cleanBytes, entries[readIdx]...)
+		}
+	}
+
+	// 3. Point b.bytes back to our immaculate, perfectly-ordered dataset
+	b.bytes = cleanBytes
 }
