@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"runtime"
 	"sort"
 	"sync"
 
@@ -419,6 +420,9 @@ func stageTwoStageThreeHandleHashBins(hashesFilepath string,
 				return err
 			}
 		}
+
+		passResults = nil // Prevent memory allocation overlap (passResults contains pointers into the
+		runtime.GC()      // massive allocation f bytes)
 
 		// At this point, ALL workers are dead and outChan is completely empty.
 		fmt.Println("...Finished a pass")
