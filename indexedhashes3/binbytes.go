@@ -2,7 +2,7 @@ package indexedhashes3
 
 import (
 	"math"
-	"slices"
+	"sort"
 )
 
 // A bin is conceptually a container (which can grow) of items which are binEntryBytes.
@@ -267,6 +267,30 @@ func compareBinEntries(a, b []byte, p *HashIndexingParams) int {
 	return 0
 }
 
+type flatBinSorter struct {
+	bytes         []byte
+	bytesPerEntry int64
+	params        *HashIndexingParams
+}
+
+func (s flatBinSorter) Len() int { return int(int64(len(s.bytes)) / s.bytesPerEntry) }
+func (s flatBinSorter) Less(i, j int) bool {
+	a := s.bytes[int64(i)*s.bytesPerEntry : int64(i+1)*s.bytesPerEntry]
+	b := s.bytes[int64(j)*s.bytesPerEntry : int64(j+1)*s.bytesPerEntry]
+	return compareBinEntries(a, b, s.params) < 0
+}
+func (s flatBinSorter) Swap(i, j int) {
+	tmp := [128]byte{}
+	scratch := tmp[:s.bytesPerEntry]
+
+	pI := int64(i) * s.bytesPerEntry
+	pJ := int64(j) * s.bytesPerEntry
+
+	copy(scratch, s.bytes[pI:pI+s.bytesPerEntry])
+	copy(s.bytes[pI:pI+s.bytesPerEntry], s.bytes[pJ:pJ+s.bytesPerEntry])
+	copy(s.bytes[pJ:pJ+s.bytesPerEntry], scratch)
+}
+
 func (b *bin) sortAndDeduplicate(p *HashIndexingParams) {
 	bytesPerEntry := p.BytesPerBinEntry()
 	totalBytes := int64(len(b.bytes))
@@ -275,32 +299,38 @@ func (b *bin) sortAndDeduplicate(p *HashIndexingParams) {
 	}
 
 	count := totalBytes / bytesPerEntry
-	entries := make([][]byte, count)
-	for i := int64(0); i < count; i++ {
-		entries[i] = b.bytes[i*bytesPerEntry : (i+1)*bytesPerEntry]
+
+	// 1. Sort completely IN-PLACE.
+	sorter := flatBinSorter{
+		bytes:         b.bytes,
+		bytesPerEntry: bytesPerEntry,
+		params:        p,
 	}
+	sort.Sort(sorter)
 
-	// 1. Sort using your strict numerical sortNum order with a chronological tie-breaker
-	slices.SortFunc(entries, func(a, b []byte) int {
-		return compareBinEntries(a, b, p)
-	})
+	// 2. Deduplicate IN-PLACE using a two-pointer sliding compaction loop.
+	writeIdx := int64(1)
 
-	// 2. Build the final data into a fresh, isolated scratch buffer.
-	// This ensures that we NEVER read or preserve any trailing capacity garbage.
-	cleanBytes := make([]byte, 0, totalBytes)
-	seenHashes := make(map[truncatedHash]bool)
+	// Create a pointer to the first entry's underlying slice window
+	firstEntry := binEntryBytes(b.bytes[0:bytesPerEntry])
+	lastTH := firstEntry.getTruncatedHash() // Works perfectly with pointer receiver now
 
-	for readIdx := int64(0); readIdx < count; readIdx++ {
-		entryBytes := binEntryBytes(entries[readIdx])
-		th := entryBytes.getTruncatedHash()
+	for readIdx := int64(1); readIdx < count; readIdx++ {
+		// Slice out the current entry chunk
+		currentChunk := b.bytes[readIdx*bytesPerEntry : (readIdx+1)*bytesPerEntry]
+		currentEntry := binEntryBytes(currentChunk)
+		currentTH := currentEntry.getTruncatedHash()
 
-		if !seenHashes[th] {
-			seenHashes[th] = true
-			// Append the unique entry to our clean buffer
-			cleanBytes = append(cleanBytes, entries[readIdx]...)
+		if currentTH != lastTH {
+			// Found a new unique hash! Shift it forward to our write pointer position
+			if writeIdx != readIdx {
+				copy(b.bytes[writeIdx*bytesPerEntry:(writeIdx+1)*bytesPerEntry], currentChunk)
+			}
+			lastTH = currentTH
+			writeIdx++
 		}
 	}
 
-	// 3. Point b.bytes back to our immaculate, perfectly-ordered dataset
-	b.bytes = cleanBytes
+	// 3. Reslice b.bytes down to the deduplicated length.
+	b.bytes = b.bytes[:writeIdx*bytesPerEntry]
 }
