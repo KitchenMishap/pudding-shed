@@ -267,7 +267,7 @@ func compareBinEntries(a, b []byte, p *HashIndexingParams) int {
 	return 0
 }
 
-func (b *bin) SortAndDeduplicate(p *HashIndexingParams) {
+func (b *bin) sortAndDeduplicate(p *HashIndexingParams) {
 	bytesPerEntry := p.BytesPerBinEntry()
 	totalBytes := int64(len(b.bytes))
 	if totalBytes <= bytesPerEntry {

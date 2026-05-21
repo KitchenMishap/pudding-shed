@@ -45,6 +45,33 @@ func NewHashStoreCreatorAndPreloader(folder string, name string,
 	return creator, preloader, nil
 }
 
+func NewHashStoreCreatorAndPreloaderAdaptive(folder string, name string,
+	params *HashIndexingParams, gbMem int) (indexedhashes.HashStoreCreator, *AdaptivePassPreloader, error) {
+	sep := string(os.PathSeparator)
+	hashStoreFolderPath := folder + sep + name
+
+	fileParams, _ := os.Create(hashStoreFolderPath + sep + "HashIndexingParams.json")
+	defer fileParams.Close()
+	byts, _ := json.Marshal(params)
+	_, _ = fileParams.Write(byts)
+
+	creator := NewHashStoreCreatorPrivate(params, hashStoreFolderPath, false)
+	filename := folder + sep + name + sep + "BinNums.int"
+	file, err := os.Create(filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	appendOptimizedFile, err := memfile.NewAppendOptimizedFile(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	wordFile := wordfile.NewWordFile(appendOptimizedFile, file, params.BytesRoomForBinNum(), 0)
+
+	preloader := NewAdaptivePassPreloader(params, hashStoreFolderPath, wordFile, int64(gbMem))
+
+	return creator, preloader, nil
+}
+
 func NewHashStoreCreatorFromFile(
 	folder string, name string, hashesInRamDANGER bool) (indexedhashes.HashStoreCreator, error) {
 	sep := string(os.PathSeparator)

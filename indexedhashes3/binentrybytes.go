@@ -20,11 +20,16 @@ type binEntryBytes []byte // The number of bytes in the slice is fixed for a giv
 
 func newBinEntryBytes(t truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) binEntryBytes {
 	result := make([]byte, p.BytesPerBinEntry())
+	writeBinEntryBytes(result, t, hi, sn, p)
+	return result
+}
 
-	// Write in the truncated hash
-	copy(result[0:24], t[0:24])
+// Caution: New code from Gemini AI!
+func writeBinEntryBytes(target []byte, t truncatedHash, hi hashIndex, sn sortNum, p *HashIndexingParams) {
+	// 1. Write the truncated hash directly into the target slice
+	copy(target[0:24], t[0:24])
 
-	// Write the hash index
+	// 2. Write the hash index directly into its target slot
 	byteCount1 := p.BytesPerHashIndex()
 	bytesForHashIndex := [8]byte{}
 	binary.LittleEndian.PutUint64(bytesForHashIndex[0:8], uint64(hi))
@@ -33,9 +38,9 @@ func newBinEntryBytes(t truncatedHash, hi hashIndex, sn sortNum, p *HashIndexing
 			panic("hash index didn't fit into bytes")
 		}
 	}
-	copy(result[24:24+byteCount1], bytesForHashIndex[0:byteCount1])
+	copy(target[24:24+byteCount1], bytesForHashIndex[0:byteCount1])
 
-	//Write the sort num
+	// 3. Write the sort num directly into its target slot
 	byteCount2 := p.BytesPerSortNum()
 	bytesForSortNum := [8]byte{}
 	binary.LittleEndian.PutUint64(bytesForSortNum[0:8], uint64(sn))
@@ -44,9 +49,7 @@ func newBinEntryBytes(t truncatedHash, hi hashIndex, sn sortNum, p *HashIndexing
 			panic("sort num didn't fit into bytes")
 		}
 	}
-	copy(result[24+byteCount1:24+byteCount1+byteCount2], bytesForSortNum[0:byteCount2])
-
-	return result
+	copy(target[24+byteCount1:24+byteCount1+byteCount2], bytesForSortNum[0:byteCount2])
 }
 
 func (beb *binEntryBytes) getTruncatedHash() truncatedHash {

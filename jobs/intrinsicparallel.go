@@ -22,7 +22,8 @@ import (
 )
 
 func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, years int, threads int, gbMem int,
-	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64, isTest bool, useHandlesInterface bool) error {
+	doPhase1 bool, doPhase2 bool, doPhase3 bool, phase3BlockLimit int64, isTest bool, useHandlesInterface bool,
+	useAdaptivePassPhase2 bool) error {
 
 	var backslashR string
 	if isTest {
@@ -85,58 +86,102 @@ func RunIntrinsic(path string, useJson bool, transactionIndexingMethod string, y
 			aParams = indexedhashes3.Sensible16YearsAddressHashParams()
 		}
 
-		// We use the same BinsArray for Address hashes, Transaction hashes, and Block hashes
-		// (We clear it out and re-use it)
-		// We start with the sizes for address hashes, as that is biggest
-		// We will need to count the number of bins per pass based on granted gigabytes
-		estimatedEntriesPerBin := aParams.EntriesInBinStart()
-		estimatedBinsPerPass := int64(gbMem*1024*1024*1024) / (aParams.BytesPerBinEntry() * estimatedEntriesPerBin)
-		ba := indexedhashes3.NewBinsArray(estimatedEntriesPerBin, aParams.BytesPerBinEntry(), estimatedBinsPerPass)
+		if useAdaptivePassPhase2 {
+			_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloaderAdaptive(path, "Blocks"+sep+"Hashes", bParams, gbMem)
+			if err != nil {
+				return err
+			}
+			_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloaderAdaptive(path, "Transactions"+sep+"Hashes", tParams, gbMem)
+			if err != nil {
+				return err
+			}
+			_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloaderAdaptive(path, "Addresses"+sep+"Hashes", aParams, gbMem)
+			if err != nil {
+				return err
+			}
+			// We do addresses first, so that bins don't need to grow
+			stepStart := time.Now()
+			err = apl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
 
-		_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem, ba)
-		if err != nil {
-			return err
-		}
-		_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem, ba)
-		if err != nil {
-			return err
-		}
-		_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem, ba)
-		if err != nil {
-			return err
-		}
+			stepStart = time.Now()
+			err = tpl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tTRANSACTIONS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
 
-		// We do addresses first, so that bins don't need to grow
-		stepStart := time.Now()
-		err = apl.IndexTheHashes(threads)
-		if err != nil {
-			return err
-		}
-		timeTaken = time.Now().Sub(stepStart)
-		mins = timeTaken.Minutes()
-		sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
-		fmt.Println(sTimeUpdate)
+			stepStart = time.Now()
+			err = bpl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
+		} else {
+			// We use the same BinsArray for Address hashes, Transaction hashes, and Block hashes
+			// (We clear it out and re-use it)
+			// We start with the sizes for address hashes, as that is biggest
+			// We will need to count the number of bins per pass based on granted gigabytes
+			estimatedEntriesPerBin := aParams.EntriesInBinStart()
+			estimatedBinsPerPass := int64(gbMem*1024*1024*1024) / (aParams.BytesPerBinEntry() * estimatedEntriesPerBin)
+			ba := indexedhashes3.NewBinsArray(estimatedEntriesPerBin, aParams.BytesPerBinEntry(), estimatedBinsPerPass)
 
-		stepStart = time.Now()
-		err = tpl.IndexTheHashes(threads)
-		if err != nil {
-			return err
-		}
-		timeTaken = time.Now().Sub(stepStart)
-		mins = timeTaken.Minutes()
-		sTimeUpdate = fmt.Sprintf("%s\tTRANSACTIONS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
-		fmt.Println(sTimeUpdate)
+			_, bpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Blocks"+sep+"Hashes", bParams, gbMem, ba)
+			if err != nil {
+				return err
+			}
+			_, tpl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Transactions"+sep+"Hashes", tParams, gbMem, ba)
+			if err != nil {
+				return err
+			}
+			_, apl, err := indexedhashes3.NewHashStoreCreatorAndPreloader(path, "Addresses"+sep+"Hashes", aParams, gbMem, ba)
+			if err != nil {
+				return err
+			}
 
-		stepStart = time.Now()
-		err = bpl.IndexTheHashes(threads)
-		if err != nil {
-			return err
-		}
-		timeTaken = time.Now().Sub(stepStart)
-		mins = timeTaken.Minutes()
-		sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
-		fmt.Println(sTimeUpdate)
+			// We do addresses first, so that bins don't need to grow
+			stepStart := time.Now()
+			err = apl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tADDRESSES STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
 
+			stepStart = time.Now()
+			err = tpl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tTRANSACTIONS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
+
+			stepStart = time.Now()
+			err = bpl.IndexTheHashes(threads)
+			if err != nil {
+				return err
+			}
+			timeTaken = time.Now().Sub(stepStart)
+			mins = timeTaken.Minutes()
+			sTimeUpdate = fmt.Sprintf("%s\tBLOCKS STEP took %.1f mins", time.Now().Format(dateFormat), mins)
+			fmt.Println(sTimeUpdate)
+		}
 		timeTaken = time.Now().Sub(phaseStart)
 		mins = timeTaken.Minutes()
 		sTimeUpdate = fmt.Sprintf("%s\tPHASE %s took %.1f mins", time.Now().Format(dateFormat), phase, mins)

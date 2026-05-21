@@ -221,7 +221,7 @@ func (spd *singlePassDetails) sortAndDeduplicateBins(params *HashIndexingParams,
 				}
 
 				// Execute the O(N log N) sorting and deduplication on this thread's core
-				spd.bins.bins[b-spd.firstBinNum].SortAndDeduplicate(params)
+				spd.bins.bins[b-spd.firstBinNum].sortAndDeduplicate(params)
 			}
 		}()
 	}
