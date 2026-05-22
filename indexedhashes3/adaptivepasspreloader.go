@@ -41,9 +41,9 @@ func (ap *AdaptivePassPreloader) IndexTheHashes(threads int) error {
 	hashesFilepath := ap.folderPath + sep + "Hashes.hsh"
 
 	var counts []binWorkInfo
-	counts, err = stageOneCountBinWork(hashesFilepath, ap.binNumsWordFile, ap.params)
+	counts, err = stageOneCountBinWork(hashesFilepath, ap.params)
 
-	err = stageTwoStageThreeHandleHashBins(hashesFilepath, ap.binStartsFile,
+	err = stageTwoStageThreeHandleHashBins(hashesFilepath, ap.binNumsWordFile, ap.binStartsFile,
 		ap.overflowFiles, ap.params, counts, ap.gbPerPass, threads)
 	if err != nil {
 		return err

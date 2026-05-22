@@ -49,7 +49,7 @@ type binWorkInfo struct {
 }
 
 // Remember to pass in a buffered file for efficiency, and to seek to zero
-func stageOneCountBinWork(hashesFilepath string, binNumsFile wordfile.WriterAtWord, params *HashIndexingParams) ([]binWorkInfo, error) {
+func stageOneCountBinWork(hashesFilepath string, params *HashIndexingParams) ([]binWorkInfo, error) {
 	fmt.Println("Reading hashes for pass planning...")
 	numberOfBins := params.NumberOfBins()
 	result := make([]binWorkInfo, numberOfBins)
@@ -83,8 +83,6 @@ func stageOneCountBinWork(hashesFilepath string, binNumsFile wordfile.WriterAtWo
 
 		result[bn].hashCount++
 
-		err = binNumsFile.WriteWordAt(int64(bn), hi)
-
 		// Read next hash
 		bytesRead, err = reader.Read(hash[:])
 		if err != nil && err != io.EOF {
@@ -104,6 +102,7 @@ func stageOneCountBinWork(hashesFilepath string, binNumsFile wordfile.WriterAtWo
 }
 
 func stageTwoStageThreeHandleHashBins(hashesFilepath string,
+	binNumsFile wordfile.WriterAtWord,
 	binStartsFile *os.File, ovf *overflowFiles,
 	params *HashIndexingParams,
 	workInfo []binWorkInfo, nGbBudget int64, threads int) error {
@@ -124,6 +123,7 @@ func stageTwoStageThreeHandleHashBins(hashesFilepath string,
 
 	binsAllocated := int64(0)
 
+	isFirstPass := true
 	for binsAllocated < numberOfBins {
 		// Stage Two: Design a "pass" (being a collection of bins)
 		fmt.Println("New pass...")
@@ -253,7 +253,7 @@ func stageTwoStageThreeHandleHashBins(hashesFilepath string,
 
 		inChans := make([]chan hashWork, threads)
 		for t := range threads {
-			inChans[t] = make(chan hashWork)
+			inChans[t] = make(chan hashWork, 100_000) // Channel objects are small, so big buffer count
 		}
 		type binResult struct {
 			binNumber int64
@@ -362,6 +362,13 @@ func stageTwoStageThreeHandleHashBins(hashesFilepath string,
 				bn := abbr.toBinNum(params)
 				sn := abbr.toSortNum(params)
 
+				if isFirstPass {
+					ferr = binNumsFile.WriteWordAt(int64(bn), hi)
+					if ferr != nil {
+						panic(ferr)
+					} // ToDo
+				}
+
 				worker, workerExists := binToWorkerMap[int64(bn)]
 
 				if workerExists {
@@ -421,11 +428,21 @@ func stageTwoStageThreeHandleHashBins(hashesFilepath string,
 			}
 		}
 
-		passResults = nil // Prevent memory allocation overlap (passResults contains pointers into the
-		runtime.GC()      // massive allocation f bytes)
+		// ==================================================================
+		// CRITICAL PIPELINE PURGE - STOPS THE OVERLAP of large memory buffer
+		// ==================================================================
+		passResults = nil   // Drops pointers to the result slices
+		workerBuffers = nil // Drops the intermediate worker slice windows
+		assignments = nil   // Drops maps and buffers assigned to workers
+		inChans = nil       // Drops references to input channels
+
+		// Explicitly run the garbage collector to sweep Pass 1 completely
+		// before the loop cycles to the top to allocate Pass 2's masterPool
+		runtime.GC()
 
 		// At this point, ALL workers are dead and outChan is completely empty.
 		fmt.Println("...Finished a pass")
+		isFirstPass = false
 	} // for binsAllocated < numberOfBins (ie, next pass)
 
 	return nil
