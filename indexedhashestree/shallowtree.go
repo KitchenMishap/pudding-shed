@@ -65,7 +65,7 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 	// The following is used as an offset so we can fit presentationIndices into 16 bits
 	stc.firstPresentationIndex = input[0].presentationIndex // ToDo calling generate twice with the same input will break this
 	// The following count is used to track whether our 65536 allowed "lookup" values run out
-	if len(input) > 65536 {
+	if len(input) >= 65536 {
 		stc.reset()
 		return true
 	} // Can still overflow even if we get past this check
@@ -73,7 +73,7 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 	stc.maxSkipNumber = 0 // So far...
 	// Add root node and recursively its children
 	unusedBytesFlags := uint32(0xFFFFFFFF)
-	_, overflow := stc.recurseGenerateNode(input, unusedBytesFlags)
+	_, overflow := stc.recurseGenerateNode(input, unusedBytesFlags, 0)
 	// (we throw away the nodeIndex for the root node, it is always zero)
 	if overflow {
 		stc.reset()
@@ -83,7 +83,7 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 }
 
 // A true result is an overflow!
-func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, unusedByteIndices uint32) (int, bool) {
+func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, unusedByteIndices uint32, level int) (int, bool) {
 	// Create a new node appended to the slice in the container
 	stc.nodesPool = append(stc.nodesPool, shallowTreeNode{})
 	nodeIndex := len(stc.nodesPool) - 1
@@ -114,7 +114,8 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 	sort.Slice(input, func(i int, j int) bool { return input[i].hash[bi] < input[j].hash[bi] })
 	// Find the range for each potential child
 	index := 0
-	for byteVal := byte(0); byteVal <= byte(255); byteVal++ {
+	for byteValInt := 0; byteValInt <= 255; byteValInt++ {
+		byteVal := byte(byteValInt)
 		startIndex := index
 		// Look for as many byteVal's in a row that we can find
 		for index < len(input) && input[index].hash[bi] == byteVal {
@@ -127,26 +128,35 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 			// Found exactly one, a leaf (no node object gets created)
 			// The value of the leaf is an indication of the hash's presentationIndex (we subtract the first)
 			// This will not overflow
-			stc.nodesPool[nodeIndex].lookups[byteVal] = uint16(input[index].presentationIndex - stc.firstPresentationIndex)
-		} else {
+			stc.nodesPool[nodeIndex].lookups[byteVal] = uint16(input[startIndex].presentationIndex - stc.firstPresentationIndex)
+		} else if index > startIndex+1 {
 			// Found more than one, we need a fully fledged node child
-			// This will incur a further sorting of a subslice of input[], but that's ok
-			childIndex, overflow := stc.recurseGenerateNode(input[startIndex:index], unusedByteIndices)
+			childIndex, overflow := stc.recurseGenerateNode(input[startIndex:index], unusedByteIndices, level+1)
 			if overflow {
-				// stc.reset() already done by in the above call for us
 				return -1, true
 			}
-			// Link to it
+
+			// Link to it via relative skip
 			skipValue := childIndex - nodeIndex
+			// Keep a record so we can see how much "room" was left when we finish
 			if skipValue > int(stc.maxSkipNumber) {
 				stc.maxSkipNumber = uint16(skipValue)
 			}
-			// We might have overflowed
-			if stc.presentationsCount+stc.maxSkipNumber > 65535 {
+
+			// "Meeting in the middle" encoding
+			encodedValue := uint16(65536 - skipValue)
+
+			// If the encoded downward jump value collides with or drops below
+			// our upward-bound hash count, we have run out of 16-bit address space.
+			if encodedValue <= stc.presentationsCount {
 				stc.reset()
 				return -1, true
 			}
-			stc.nodesPool[nodeIndex].lookups[byteVal] = uint16(65536 - skipValue)
+
+			stc.nodesPool[nodeIndex].lookups[byteVal] = encodedValue
+
+		} else {
+			panic("Error in code logic")
 		}
 	} // for byteVal
 	return nodeIndex, false
@@ -155,6 +165,7 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 // Partitioning entropy if we were to partition by a particular byte index of the hash
 // Shannon Entropy calculation: Maximizes value for an even distribution
 func partitioningEntropy(input []shallowTreeHash, hashByteIndex int) float64 {
+	//fmt.Printf("Partitioning Entropy() for hashByteIndex %d\n", hashByteIndex)
 	var byteValCounts [256]int
 	for i := range input {
 		byteValCounts[input[i].hash[hashByteIndex]]++

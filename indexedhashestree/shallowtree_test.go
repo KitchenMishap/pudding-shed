@@ -1,0 +1,79 @@
+package indexedhashestree
+
+import (
+	"fmt"
+	"os"
+	"testing"
+)
+
+func TestShallowTree(t *testing.T) {
+	fmt.Println("Reading hashes")
+	file, err := os.Open("Hashes.hsh")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() { _ = file.Close() }()
+
+	numHashes := 50000
+	input := make([]shallowTreeHash, numHashes)
+	for i := range numHashes {
+		var n int
+		n, err = file.Read(input[i].hash[:])
+		if err != nil {
+			t.Error(err)
+		}
+		if n != 32 {
+			t.Error("Couldn't read 32 byte hash")
+		}
+		input[i].presentationIndex = uint64(i)
+	}
+
+	fmt.Println("Indexing hashes")
+	container := newShallowTreeContainer()
+	overflow := container.generate(input)
+	if overflow {
+		t.Error("Overflowed!")
+	} else {
+		fmt.Println("Succeeded")
+		fmt.Printf("Hashes: %d\n", numHashes)
+		fmt.Printf("Nodes used: %d\n", len(container.nodesPool))
+		fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
+		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-int(container.maxSkipNumber))
+	}
+}
+
+func TestBytesPerHash(t *testing.T) {
+	for numHashes := 10_000; numHashes <= 50_000; numHashes += 1000 {
+		file, err := os.Open("Hashes.hsh")
+		if err != nil {
+			t.Error(err)
+		}
+
+		input := make([]shallowTreeHash, numHashes)
+		for i := range numHashes {
+			var n int
+			n, err = file.Read(input[i].hash[:])
+			if err != nil {
+				t.Error(err)
+			}
+			if n != 32 {
+				t.Error("Couldn't read 32 byte hash")
+			}
+			input[i].presentationIndex = uint64(i)
+		}
+		err = file.Close()
+		if err != nil {
+			t.Error(err)
+		}
+
+		container := newShallowTreeContainer()
+		overflow := container.generate(input)
+		if overflow {
+			t.Error("Overflowed!")
+		} else {
+			bytes := len(container.nodesPool) * (1 + 256*2) // + 32*numHashes
+			bytesPerHash := bytes / numHashes
+			fmt.Printf("%d\t%d\t%d\n", numHashes, bytes, bytesPerHash)
+		}
+	}
+}
