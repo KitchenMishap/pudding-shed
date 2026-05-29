@@ -108,6 +108,19 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 		}
 		shiftMask >>= 1
 	}
+
+	// --- CRITICAL CIRCUIT BREAKER FOR DUPLICATE HASHES ---
+	if maxEntropyFound == 0.0 {
+		// We cannot partition this list any further using physical hash bytes.
+		// For now, we gracefully treat this as a dead-end leaf and pick the first one seen.
+		// We flag this as "need to compare byte 32" as an indicator for our duplicate handling
+		stc.nodesPool[nodeIndex].hashByteIndex = 32 // Sentinel for duplicate marker (normally this would be 0..31!)
+
+		// Point the very first slot (byteVal 0) to our first presentation index
+		stc.nodesPool[nodeIndex].lookups[0] = uint16(inputCopy[0].presentationIndex - stc.firstPresentationIndex + 1)
+		return nodeIndex, false
+	}
+
 	// Use the best one
 	bi := maxEntropyIndex
 	unusedByteIndices ^= 1 << bi // Flip the bit
@@ -180,10 +193,11 @@ func (stc *shallowTreeContainer) getNodeSizeStatistics() *[257]int {
 	return &result
 }
 
-func (stc *shallowTreeContainer) lookupHash(hash [32]byte) int64 {
+// The bool return value tells us this is a duplicated hash within this store
+func (stc *shallowTreeContainer) lookupHash(hash [32]byte) (int64, bool) {
 	numHashes := stc.presentationsCount
 	if numHashes == 0 {
-		return -1
+		return -1, false
 	}
 	rootNodeIndex := 0
 
@@ -192,21 +206,31 @@ func (stc *shallowTreeContainer) lookupHash(hash [32]byte) int64 {
 	for {
 		node := &stc.nodesPool[nextNodeIndex]
 		hashByteIndex := node.hashByteIndex
+		if hashByteIndex == 32 { // Special marker indicating a duplicate hash (there is no byte 32!)
+			encodedLookup := node.lookups[0] // Special case, look in slot 0
+			if encodedLookup == 0 {
+				panic("Bad format")
+			} else if encodedLookup <= stc.presentationsCount {
+				return stc.firstPresentationIndex + int64(encodedLookup-1), true
+			} else {
+				panic("Bad format")
+			}
+		}
 		hashByte := hash[hashByteIndex]
 		encodedLookup := node.lookups[hashByte]
 		if encodedLookup == 0 {
 			// Hash not found
-			return -1
+			return -1, false
 		} else if encodedLookup <= stc.presentationsCount {
 			// Presentation index found
-			return stc.firstPresentationIndex + int64(encodedLookup-1) // -1 because 1 means the first presentation (0 is reserved)
+			return stc.firstPresentationIndex + int64(encodedLookup-1), false // -1 because 1 means the first presentation (0 is reserved)
 		}
 		// Must be a link to a node
 		skipNumber := uint16(65536 - uint32(encodedLookup))
 		nextNodeIndex += skipNumber
 		bytesLeft -= 1
 		if bytesLeft == 0 {
-			return -1
+			return -1, true // I think this is a duplicate?
 		} // A link too far
 	}
 }

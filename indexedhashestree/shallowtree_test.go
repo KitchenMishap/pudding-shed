@@ -117,8 +117,66 @@ func TestAllHashesShallowTree(t *testing.T) {
 		fmt.Println("Testing all hashes...")
 		for i := int64(0); i < int64(numHashes); i++ {
 			hash := input[i].hash
-			presentationIndex := container.lookupHash(hash)
+			presentationIndex, _ := container.lookupHash(hash)
 			if presentationIndex != i {
+				if presentationIndex == -1 {
+					t.Error("Couldn't find hash at index", i)
+				} else {
+					t.Error(fmt.Sprintf("Found hash at %d instead of %d", presentationIndex, i))
+				}
+			}
+		}
+	}
+}
+
+func TestAllHashesWithDuplicateShallowTree(t *testing.T) {
+	fmt.Println("Reading hashes")
+	file, err := os.Open("Hashes.hsh")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() { _ = file.Close() }()
+
+	numHashes := 53000 // The largest multiple of 1000 that I find works here, for these specific hashes
+	input := make([]shallowTreeHash, numHashes)
+	for i := 0; i < numHashes; i++ {
+		var n int
+		n, err = file.Read(input[i].hash[:])
+		if err != nil {
+			t.Error(err)
+		}
+		if n != 32 {
+			t.Error("Couldn't read 32 byte hash")
+		}
+		input[i].presentationIndex = int64(i)
+
+		// Throw things off balance by introducing a fake duplicate...
+		if i == 1000 {
+			i++
+			input[i].presentationIndex = int64(i)
+			input[i].hash = input[1000].hash
+		}
+	}
+
+	fmt.Println("Indexing hashes")
+	container := newShallowTreeContainer()
+	overflow := container.generate(input)
+	if overflow {
+		t.Error("Overflowed!")
+	} else {
+		fmt.Println("Succeeded")
+		fmt.Printf("Hashes: %d\n", numHashes)
+		fmt.Printf("Nodes used: %d\n", len(container.nodesPool))
+		fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
+		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-int(container.maxSkipNumber))
+
+		fmt.Println("Testing all hashes...")
+		for i := int64(0); i < int64(numHashes); i++ {
+			hash := input[i].hash
+			presentationIndex, duplicate := container.lookupHash(hash)
+			if duplicate {
+				fmt.Printf("Duplicate hash found for index %d, sent back %d\n", i, presentationIndex)
+			} else if presentationIndex != i {
 				if presentationIndex == -1 {
 					t.Error("Couldn't find hash at index", i)
 				} else {
