@@ -176,6 +176,10 @@ func (stc *shallowTreeContainer) getNodeSizeStatistics() *[257]int {
 	return &result
 }
 
+func (stc *shallowTreeContainer) lookupHash(hash [32]byte) int64 {
+	return -1
+}
+
 // Partitioning entropy if we were to partition by a particular byte index of the hash
 // Shannon Entropy calculation: Maximizes value for an even distribution
 func partitioningEntropy(input []shallowTreeHash, hashByteIndex int) float64 {
