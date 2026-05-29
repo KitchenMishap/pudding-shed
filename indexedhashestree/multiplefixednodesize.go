@@ -98,20 +98,21 @@ func newContainerParamsConfigA() *containerParams {
 	return &result
 }
 
-func (cp *containerParams) nodeBytesizeSuitableFor(slots int) int {
+// A nodeSpec is suitable if it gives the smallest byte size of those that can support this number of slots
+func (cp *containerParams) nodeSpecSuitableFor(slots int) *nodeSpec {
 	bestByteSize := math.MaxInt
-	foundOne := false
+	bestNodeSpec := (*nodeSpec)(nil)
 	for _, spec := range cp.nodeSpecs {
 		if spec.sizeParam >= slots {
-			foundOne = true
 			byteSize := spec.byteSize
 			if byteSize < bestByteSize {
 				bestByteSize = byteSize
+				bestNodeSpec = spec
 			}
 		}
 	}
-	if !foundOne {
+	if bestNodeSpec == nil {
 		panic("Not found")
 	}
-	return bestByteSize
+	return bestNodeSpec
 }
