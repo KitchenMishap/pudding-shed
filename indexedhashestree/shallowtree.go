@@ -162,6 +162,20 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 	return nodeIndex, false
 }
 
+func (stc *shallowTreeContainer) getNodeSizeStatistics() *[257]int {
+	result := [257]int{}
+	for n := range len(stc.nodesPool) {
+		size := 0
+		for slot := range 256 {
+			if stc.nodesPool[n].lookups[slot] != 0 {
+				size++
+			}
+		}
+		result[size]++
+	}
+	return &result
+}
+
 // Partitioning entropy if we were to partition by a particular byte index of the hash
 // Shannon Entropy calculation: Maximizes value for an even distribution
 func partitioningEntropy(input []shallowTreeHash, hashByteIndex int) float64 {

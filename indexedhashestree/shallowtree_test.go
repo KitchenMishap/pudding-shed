@@ -14,7 +14,7 @@ func TestShallowTree(t *testing.T) {
 	}
 	defer func() { _ = file.Close() }()
 
-	numHashes := 50000
+	numHashes := 53000 // The largest multiple of 1000 that I find works here, for these specific hashes
 	input := make([]shallowTreeHash, numHashes)
 	for i := range numHashes {
 		var n int
@@ -42,6 +42,8 @@ func TestShallowTree(t *testing.T) {
 	}
 }
 
+// This test shows that a single fixed node size takes up too many bytes per hash!
+// Switch to multifixednodesize.go...
 func TestBytesPerHash(t *testing.T) {
 	for numHashes := 10_000; numHashes <= 50_000; numHashes += 1000 {
 		file, err := os.Open("Hashes.hsh")
