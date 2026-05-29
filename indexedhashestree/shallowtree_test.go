@@ -25,7 +25,7 @@ func TestShallowTree(t *testing.T) {
 		if n != 32 {
 			t.Error("Couldn't read 32 byte hash")
 		}
-		input[i].presentationIndex = uint64(i)
+		input[i].presentationIndex = int64(i)
 	}
 
 	fmt.Println("Indexing hashes")
@@ -61,7 +61,7 @@ func TestBytesPerHash(t *testing.T) {
 			if n != 32 {
 				t.Error("Couldn't read 32 byte hash")
 			}
-			input[i].presentationIndex = uint64(i)
+			input[i].presentationIndex = int64(i)
 		}
 		err = file.Close()
 		if err != nil {
@@ -99,7 +99,7 @@ func TestAllHashesShallowTree(t *testing.T) {
 		if n != 32 {
 			t.Error("Couldn't read 32 byte hash")
 		}
-		input[i].presentationIndex = uint64(i)
+		input[i].presentationIndex = int64(i)
 	}
 
 	fmt.Println("Indexing hashes")

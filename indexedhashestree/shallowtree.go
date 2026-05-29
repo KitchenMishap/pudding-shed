@@ -29,7 +29,7 @@ type shallowTreeNode struct {
 }
 
 type shallowTreeContainer struct {
-	firstPresentationIndex uint64
+	firstPresentationIndex int64
 	presentationsCount     uint16 // These two summed
 	maxSkipNumber          uint16 // cannot exceed 65535 (ie leaving room for a zero too)
 	nodesPool              []shallowTreeNode
@@ -51,10 +51,9 @@ func (stc *shallowTreeContainer) reset() {
 // This is used in the parameter to the generate function
 type shallowTreeHash struct {
 	hash              [32]byte
-	presentationIndex uint64
+	presentationIndex int64
 }
 
-// Note that input will be mutated (sorted)
 // A true result is an overflow!
 func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 	// Start with no nodes
@@ -62,18 +61,22 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 	if len(input) == 0 {
 		return false // No hashes, empty container (no nodes)
 	}
+	// Because we will be mutating it (sorting it), we take a copy of the input so as not to surprise the caller
+	inputCopy := make([]shallowTreeHash, len(input))
+	copy(inputCopy, input)
+
 	// The following is used as an offset so we can fit presentationIndices into 16 bits
-	stc.firstPresentationIndex = input[0].presentationIndex // ToDo calling generate twice with the same input will break this
+	stc.firstPresentationIndex = inputCopy[0].presentationIndex
 	// The following count is used to track whether our 65536 allowed "lookup" values run out
-	if len(input) >= 65536 {
+	if len(inputCopy) >= 65536 {
 		stc.reset()
 		return true
 	} // Can still overflow even if we get past this check
-	stc.presentationsCount = uint16(len(input))
+	stc.presentationsCount = uint16(len(inputCopy))
 	stc.maxSkipNumber = 0 // So far...
 	// Add root node and recursively its children
 	unusedBytesFlags := uint32(0xFFFFFFFF)
-	_, overflow := stc.recurseGenerateNode(input, unusedBytesFlags, 0)
+	_, overflow := stc.recurseGenerateNode(inputCopy, unusedBytesFlags, 0)
 	// (we throw away the nodeIndex for the root node, it is always zero)
 	if overflow {
 		stc.reset()
@@ -83,7 +86,7 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 }
 
 // A true result is an overflow!
-func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, unusedByteIndices uint32, level int) (int, bool) {
+func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash, unusedByteIndices uint32, level int) (int, bool) {
 	// Create a new node appended to the slice in the container
 	stc.nodesPool = append(stc.nodesPool, shallowTreeNode{})
 	nodeIndex := len(stc.nodesPool) - 1
@@ -97,7 +100,7 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 	for byteIndex = 0; byteIndex < 32; byteIndex++ {
 		unused := shiftMask & 1
 		if unused == 1 {
-			entropy := partitioningEntropy(input, byteIndex)
+			entropy := partitioningEntropy(inputCopy, byteIndex)
 			if entropy > maxEntropyFound {
 				maxEntropyIndex = byteIndex
 				maxEntropyFound = entropy
@@ -111,14 +114,14 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 	stc.nodesPool[nodeIndex].hashByteIndex = byte(bi)
 
 	// Now we'll need to sort by that byte, so we can pass subsets of the hash list to each child
-	sort.Slice(input, func(i int, j int) bool { return input[i].hash[bi] < input[j].hash[bi] })
+	sort.Slice(inputCopy, func(i int, j int) bool { return inputCopy[i].hash[bi] < inputCopy[j].hash[bi] })
 	// Find the range for each potential child
 	index := 0
 	for byteValInt := 0; byteValInt <= 255; byteValInt++ {
 		byteVal := byte(byteValInt)
 		startIndex := index
 		// Look for as many byteVal's in a row that we can find
-		for index < len(input) && input[index].hash[bi] == byteVal {
+		for index < len(inputCopy) && inputCopy[index].hash[bi] == byteVal {
 			index++
 		}
 		if index == startIndex {
@@ -128,10 +131,11 @@ func (stc *shallowTreeContainer) recurseGenerateNode(input []shallowTreeHash, un
 			// Found exactly one, a leaf (no node object gets created)
 			// The value of the leaf is an indication of the hash's presentationIndex (we subtract the first)
 			// This will not overflow
-			stc.nodesPool[nodeIndex].lookups[byteVal] = uint16(input[startIndex].presentationIndex - stc.firstPresentationIndex)
+			// +1 because 0 is reserved
+			stc.nodesPool[nodeIndex].lookups[byteVal] = uint16(inputCopy[startIndex].presentationIndex - stc.firstPresentationIndex + 1)
 		} else if index > startIndex+1 {
 			// Found more than one, we need a fully fledged node child
-			childIndex, overflow := stc.recurseGenerateNode(input[startIndex:index], unusedByteIndices, level+1)
+			childIndex, overflow := stc.recurseGenerateNode(inputCopy[startIndex:index], unusedByteIndices, level+1)
 			if overflow {
 				return -1, true
 			}
@@ -177,7 +181,34 @@ func (stc *shallowTreeContainer) getNodeSizeStatistics() *[257]int {
 }
 
 func (stc *shallowTreeContainer) lookupHash(hash [32]byte) int64 {
-	return -1
+	numHashes := stc.presentationsCount
+	if numHashes == 0 {
+		return -1
+	}
+	rootNodeIndex := 0
+
+	nextNodeIndex := uint16(rootNodeIndex)
+	bytesLeft := 32
+	for {
+		node := &stc.nodesPool[nextNodeIndex]
+		hashByteIndex := node.hashByteIndex
+		hashByte := hash[hashByteIndex]
+		encodedLookup := node.lookups[hashByte]
+		if encodedLookup == 0 {
+			// Hash not found
+			return -1
+		} else if encodedLookup <= stc.presentationsCount {
+			// Presentation index found
+			return stc.firstPresentationIndex + int64(encodedLookup-1) // -1 because 1 means the first presentation (0 is reserved)
+		}
+		// Must be a link to a node
+		skipNumber := uint16(65536 - uint32(encodedLookup))
+		nextNodeIndex += skipNumber
+		bytesLeft -= 1
+		if bytesLeft == 0 {
+			return -1
+		} // A link too far
+	}
 }
 
 // Partitioning entropy if we were to partition by a particular byte index of the hash

@@ -29,7 +29,7 @@ func TestTParam(t *testing.T) {
 		if n != 32 {
 			t.Error("Couldn't read 32 byte hash")
 		}
-		input[i].presentationIndex = uint64(i)
+		input[i].presentationIndex = int64(i)
 	}
 
 	fmt.Println("Indexing hashes")
