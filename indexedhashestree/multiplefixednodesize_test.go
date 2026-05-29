@@ -158,3 +158,73 @@ func TestMultipleFixedNodeSweetSpot(t *testing.T) {
 		}
 	}
 }
+
+func TestConstructMultipleFixedSizedNodes(t *testing.T) {
+	numHashes := 32768
+	fmt.Println("Reading hashes")
+	input := make([]shallowTreeHash, numHashes)
+	file, err := os.Open("Hashes.hsh")
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Read an arbitrary number of hashes first (checking for stability)
+	for _ = range 0_000 {
+		dummy := [32]byte{}
+		var n int
+		n, err = file.Read(dummy[:])
+		if err != nil {
+			t.Error(err)
+		}
+		if n != 32 {
+			t.Error("Couldn't read 32 byte hash")
+		}
+	}
+
+	for i := range numHashes {
+		var n int
+		n, err = file.Read(input[i].hash[:])
+		if err != nil {
+			t.Error(err)
+		}
+		if n != 32 {
+			t.Error("Couldn't read 32 byte hash")
+		}
+		input[i].presentationIndex = int64(i)
+	}
+
+	err = file.Close()
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Println("Generating shallow")
+	container := newShallowTreeContainer()
+	overflow := container.generate(input)
+	if overflow {
+		t.Error("Overflowed!")
+	} else {
+		config := newContainerParamsConfigA()
+		fmt.Println("Planning multi sized nodes")
+		sliceOfNodes := config.sliceOfNodesFromShallowTree(container)
+		fmt.Println("Sorting multi sized nodes")
+		sort.Slice(sliceOfNodes, func(i, j int) bool {
+			return sliceOfNodes[i].fixedNodeSpec.byteSize < sliceOfNodes[j].fixedNodeSpec.byteSize
+		})
+
+		// The following is just output for humans to peruse for sensibleness
+		prevNode := (*nodeReconfigShallow)(nil)
+		for i, node := range sliceOfNodes {
+			if prevNode == nil || node.fixedNodeSpec.byteSize != prevNode.fixedNodeSpec.byteSize {
+				fmt.Printf("node[%d]: old index: %d; New byte size %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
+			}
+			if node.shallowTreeIndex == 0 {
+				fmt.Printf("node[%d]: old index: %d; Byte size of ROOT: %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
+			} else if node.fixedNodeSpec.byteSize == 513 {
+				fmt.Printf("node[%d]: old index: %d; Byte size of non-ROOT full node: %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
+			}
+			prevNode = node
+		}
+	}
+	fmt.Println("Done")
+}

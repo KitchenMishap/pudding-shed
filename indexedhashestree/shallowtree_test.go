@@ -37,8 +37,8 @@ func TestShallowTree(t *testing.T) {
 		fmt.Println("Succeeded")
 		fmt.Printf("Hashes: %d\n", numHashes)
 		fmt.Printf("Nodes used: %d\n", len(container.nodesPool))
-		fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
-		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-int(container.maxSkipNumber))
+		//fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
+		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-len(container.nodesPool))
 	}
 }
 
@@ -111,8 +111,8 @@ func TestAllHashesShallowTree(t *testing.T) {
 		fmt.Println("Succeeded")
 		fmt.Printf("Hashes: %d\n", numHashes)
 		fmt.Printf("Nodes used: %d\n", len(container.nodesPool))
-		fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
-		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-int(container.maxSkipNumber))
+		//fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
+		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-len(container.nodesPool))
 
 		fmt.Println("Testing all hashes...")
 		for i := int64(0); i < int64(numHashes); i++ {
@@ -167,8 +167,8 @@ func TestAllHashesWithDuplicateShallowTree(t *testing.T) {
 		fmt.Println("Succeeded")
 		fmt.Printf("Hashes: %d\n", numHashes)
 		fmt.Printf("Nodes used: %d\n", len(container.nodesPool))
-		fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
-		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-int(container.maxSkipNumber))
+		//fmt.Printf("MaxSkip used: %d\n", container.maxSkipNumber)
+		fmt.Printf("Spare lookup values: %d\n", 65536-1-numHashes-len(container.nodesPool))
 
 		fmt.Println("Testing all hashes...")
 		for i := int64(0); i < int64(numHashes); i++ {

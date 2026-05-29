@@ -31,7 +31,6 @@ type shallowTreeNode struct {
 type shallowTreeContainer struct {
 	firstPresentationIndex int64
 	presentationsCount     uint16 // These two summed
-	maxSkipNumber          uint16 // cannot exceed 65535 (ie leaving room for a zero too)
 	nodesPool              []shallowTreeNode
 }
 
@@ -44,7 +43,6 @@ func newShallowTreeContainer() *shallowTreeContainer {
 func (stc *shallowTreeContainer) reset() {
 	stc.firstPresentationIndex = 0
 	stc.presentationsCount = 0
-	stc.maxSkipNumber = 0
 	stc.nodesPool = stc.nodesPool[:0]
 }
 
@@ -73,7 +71,6 @@ func (stc *shallowTreeContainer) generate(input []shallowTreeHash) bool {
 		return true
 	} // Can still overflow even if we get past this check
 	stc.presentationsCount = uint16(len(inputCopy))
-	stc.maxSkipNumber = 0 // So far...
 	// Add root node and recursively its children
 	unusedBytesFlags := uint32(0xFFFFFFFF)
 	_, overflow := stc.recurseGenerateNode(inputCopy, unusedBytesFlags, 0)
@@ -153,17 +150,11 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 				return -1, true
 			}
 
-			// Link to it via relative skip
-			skipValue := childIndex - nodeIndex
-			// Keep a record so we can see how much "room" was left when we finish
-			if skipValue > int(stc.maxSkipNumber) {
-				stc.maxSkipNumber = uint16(skipValue)
-			}
-
+			// Link to it via index number
 			// "Meeting in the middle" encoding
-			encodedValue := uint16(65536 - skipValue)
+			encodedValue := uint16(65536 - childIndex)
 
-			// If the encoded downward jump value collides with or drops below
+			// If the encoded value collides with or drops below
 			// our upward-bound hash count, we have run out of 16-bit address space.
 			if encodedValue <= stc.presentationsCount {
 				stc.reset()
@@ -226,8 +217,8 @@ func (stc *shallowTreeContainer) lookupHash(hash [32]byte) (int64, bool) {
 			return stc.firstPresentationIndex + int64(encodedLookup-1), false // -1 because 1 means the first presentation (0 is reserved)
 		}
 		// Must be a link to a node
-		skipNumber := uint16(65536 - uint32(encodedLookup))
-		nextNodeIndex += skipNumber
+		linkIndex := uint16(65536 - uint32(encodedLookup))
+		nextNodeIndex = linkIndex
 		bytesLeft -= 1
 		if bytesLeft == 0 {
 			return -1, true // I think this is a duplicate?

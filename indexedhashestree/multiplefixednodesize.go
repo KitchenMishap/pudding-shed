@@ -116,3 +116,28 @@ func (cp *containerParams) nodeSpecSuitableFor(slots int) *nodeSpec {
 	}
 	return bestNodeSpec
 }
+
+// A pair of structures to aid the mapping from a "shallowTree" set of indexed nodes, to a "multiFixedNodeSize" tree
+// of nodes having consequently different indices
+type nodeReconfigShallow struct {
+	shallowTreeIndex uint16
+	aShallowTreeNode *shallowTreeNode
+	fixedNodeSpec    *nodeSpec // We will be sorting on the bytesize field of this
+}
+
+func (cp *containerParams) sliceOfNodesFromShallowTree(stc *shallowTreeContainer) []*nodeReconfigShallow {
+	result := make([]*nodeReconfigShallow, len(stc.nodesPool))
+	for i := range stc.nodesPool {
+		result[i] = &nodeReconfigShallow{}
+		result[i].shallowTreeIndex = uint16(i)
+		result[i].aShallowTreeNode = &stc.nodesPool[i]
+		lookupsCount := 0
+		for j := 0; j <= 255; j++ {
+			if stc.nodesPool[i].lookups[j] != 0 {
+				lookupsCount++
+			}
+		}
+		result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(lookupsCount)
+	}
+	return result[:]
+}
