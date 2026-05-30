@@ -33,6 +33,7 @@ type nodeDetails struct {
 }
 
 type nodeContainer struct {
+	rootNodeId                 uint16
 	nodeIdStartingEachSpec     []uint16
 	byteOffsetStartingEachSpec []int32
 	bytes                      []byte
@@ -185,6 +186,8 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 		oldNodeIndex := sortedNodeReconfig[newNodeIndex].shallowTreeIndex
 		mapNewIndexFromOld[oldNodeIndex] = uint16(newNodeIndex + 1)
 	}
+	// Store the root nodeId
+	result.rootNodeId = mapNewIndexFromOld[0]
 
 	// Then, finally, the actual bytes
 	nextReconfig = uint16(0)
