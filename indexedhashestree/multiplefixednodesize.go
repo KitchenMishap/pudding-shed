@@ -33,7 +33,9 @@ type nodeDetails struct {
 }
 
 type nodeContainer struct {
-	nodeIdStartingEachSpec []uint64
+	nodeIdStartingEachSpec     []uint16
+	byteOffsetStartingEachSpec []int32
+	bytes                      []byte
 }
 
 type nodeSpec struct {
@@ -49,10 +51,19 @@ func newNodeSpec(nodeFormat int, sizeParam int) *nodeSpec {
 	if nodeFormat == formatTiny {
 		result.byteSize = 1              // For the hash byte index 0..31
 		result.byteSize += sizeParam * 3 // 3 bytes for a byteHashVal and a lookup
+		if result.byteSize >= 35 {
+			panic("sizeParam illegal byteSize matches that for a potential formatMedium(1)")
+		}
+		if result.byteSize == 513 {
+			panic("sizeParam illegal, byteSize matches that for formatFull")
+		}
 	} else if nodeFormat == formatMedium {
 		result.byteSize = 1              // For a hash byte index
 		result.byteSize += 32            // 256 bits which say whether each possible byteHashVal is represented below
 		result.byteSize += sizeParam * 2 // sizeParam (padded) list of lookups for every bit that's a one above
+		if result.byteSize == 513 {
+			panic("sizeParam illegal, byteSize matches that for formatFull")
+		}
 	} else if nodeFormat == formatFull {
 		result.byteSize = 1        // For a hash byte index
 		result.byteSize += 256 * 2 // Lookup for every conceivable value of byteHashVal
@@ -125,6 +136,7 @@ type nodeReconfigShallow struct {
 	fixedNodeSpec    *nodeSpec // We will be sorting on the bytesize field of this
 }
 
+// The result will need to be sorted by nodeSpec afterwards
 func (cp *containerParams) sliceOfNodesFromShallowTree(stc *shallowTreeContainer) []*nodeReconfigShallow {
 	result := make([]*nodeReconfigShallow, len(stc.nodesPool))
 	for i := range stc.nodesPool {
@@ -140,4 +152,146 @@ func (cp *containerParams) sliceOfNodesFromShallowTree(stc *shallowTreeContainer
 		result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(lookupsCount)
 	}
 	return result[:]
+}
+
+// sortedNodeReconfig parameter must be already sorted by nodeSpec
+func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig []*nodeReconfigShallow,
+	shallowContainer *shallowTreeContainer) *nodeContainer {
+	// First, a default object
+	result := nodeContainer{}
+	result.nodeIdStartingEachSpec = make([]uint16, len(cp.nodeSpecs))
+	result.byteOffsetStartingEachSpec = make([]int32, len(cp.nodeSpecs))
+	result.bytes = make([]byte, 0, 120*1024) // 120 Kb is about right we find
+	// Then the offsets to each batch of nodes having identical nodeSpecs
+	byteOffset := int32(0)
+	nextReconfig := uint16(0)
+	for i := range cp.nodeSpecs {
+		result.nodeIdStartingEachSpec[i] = nextReconfig
+		result.byteOffsetStartingEachSpec[i] = byteOffset
+		for nextReconfig < uint16(len(sortedNodeReconfig)) && *sortedNodeReconfig[nextReconfig].fixedNodeSpec == *cp.nodeSpecs[i] {
+			// while we're on this nodeSpec
+			byteOffset += int32(cp.nodeSpecs[i].byteSize) // Move forward by the size of the node
+			nextReconfig++
+		}
+	}
+
+	// Gather a mapping from old shallow node indices to new node indices (which are sorted by nodeSpec.)
+	// Old node index representations are zero based, with 0 indicating the root node which
+	// is never referred to by other nodes (and other nodes reserve zero to mean something else.)
+	// New node index representations are one based, with the root rarely being the first item.
+	nodeCount := len(sortedNodeReconfig)
+	mapNewIndexFromOld := make([]uint16, nodeCount)
+	for newNodeIndex := 0; newNodeIndex < nodeCount; newNodeIndex++ {
+		oldNodeIndex := sortedNodeReconfig[newNodeIndex].shallowTreeIndex
+		mapNewIndexFromOld[oldNodeIndex] = uint16(newNodeIndex + 1)
+	}
+
+	// Then, finally, the actual bytes
+	nextReconfig = uint16(0)
+	for i := range cp.nodeSpecs {
+		format := cp.nodeSpecs[i].nodeFormat
+		size := cp.nodeSpecs[i].sizeParam
+		if int32(len(result.bytes)) != result.byteOffsetStartingEachSpec[i] {
+			panic("Mismatch between bytes written and predicted")
+		}
+		if nextReconfig != result.nodeIdStartingEachSpec[i] {
+			panic("Mismatch between nodes written and predicted")
+		}
+		// While we're on this nodeSpec
+		// Do the bytes of each node with this nodespec
+		for nextReconfig < uint16(len(sortedNodeReconfig)) && *sortedNodeReconfig[nextReconfig].fixedNodeSpec == *cp.nodeSpecs[i] {
+			// This is the shallowNode object we're "copying" from
+			shallowNode := sortedNodeReconfig[nextReconfig].aShallowTreeNode
+			// Here we step through the 256 lookups and condense them (throw away the nils) and
+			// update those that refer to node indices with their new node indices
+			type hashByteValAndLookup struct {
+				byteVal       byte
+				updatedLookup uint16
+			}
+			updatedLookupsNonZero := make([]hashByteValAndLookup, 0, 256)
+			updatedLookupsWithZero := [256]hashByteValAndLookup{}
+			for v := 0; v < 256; v++ {
+				lookup := shallowNode.lookups[v]
+				if lookup == 0 {
+					updatedLookupsWithZero[v] = hashByteValAndLookup{byteVal: byte(v), updatedLookup: 0}
+				} else if lookup <= shallowContainer.presentationsCount {
+					// It's a presentation index, keep it as it is
+					updatedLookupsWithZero[v] = hashByteValAndLookup{byteVal: byte(v), updatedLookup: lookup}
+					updatedLookupsNonZero = append(updatedLookupsNonZero, updatedLookupsWithZero[v])
+				} else {
+					// lookup refers to a shallowNode index, replace it with the corresponding new node index
+					// lookup is in the shallowTree format, in which the oldIndex is 65536 - lookup
+					oldIndex := 65536 - int(lookup)
+					newIndex := mapNewIndexFromOld[oldIndex] // These start at one
+					// Once again, this time for newIndex, it is represented in memory and file as 65536 - newIndex
+					updatedLookup := uint16(65536 - int(newIndex))
+					updatedLookupsWithZero[v] = hashByteValAndLookup{byteVal: byte(v), updatedLookup: updatedLookup}
+					updatedLookupsNonZero = append(updatedLookupsNonZero, updatedLookupsWithZero[v])
+				}
+			}
+
+			// Here we go through different serialization for each possible format
+			if format == formatTiny {
+				// A formatTiny is {1 byte: hashByteIndex}...
+				result.bytes = append(result.bytes, shallowNode.hashByteIndex)
+
+				// plus size (padded) lots of...
+				for item := 0; item < size; item++ {
+					if item < len(updatedLookupsNonZero) {
+						// ...{1 byte: hashByteVal, 2 bytes: lookup}
+						result.bytes = append(result.bytes, updatedLookupsNonZero[item].byteVal)
+						updatedLookup := updatedLookupsNonZero[item].updatedLookup
+						result.bytes = append(result.bytes, byte(updatedLookup&0xFF)) // LittleEndian
+						result.bytes = append(result.bytes, byte((updatedLookup&0xFF00)>>8))
+					} else {
+						padding := [3]byte{}
+						result.bytes = append(result.bytes, padding[:]...)
+					}
+				} // for item in node
+
+			} else if format == formatMedium {
+				// A formatMedium is {1 byte: hashByteIndex}...
+				result.bytes = append(result.bytes, shallowNode.hashByteIndex)
+
+				// Followed by 256 bits flagging whether each hash byte value is represented below...
+				bitBytes := [32]byte{}
+				for item := 0; item < len(updatedLookupsNonZero); item++ {
+					byteVal := updatedLookupsNonZero[item].byteVal
+					bitIndex := byteVal & 0x07         // 3 bit, between 0 and 7
+					byteIndex := (byteVal & 0xF8) >> 3 // 5 bit, between 0 and 31
+					bitBytes[byteIndex] |= 1 << bitIndex
+				}
+				result.bytes = append(result.bytes, bitBytes[:]...)
+
+				// Followed by size (padded) lots of {2 bytes: lookup}
+				for item := 0; item < size; item++ {
+					if item < len(updatedLookupsNonZero) {
+						updatedLookup := updatedLookupsNonZero[item].updatedLookup
+						result.bytes = append(result.bytes, byte(updatedLookup&0xFF)) // LittleEndian
+						result.bytes = append(result.bytes, byte((updatedLookup&0xFF00)>>8))
+					} else {
+						padding := [2]byte{}
+						result.bytes = append(result.bytes, padding[:]...) // Two bytes padding instead
+					}
+				} // for item in node
+
+			} else if format == formatFull {
+				// A formatFull is always 513 bytes
+				bytes := [513]byte{}
+				// A formatMedium is {1 byte: hashByteIndex}...
+				bytes[0] = shallowNode.hashByteIndex
+
+				for v := 0; v < 256; v++ {
+					updatedLookup := updatedLookupsWithZero[v].updatedLookup
+					bytes[1+2*v] = byte(updatedLookup & 0xFF)
+					bytes[2+2*v] = byte((updatedLookup & 0xFF00) >> 8)
+				}
+				result.bytes = append(result.bytes, bytes[:]...)
+			}
+
+			byteOffset += int32(cp.nodeSpecs[i].byteSize) // Move forward by the size of the node
+			nextReconfig++
+		} // for nextReconfig is current nodeSpec
+	} // for i = nodeSpecs
+	return &result
 }

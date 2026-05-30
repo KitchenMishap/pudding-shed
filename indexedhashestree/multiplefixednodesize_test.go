@@ -205,12 +205,18 @@ func TestConstructMultipleFixedSizedNodes(t *testing.T) {
 		t.Error("Overflowed!")
 	} else {
 		config := newContainerParamsConfigA()
+
 		fmt.Println("Planning multi sized nodes")
 		sliceOfNodes := config.sliceOfNodesFromShallowTree(container)
+
 		fmt.Println("Sorting multi sized nodes")
 		sort.Slice(sliceOfNodes, func(i, j int) bool {
 			return sliceOfNodes[i].fixedNodeSpec.byteSize < sliceOfNodes[j].fixedNodeSpec.byteSize
 		})
+
+		fmt.Println("Generating bytes")
+		newContainer := config.serializeMultiFixedSizedNodeTree(sliceOfNodes, container)
+		fmt.Printf("%.2f KB\n\n", float64(len(newContainer.bytes))/1024)
 
 		// The following is just output for humans to peruse for sensibleness
 		prevNode := (*nodeReconfigShallow)(nil)
