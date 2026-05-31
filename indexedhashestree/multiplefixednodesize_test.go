@@ -181,7 +181,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 		}
 	}
 
-	for i := range numHashes {
+	for i := 0; i < numHashes; i++ {
 		var n int
 		n, err = file.Read(input[i].hash[:])
 		if err != nil {
@@ -195,6 +195,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 		if i == 1000 {
 			i++
 			input[i].presentationIndex = int64(i)
+			input[i].hash = input[1000].hash
 		}
 	}
 
@@ -206,6 +207,16 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 	fmt.Println("Generating shallow")
 	container := newShallowTreeContainer()
 	overflow := container.generate(input)
+
+	presIndex, duplicate := container.lookupHash(input[1000].hash)
+	if presIndex != 1000 || !duplicate {
+		t.Error("Duplicate at 1000 not detected in shallow tree")
+	}
+	presIndex, duplicate = container.lookupHash(input[1001].hash)
+	if presIndex != 1000 || !duplicate {
+		t.Error("Duplicate at 1001 not detected in shallow tree")
+	}
+
 	if overflow {
 		t.Error("Overflowed!")
 	} else {
@@ -216,7 +227,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 
 		fmt.Println("Sorting multi sized nodes")
 		sort.Slice(sliceOfNodes, func(i, j int) bool {
-			return sliceOfNodes[i].fixedNodeSpec.byteSize < sliceOfNodes[j].fixedNodeSpec.byteSize
+			return config.Less(sliceOfNodes[i].fixedNodeSpec, sliceOfNodes[j].fixedNodeSpec)
 		})
 
 		fmt.Println("Generating bytes")
@@ -227,7 +238,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 		for i := int64(0); i < int64(numHashes); i++ {
 			hash := input[i].hash
 			presentationIndex, duplicate := newContainer.lookupHash(hash, config)
-			if i == 1000 || i == 1001 && !duplicate {
+			if (i == 1000 || i == 1001) && !duplicate {
 				t.Error("Indices 1000 and 1001 should report duplicate!")
 			}
 			if duplicate {

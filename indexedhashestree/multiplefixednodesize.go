@@ -1,6 +1,9 @@
 package indexedhashestree
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 // Every node format maps 256 byte values to either:
 // A) A null, meaning no hash exists with this prefix, or
@@ -70,6 +73,8 @@ func newNodeSpec(nodeFormat int, sizeParam int) *nodeSpec {
 	} else if nodeFormat == formatFull {
 		result.byteSize = 1        // For a hash byte index
 		result.byteSize += 256 * 2 // Lookup for every conceivable value of byteHashVal
+	} else if nodeFormat == formatDuplicate {
+		result.byteSize = 2 // The smallest of the presentionIndex's that were presented with this hash
 	} else {
 		panic("Don't know this format")
 	}
@@ -80,9 +85,23 @@ type containerParams struct {
 	nodeSpecs []*nodeSpec
 }
 
+// Less reports whether specI should be ordered before specJ.
+// This establishes the canonical sorting rule for the entire package.
+// We don't depend on a particular sort order here, but it does always need to be the same!
+func (cp *containerParams) Less(specI, specJ *nodeSpec) bool {
+	if specI.byteSize != specJ.byteSize {
+		return specI.byteSize < specJ.byteSize
+	}
+	if specI.nodeFormat != specJ.nodeFormat {
+		return specI.nodeFormat < specJ.nodeFormat
+	}
+	return specI.sizeParam < specJ.sizeParam
+}
+
 const formatTiny = 1
 const formatMedium = 2
 const formatFull = 3
+const formatDuplicate = 4
 
 // An example config
 // This config is manually optimized for a count of approximately 32,768 hashes
@@ -109,20 +128,38 @@ func newContainerParamsConfigA() *containerParams {
 	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 126))
 	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 130))
 	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatFull, 256))
+	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatDuplicate, 1))
+
+	// Automatically sort the specs using our canonical rule
+	sort.Slice(result.nodeSpecs, func(i, j int) bool { return result.Less(result.nodeSpecs[i], result.nodeSpecs[j]) })
+
 	return &result
 }
 
 // A nodeSpec is suitable if it gives the smallest byte size of those that can support this number of slots
+// A formatDuplicate nodeSpec is specifically treated in a separate function below
 func (cp *containerParams) nodeSpecSuitableFor(slots int) *nodeSpec {
 	bestByteSize := math.MaxInt
 	bestNodeSpec := (*nodeSpec)(nil)
 	for _, spec := range cp.nodeSpecs {
-		if spec.sizeParam >= slots {
+		if spec.sizeParam >= slots && spec.nodeFormat != formatDuplicate {
 			byteSize := spec.byteSize
 			if byteSize < bestByteSize {
 				bestByteSize = byteSize
 				bestNodeSpec = spec
 			}
+		}
+	}
+	if bestNodeSpec == nil {
+		panic("Not found")
+	}
+	return bestNodeSpec
+}
+func (cp *containerParams) nodeSpecSuitableForDuplicate() *nodeSpec {
+	bestNodeSpec := (*nodeSpec)(nil)
+	for _, spec := range cp.nodeSpecs {
+		if spec.nodeFormat == formatDuplicate {
+			bestNodeSpec = spec
 		}
 	}
 	if bestNodeSpec == nil {
@@ -147,12 +184,17 @@ func (cp *containerParams) sliceOfNodesFromShallowTree(stc *shallowTreeContainer
 		result[i].shallowTreeIndex = uint16(i)
 		result[i].aShallowTreeNode = &stc.nodesPool[i]
 		lookupsCount := 0
-		for j := 0; j <= 255; j++ {
-			if stc.nodesPool[i].lookups[j] != 0 {
-				lookupsCount++
+		isDuplicate := stc.nodesPool[i].hashByteIndex == 32
+		if isDuplicate {
+			result[i].fixedNodeSpec = cp.nodeSpecSuitableForDuplicate()
+		} else {
+			for j := 0; j <= 255; j++ {
+				if stc.nodesPool[i].lookups[j] != 0 {
+					lookupsCount++
+				}
 			}
+			result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(lookupsCount)
 		}
-		result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(lookupsCount)
 	}
 	return result[:]
 }
@@ -285,15 +327,26 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 			} else if format == formatFull {
 				// A formatFull is always 513 bytes
 				bytes := [513]byte{}
-				// A formatMedium is {1 byte: hashByteIndex}...
+				// A formatFull is {1 byte: hashByteIndex}...
 				bytes[0] = shallowNode.hashByteIndex
 
+				// ... followed by 256 x {2 bytes: lookup}
 				for v := 0; v < 256; v++ {
 					updatedLookup := updatedLookupsWithZero[v].updatedLookup
 					bytes[1+2*v] = byte(updatedLookup & 0xFF)
 					bytes[2+2*v] = byte((updatedLookup & 0xFF00) >> 8)
 				}
 				result.bytes = append(result.bytes, bytes[:]...)
+			} else if format == formatDuplicate {
+				// A formatDuplicate is simply a presentation index in 2 bytes
+				// It corresponds to a shallowTree node for which only index 0 is populated
+				updatedLookup := updatedLookupsWithZero[0].updatedLookup
+				bytes := [2]byte{}
+				bytes[0] = byte(updatedLookup & 0xFF) // LittleEndian
+				bytes[1] = byte((updatedLookup & 0xFF00) >> 8)
+				result.bytes = append(result.bytes, bytes[:]...)
+			} else {
+				panic("format code not recognized")
 			}
 
 			nextReconfig++
@@ -345,7 +398,10 @@ func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int
 	for {
 		nodeByteOffset, nodeSpecParams := nc.nodeIdToByteIndex(nextNodeId, params)
 		// The hashByteIndex is present for all of formatTiny, formatMedium, formatFull
-		hashByteIndex := nc.bytes[nodeByteOffset]
+		hashByteIndex := byte(0)
+		if nodeSpecParams.nodeFormat == formatTiny || nodeSpecParams.nodeFormat == formatMedium || nodeSpecParams.nodeFormat == formatFull {
+			hashByteIndex = nc.bytes[nodeByteOffset]
+		}
 
 		// Get the 256 possible lookups, based on the nodeSpecParams for this node
 		lookups := [256]uint16{}
@@ -389,21 +445,19 @@ func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int
 				lookup := uint16(lookup0) + uint16(lookup1)<<8
 				lookups[hashByteVal] = lookup
 			}
+		} else if nodeSpecParams.nodeFormat == formatDuplicate {
+			// There is only one item
+			lookup0 := nc.bytes[nodeByteOffset+0]
+			lookup1 := nc.bytes[nodeByteOffset+1]
+			encodedLookup := uint16(lookup0) + uint16(lookup1)<<8
+			return nc.firstPresentationIndex + int64(encodedLookup-1), true // -1 because 1 means the first presentation (0 is reserved)
+		} else {
+			panic("Unrecognized node format")
 		}
 
-		if hashByteIndex == 32 { // Special marker indicating a duplicate hash (there is of course no byte 32!)
-			encodedLookup := lookups[0] // Special case, look in slot 0
-			if encodedLookup == 0 {
-				panic("Bad format for duplicate")
-			} else if encodedLookup <= nc.presentationsCount {
-				return nc.firstPresentationIndex + int64(encodedLookup-1), true
-			} else {
-				panic("Bad format for duplicate")
-			}
-		}
-
+		var encodedLookup uint16
 		hashByte := hash[hashByteIndex]
-		encodedLookup := lookups[hashByte]
+		encodedLookup = lookups[hashByte]
 		if encodedLookup == 0 {
 			// Hash not found
 			return -1, false
