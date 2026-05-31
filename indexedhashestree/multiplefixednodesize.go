@@ -33,8 +33,10 @@ type nodeDetails struct {
 }
 
 type nodeContainer struct {
+	firstPresentationIndex     int64
+	presentationsCount         uint16
 	rootNodeId                 uint16
-	nodeIdStartingEachSpec     []uint16
+	nodeIdStartingEachSpec     []uint16 // These start at 1
 	byteOffsetStartingEachSpec []int32
 	bytes                      []byte
 }
@@ -160,6 +162,8 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 	shallowContainer *shallowTreeContainer) *nodeContainer {
 	// First, a default object
 	result := nodeContainer{}
+	result.presentationsCount = shallowContainer.presentationsCount
+	result.firstPresentationIndex = shallowContainer.firstPresentationIndex
 	result.nodeIdStartingEachSpec = make([]uint16, len(cp.nodeSpecs))
 	result.byteOffsetStartingEachSpec = make([]int32, len(cp.nodeSpecs))
 	result.bytes = make([]byte, 0, 120*1024) // 120 Kb is about right we find
@@ -167,7 +171,7 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 	byteOffset := int32(0)
 	nextReconfig := uint16(0)
 	for i := range cp.nodeSpecs {
-		result.nodeIdStartingEachSpec[i] = nextReconfig
+		result.nodeIdStartingEachSpec[i] = nextReconfig + 1 // Node ids start at 1
 		result.byteOffsetStartingEachSpec[i] = byteOffset
 		for nextReconfig < uint16(len(sortedNodeReconfig)) && *sortedNodeReconfig[nextReconfig].fixedNodeSpec == *cp.nodeSpecs[i] {
 			// while we're on this nodeSpec
@@ -181,13 +185,13 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 	// is never referred to by other nodes (and other nodes reserve zero to mean something else.)
 	// New node index representations are one based, with the root rarely being the first item.
 	nodeCount := len(sortedNodeReconfig)
-	mapNewIndexFromOld := make([]uint16, nodeCount)
+	mapNewIdFromOld := make([]uint16, nodeCount)
 	for newNodeIndex := 0; newNodeIndex < nodeCount; newNodeIndex++ {
 		oldNodeIndex := sortedNodeReconfig[newNodeIndex].shallowTreeIndex
-		mapNewIndexFromOld[oldNodeIndex] = uint16(newNodeIndex + 1)
+		mapNewIdFromOld[oldNodeIndex] = uint16(newNodeIndex + 1)
 	}
 	// Store the root nodeId
-	result.rootNodeId = mapNewIndexFromOld[0]
+	result.rootNodeId = mapNewIdFromOld[0]
 
 	// Then, finally, the actual bytes
 	nextReconfig = uint16(0)
@@ -197,7 +201,7 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 		if int32(len(result.bytes)) != result.byteOffsetStartingEachSpec[i] {
 			panic("Mismatch between bytes written and predicted")
 		}
-		if nextReconfig != result.nodeIdStartingEachSpec[i] {
+		if nextReconfig+1 != result.nodeIdStartingEachSpec[i] {
 			panic("Mismatch between nodes written and predicted")
 		}
 		// While we're on this nodeSpec
@@ -225,9 +229,9 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 					// lookup refers to a shallowNode index, replace it with the corresponding new node index
 					// lookup is in the shallowTree format, in which the oldIndex is 65536 - lookup
 					oldIndex := 65536 - int(lookup)
-					newIndex := mapNewIndexFromOld[oldIndex] // These start at one
+					newId := mapNewIdFromOld[oldIndex] // These start at one
 					// Once again, this time for newIndex, it is represented in memory and file as 65536 - newIndex
-					updatedLookup := uint16(65536 - int(newIndex))
+					updatedLookup := uint16(65536 - int(newId))
 					updatedLookupsWithZero[v] = hashByteValAndLookup{byteVal: byte(v), updatedLookup: updatedLookup}
 					updatedLookupsNonZero = append(updatedLookupsNonZero, updatedLookupsWithZero[v])
 				}
@@ -292,9 +296,127 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 				result.bytes = append(result.bytes, bytes[:]...)
 			}
 
-			byteOffset += int32(cp.nodeSpecs[i].byteSize) // Move forward by the size of the node
 			nextReconfig++
 		} // for nextReconfig is current nodeSpec
 	} // for i = nodeSpecs
 	return &result
+}
+
+func (nc *nodeContainer) nodeIdToByteIndex(nodeId uint16, params *containerParams) (int32, *nodeSpec) {
+	nodeSpecDetailsPrev := params.nodeSpecs[0]
+	firstNodeIdPrev := nc.nodeIdStartingEachSpec[0]
+	firstBytePrev := nc.byteOffsetStartingEachSpec[0]
+	// The above give us for nodeSpec[0],
+	// We start below at nodeSpec[1]
+	for i := 1; i < len(params.nodeSpecs); i++ {
+		firstNodeId := nc.nodeIdStartingEachSpec[i]
+		if nodeId < firstNodeId {
+			// Calculations are based on the previous nodeSpec (the one containing nodeId)
+			sinceStartOfSpec := int32(nodeId - firstNodeIdPrev)
+			bytesOffset := firstBytePrev + sinceStartOfSpec*int32(nodeSpecDetailsPrev.byteSize)
+			if bytesOffset >= int32(len(nc.bytes)) {
+				panic("overran bytes!")
+			}
+			return bytesOffset, nodeSpecDetailsPrev
+		}
+		nodeSpecDetailsPrev = params.nodeSpecs[i]
+		firstNodeIdPrev = firstNodeId
+		firstBytePrev = nc.byteOffsetStartingEachSpec[i]
+	}
+	// nodeId must be in the section for the last nodeSpec
+	// Calculations are based on the previous nodeSpec (the final one)
+	sinceStartOfSpec := int32(nodeId - firstNodeIdPrev)
+	bytesOffset := firstBytePrev + sinceStartOfSpec*int32(nodeSpecDetailsPrev.byteSize)
+	if bytesOffset >= int32(len(nc.bytes)) {
+		panic("overran bytes!")
+	}
+	return bytesOffset, nodeSpecDetailsPrev
+}
+
+// The bool return is true for "duplicated in this store"
+func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int64, bool) {
+	numHashes := nc.presentationsCount
+	if numHashes == 0 {
+		return -1, false
+	}
+
+	nextNodeId := nc.rootNodeId
+	bytesLeft := 32
+	for {
+		nodeByteOffset, nodeSpecParams := nc.nodeIdToByteIndex(nextNodeId, params)
+		// The hashByteIndex is present for all of formatTiny, formatMedium, formatFull
+		hashByteIndex := nc.bytes[nodeByteOffset]
+
+		// Get the 256 possible lookups, based on the nodeSpecParams for this node
+		lookups := [256]uint16{}
+		if nodeSpecParams.nodeFormat == formatTiny {
+			// The following is repeated sizeParam times
+			for item := range nodeSpecParams.sizeParam {
+				// There are three bytes, the hashByteVal, and a two byte lookup
+				hashByteVal := nc.bytes[nodeByteOffset+1+int32(item)*3+0]
+				lookup0 := nc.bytes[nodeByteOffset+1+int32(item)*3+1]
+				lookup1 := nc.bytes[nodeByteOffset+1+int32(item)*3+2]
+				lookup := uint16(lookup0) + uint16(lookup1)<<8
+				lookups[hashByteVal] = lookup
+			}
+		} else if nodeSpecParams.nodeFormat == formatMedium {
+			// There are 256 bits of flags, each '1' indicating there is a lookup to be read
+			lookupOffset := nodeByteOffset + 1 + 32
+			lookupIndex := 0
+			for flagByteIndex := range 32 {
+				flagByte := nc.bytes[nodeByteOffset+1+int32(flagByteIndex)]
+				if flagByte == 0 {
+					lookupIndex += 8
+				} else {
+					for mask := 1; mask <= 128; mask <<= 1 {
+						if (flagByte & byte(mask)) != 0 {
+							// Read a lookup
+							lookup0 := nc.bytes[lookupOffset]
+							lookup1 := nc.bytes[lookupOffset+1]
+							lookupOffset += 2
+							lookup := uint16(lookup0) + uint16(lookup1)<<8
+							lookups[lookupIndex] = lookup
+						}
+						lookupIndex++
+					}
+				}
+			}
+		} else if nodeSpecParams.nodeFormat == formatFull {
+			// There are just 256 16 bit lookups to be read
+			for hashByteVal := range 256 {
+				lookup0 := nc.bytes[nodeByteOffset+1+int32(hashByteVal)*2]
+				lookup1 := nc.bytes[nodeByteOffset+2+int32(hashByteVal)*2]
+				lookup := uint16(lookup0) + uint16(lookup1)<<8
+				lookups[hashByteVal] = lookup
+			}
+		}
+
+		if hashByteIndex == 32 { // Special marker indicating a duplicate hash (there is of course no byte 32!)
+			encodedLookup := lookups[0] // Special case, look in slot 0
+			if encodedLookup == 0 {
+				panic("Bad format for duplicate")
+			} else if encodedLookup <= nc.presentationsCount {
+				return nc.firstPresentationIndex + int64(encodedLookup-1), true
+			} else {
+				panic("Bad format for duplicate")
+			}
+		}
+
+		hashByte := hash[hashByteIndex]
+		encodedLookup := lookups[hashByte]
+		if encodedLookup == 0 {
+			// Hash not found
+			return -1, false
+		} else if encodedLookup <= nc.presentationsCount {
+			// Presentation index found
+			return nc.firstPresentationIndex + int64(encodedLookup-1), false // -1 because 1 means the first presentation (0 is reserved)
+		}
+		// Must be a link to a node
+		linkIndex := uint16(65536 - uint32(encodedLookup))
+		nextNodeId = linkIndex
+		bytesLeft -= 1
+		if bytesLeft == 0 {
+			return -1, true // I think this is a duplicate?
+		} // A link too far
+	}
 }

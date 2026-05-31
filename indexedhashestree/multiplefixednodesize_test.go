@@ -159,7 +159,7 @@ func TestMultipleFixedNodeSweetSpot(t *testing.T) {
 	}
 }
 
-func TestConstructMultipleFixedSizedNodes(t *testing.T) {
+func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 	numHashes := 32768
 	fmt.Println("Reading hashes")
 	input := make([]shallowTreeHash, numHashes)
@@ -218,19 +218,23 @@ func TestConstructMultipleFixedSizedNodes(t *testing.T) {
 		newContainer := config.serializeMultiFixedSizedNodeTree(sliceOfNodes, container)
 		fmt.Printf("%.2f KB\n\n", float64(len(newContainer.bytes))/1024)
 
-		// The following is just output for humans to peruse for sensibleness
-		prevNode := (*nodeReconfigShallow)(nil)
-		for i, node := range sliceOfNodes {
-			if prevNode == nil || node.fixedNodeSpec.byteSize != prevNode.fixedNodeSpec.byteSize {
-				fmt.Printf("node[%d]: old index: %d; New byte size %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
+		fmt.Println("Testing all hashes...")
+		for i := int64(0); i < int64(numHashes); i++ {
+			hash := input[i].hash
+			presentationIndex, duplicate := newContainer.lookupHash(hash, config)
+			if duplicate {
+				fmt.Printf("Duplicate hash found for index %d, sent back %d\n", i, presentationIndex)
+			} else if presentationIndex != i {
+				if presentationIndex == -1 {
+					t.Error("Couldn't find hash at index", i)
+				} else {
+					t.Error(fmt.Sprintf("Found hash at %d instead of %d", presentationIndex, i))
+				}
 			}
-			if node.shallowTreeIndex == 0 {
-				fmt.Printf("node[%d]: old index: %d; Byte size of ROOT: %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
-			} else if node.fixedNodeSpec.byteSize == 513 {
-				fmt.Printf("node[%d]: old index: %d; Byte size of non-ROOT full node: %d\n", i, node.shallowTreeIndex, node.fixedNodeSpec.byteSize)
-			}
-			prevNode = node
 		}
+		fmt.Println("...Done testing all hashes")
+		fmt.Println("")
+
 	}
 	fmt.Println("Done")
 }

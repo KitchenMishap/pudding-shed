@@ -106,8 +106,18 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 		shiftMask >>= 1
 	}
 
-	// --- CRITICAL CIRCUIT BREAKER FOR DUPLICATE HASHES ---
+	// --- CRITICAL CIRCUIT BREAKER FOR LONE HASH AND DUPLICATE HASHES ---
 	if maxEntropyFound == 0.0 {
+		// If there's only 1 hash total in the entire container and we are at the root,
+		// we must build a minimalist root node that points directly to this single leaf.
+		if len(inputCopy) == 1 && level == 0 {
+			stc.nodesPool[nodeIndex].hashByteIndex = 0 // Default to first byte
+			stc.nodesPool[nodeIndex].lookups[inputCopy[0].hash[0]] = uint16(inputCopy[0].presentationIndex - stc.firstPresentationIndex + 1)
+			return nodeIndex, false
+		}
+
+		// If len(input) > 1 and entropy is 0.0, we have an ACTUAL duplicate collision!
+
 		// We cannot partition this list any further using physical hash bytes.
 		// For now, we gracefully treat this as a dead-end leaf and pick the first one seen.
 		// We flag this as "need to compare byte 32" as an indicator for our duplicate handling
