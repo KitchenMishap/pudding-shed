@@ -24,6 +24,7 @@ const initialNodeCapacity = 10_000
 // some (possibly none) previous chosen bytes have been examined. Bytes 0..31 are examined in an order which
 // is optimized for the particular set of hashes presented to the tier.
 type shallowTreeNode struct {
+	nodeLevel     int
 	hashByteIndex byte
 	lookups       [256]uint16 // Using a uint16 here is what limits us to <65536 hashes (and we are in fact limited further)
 }
@@ -87,6 +88,7 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 	// Create a new node appended to the slice in the container
 	stc.nodesPool = append(stc.nodesPool, shallowTreeNode{})
 	nodeIndex := len(stc.nodesPool) - 1
+	stc.nodesPool[nodeIndex].nodeLevel = level
 	// DON'T grab a pointer to the node here. Recursive calls below might re-size nodesPool, invalidating the pointer!
 
 	// Try partitioning by each of the 32 bytes in the hashes. Just the ones we haven't used

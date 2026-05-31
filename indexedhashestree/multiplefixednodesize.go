@@ -28,13 +28,6 @@ import (
 // 4) Bytesize of the node
 // In short, everything.
 
-type nodeDetails struct {
-	byteOffset int
-	nodeFormat int
-	sizeParam  int
-	byteSize   int
-}
-
 type nodeContainer struct {
 	firstPresentationIndex     int64
 	presentationsCount         uint16
@@ -42,16 +35,19 @@ type nodeContainer struct {
 	nodeIdStartingEachSpec     []uint16 // These start at 1
 	byteOffsetStartingEachSpec []int32
 	bytes                      []byte
+	nodeLevelBytes             [][]byte // Each outer array represents a level of the tree. Slices into the above slice
 }
 
 type nodeSpec struct {
+	nodeLevel  int
 	nodeFormat int
 	sizeParam  int
 	byteSize   int
 }
 
-func newNodeSpec(nodeFormat int, sizeParam int) *nodeSpec {
+func newNodeSpec(nodeLevel int, nodeFormat int, sizeParam int) *nodeSpec {
 	result := nodeSpec{}
+	result.nodeLevel = nodeLevel
 	result.nodeFormat = nodeFormat
 	result.sizeParam = sizeParam
 	if nodeFormat == formatTiny {
@@ -89,6 +85,9 @@ type containerParams struct {
 // This establishes the canonical sorting rule for the entire package.
 // We don't depend on a particular sort order here, but it does always need to be the same!
 func (cp *containerParams) Less(specI, specJ *nodeSpec) bool {
+	if specI.nodeLevel != specJ.nodeLevel {
+		return specI.nodeLevel < specJ.nodeLevel
+	}
 	if specI.byteSize != specJ.byteSize {
 		return specI.byteSize < specJ.byteSize
 	}
@@ -108,28 +107,29 @@ const formatDuplicate = 4
 func newContainerParamsConfigA() *containerParams {
 	result := containerParams{}
 	result.nodeSpecs = make([]*nodeSpec, 0)
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatTiny, 2)) // Important - 86% of nodes!
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatTiny, 3)) // 9% of nodes
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatTiny, 4)) // 0.5% of nodes
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatTiny, 5)) // A tiny five is vaguely worthwhile
-	// For 50_000 hashes (nearly filling our 16 bit budget), there's a big gap
-	// with virtually no nodes having between 5 and 127 slots. Let's not waste time there,
-	// and instead give a finer grained size choice between 120 and 165 slots which is fairly busy.
-	// For 32_768 hashes (a nice number), we find a gap between
-	// 5 and 90 slots per node. Then we have a fair number of cases between 90 and 130 slots,
-	// with a peak between 105 and 120. We therefore concentrate our range of available sizes more finely there.
-	// (There's about 100-86-9-0.5 = 4.5% of nodes spread among the following):
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 90))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 100))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 105)) // 103,104,105 typically make up 0.8% of nodes (out of 4.5%)
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 108)) // 106,107,108 typically make up 0.9% of nodes (out of 4.5%)
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 112)) // 109,110,111 typically make up 0.8% of nodes (out of 4.5%)
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 118))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 126))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatMedium, 130))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatFull, 256))
-	result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(formatDuplicate, 1))
-
+	for nodeLevel := 0; nodeLevel < 32; nodeLevel++ {
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatTiny, 2)) // Important - 86% of nodes!
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatTiny, 3)) // 9% of nodes
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatTiny, 4)) // 0.5% of nodes
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatTiny, 5)) // A tiny five is vaguely worthwhile
+		// For 50_000 hashes (nearly filling our 16 bit budget), there's a big gap
+		// with virtually no nodes having between 5 and 127 slots. Let's not waste time there,
+		// and instead give a finer grained size choice between 120 and 165 slots which is fairly busy.
+		// For 32_768 hashes (a nice number), we find a gap between
+		// 5 and 90 slots per node. Then we have a fair number of cases between 90 and 130 slots,
+		// with a peak between 105 and 120. We therefore concentrate our range of available sizes more finely there.
+		// (There's about 100-86-9-0.5 = 4.5% of nodes spread among the following):
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 90))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 100))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 105)) // 103,104,105 typically make up 0.8% of nodes (out of 4.5%)
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 108)) // 106,107,108 typically make up 0.9% of nodes (out of 4.5%)
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 112)) // 109,110,111 typically make up 0.8% of nodes (out of 4.5%)
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 118))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 126))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatMedium, 130))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatFull, 256))
+		result.nodeSpecs = append(result.nodeSpecs, newNodeSpec(nodeLevel, formatDuplicate, 1))
+	}
 	// Automatically sort the specs using our canonical rule
 	sort.Slice(result.nodeSpecs, func(i, j int) bool { return result.Less(result.nodeSpecs[i], result.nodeSpecs[j]) })
 
@@ -138,11 +138,11 @@ func newContainerParamsConfigA() *containerParams {
 
 // A nodeSpec is suitable if it gives the smallest byte size of those that can support this number of slots
 // A formatDuplicate nodeSpec is specifically treated in a separate function below
-func (cp *containerParams) nodeSpecSuitableFor(slots int) *nodeSpec {
+func (cp *containerParams) nodeSpecSuitableFor(nodeLevel int, slots int) *nodeSpec {
 	bestByteSize := math.MaxInt
 	bestNodeSpec := (*nodeSpec)(nil)
 	for _, spec := range cp.nodeSpecs {
-		if spec.sizeParam >= slots && spec.nodeFormat != formatDuplicate {
+		if spec.sizeParam >= slots && spec.nodeFormat != formatDuplicate && spec.nodeLevel == nodeLevel {
 			byteSize := spec.byteSize
 			if byteSize < bestByteSize {
 				bestByteSize = byteSize
@@ -155,10 +155,10 @@ func (cp *containerParams) nodeSpecSuitableFor(slots int) *nodeSpec {
 	}
 	return bestNodeSpec
 }
-func (cp *containerParams) nodeSpecSuitableForDuplicate() *nodeSpec {
+func (cp *containerParams) nodeSpecSuitableForDuplicate(nodeLevel int) *nodeSpec {
 	bestNodeSpec := (*nodeSpec)(nil)
 	for _, spec := range cp.nodeSpecs {
-		if spec.nodeFormat == formatDuplicate {
+		if spec.nodeFormat == formatDuplicate && spec.nodeLevel == nodeLevel {
 			bestNodeSpec = spec
 		}
 	}
@@ -173,7 +173,7 @@ func (cp *containerParams) nodeSpecSuitableForDuplicate() *nodeSpec {
 type nodeReconfigShallow struct {
 	shallowTreeIndex uint16
 	aShallowTreeNode *shallowTreeNode
-	fixedNodeSpec    *nodeSpec // We will be sorting on the bytesize field of this
+	fixedNodeSpec    *nodeSpec // We will be sorting on this
 }
 
 // The result will need to be sorted by nodeSpec afterwards
@@ -186,14 +186,14 @@ func (cp *containerParams) sliceOfNodesFromShallowTree(stc *shallowTreeContainer
 		lookupsCount := 0
 		isDuplicate := stc.nodesPool[i].hashByteIndex == 32
 		if isDuplicate {
-			result[i].fixedNodeSpec = cp.nodeSpecSuitableForDuplicate()
+			result[i].fixedNodeSpec = cp.nodeSpecSuitableForDuplicate(stc.nodesPool[i].nodeLevel)
 		} else {
 			for j := 0; j <= 255; j++ {
 				if stc.nodesPool[i].lookups[j] != 0 {
 					lookupsCount++
 				}
 			}
-			result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(lookupsCount)
+			result[i].fixedNodeSpec = cp.nodeSpecSuitableFor(stc.nodesPool[i].nodeLevel, lookupsCount)
 		}
 	}
 	return result[:]
@@ -212,15 +212,37 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 	// Then the offsets to each batch of nodes having identical nodeSpecs
 	byteOffset := int32(0)
 	nextReconfig := uint16(0)
+	levelByteOffsets := make([]int32, 33)
+	currentLevel := 0
 	for i := range cp.nodeSpecs {
-		result.nodeIdStartingEachSpec[i] = nextReconfig + 1 // Node ids start at 1
+		result.nodeIdStartingEachSpec[i] = nextReconfig + 1
 		result.byteOffsetStartingEachSpec[i] = byteOffset
+
+		// Smoothly fill intermediate skipped levels if any exist
+		if nextReconfig < uint16(len(sortedNodeReconfig)) {
+			nodeLevel := sortedNodeReconfig[nextReconfig].fixedNodeSpec.nodeLevel
+			for currentLevel < nodeLevel {
+				currentLevel++
+				levelByteOffsets[currentLevel] = byteOffset
+			}
+		}
+
 		for nextReconfig < uint16(len(sortedNodeReconfig)) && *sortedNodeReconfig[nextReconfig].fixedNodeSpec == *cp.nodeSpecs[i] {
-			// while we're on this nodeSpec
-			byteOffset += int32(cp.nodeSpecs[i].byteSize) // Move forward by the size of the node
+			byteOffset += int32(cp.nodeSpecs[i].byteSize)
 			nextReconfig++
 		}
 	}
+
+	// Cap off all remaining trailing unused levels
+	for lev := currentLevel + 1; lev <= 32; lev++ {
+		levelByteOffsets[lev] = byteOffset
+	}
+	result.bytes = make([]byte, byteOffset) // Allocate bytes for all the levels
+	result.nodeLevelBytes = make([][]byte, 32)
+	for level := 0; level <= 31; level++ {
+		result.nodeLevelBytes[level] = result.bytes[levelByteOffsets[level]:levelByteOffsets[level+1]]
+	}
+	result.bytes = result.bytes[:0] // Empty it (keep capacity) so we can conveniently append to it
 
 	// Gather a mapping from old shallow node indices to new node indices (which are sorted by nodeSpec.)
 	// Old node index representations are zero based, with 0 indicating the root node which
@@ -355,6 +377,7 @@ func (cp *containerParams) serializeMultiFixedSizedNodeTree(sortedNodeReconfig [
 	return &result
 }
 
+// A returned -1 means "not currently loaded". Presumably the batch has been truncated to a certain number of levels.
 func (nc *nodeContainer) nodeIdToByteIndex(nodeId uint16, params *containerParams) (int32, *nodeSpec) {
 	nodeSpecDetailsPrev := params.nodeSpecs[0]
 	firstNodeIdPrev := nc.nodeIdStartingEachSpec[0]
@@ -368,7 +391,7 @@ func (nc *nodeContainer) nodeIdToByteIndex(nodeId uint16, params *containerParam
 			sinceStartOfSpec := int32(nodeId - firstNodeIdPrev)
 			bytesOffset := firstBytePrev + sinceStartOfSpec*int32(nodeSpecDetailsPrev.byteSize)
 			if bytesOffset >= int32(len(nc.bytes)) {
-				panic("overran bytes!")
+				return -1, nodeSpecDetailsPrev
 			}
 			return bytesOffset, nodeSpecDetailsPrev
 		}
@@ -381,12 +404,15 @@ func (nc *nodeContainer) nodeIdToByteIndex(nodeId uint16, params *containerParam
 	sinceStartOfSpec := int32(nodeId - firstNodeIdPrev)
 	bytesOffset := firstBytePrev + sinceStartOfSpec*int32(nodeSpecDetailsPrev.byteSize)
 	if bytesOffset >= int32(len(nc.bytes)) {
-		panic("overran bytes!")
+		return -1, nodeSpecDetailsPrev
 	}
 	return bytesOffset, nodeSpecDetailsPrev
 }
 
 // The bool return is true for "duplicated in this store"
+// -1 is returned for "hash not present in this store"
+// -2 is returned for "hash is present but insufficient levels are loaded"
+// if -2 is returned, the bool will NOT tell you if the hash is duplicated
 func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int64, bool) {
 	numHashes := nc.presentationsCount
 	if numHashes == 0 {
@@ -397,6 +423,9 @@ func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int
 	bytesLeft := 32
 	for {
 		nodeByteOffset, nodeSpecParams := nc.nodeIdToByteIndex(nextNodeId, params)
+		if nodeByteOffset == -1 {
+			return -2, false
+		}
 		// The hashByteIndex is present for all of formatTiny, formatMedium, formatFull
 		hashByteIndex := byte(0)
 		if nodeSpecParams.nodeFormat == formatTiny || nodeSpecParams.nodeFormat == formatMedium || nodeSpecParams.nodeFormat == formatFull {

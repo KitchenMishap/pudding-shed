@@ -69,7 +69,7 @@ func TestMultipleFixedNodeSize(t *testing.T) {
 		results := make([]percentString, 0, 256)
 		for i, count := range stats {
 			percentOfNodes := float64(100) * float64(count) / float64(totalNodes)
-			bytes := config.nodeSpecSuitableFor(i).byteSize
+			bytes := config.nodeSpecSuitableFor(0, i).byteSize
 			if count > 0 {
 				entry := percentString{}
 				entry.percent = percentOfNodes
@@ -148,7 +148,7 @@ func TestMultipleFixedNodeSweetSpot(t *testing.T) {
 			}
 			for i, count := range stats {
 				//percentOfNodes := float64(100) * float64(count) / float64(totalNodes)
-				bytes := config.nodeSpecSuitableFor(i).byteSize
+				bytes := config.nodeSpecSuitableFor(0, i).byteSize
 				//if count > 0 {
 				//	fmt.Printf("%d slots: %f%% of nodes, %d bytes (%.1f bytes per slot)\n", i, percentOfNodes, bytes, float64(bytes)/float64(i))
 				//}
