@@ -191,6 +191,11 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 			t.Error("Couldn't read 32 byte hash")
 		}
 		input[i].presentationIndex = int64(i)
+		// Repeat 1000th hash as an added test
+		if i == 1000 {
+			i++
+			input[i].presentationIndex = int64(i)
+		}
 	}
 
 	err = file.Close()
@@ -222,6 +227,9 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 		for i := int64(0); i < int64(numHashes); i++ {
 			hash := input[i].hash
 			presentationIndex, duplicate := newContainer.lookupHash(hash, config)
+			if i == 1000 || i == 1001 && !duplicate {
+				t.Error("Indices 1000 and 1001 should report duplicate!")
+			}
 			if duplicate {
 				fmt.Printf("Duplicate hash found for index %d, sent back %d\n", i, presentationIndex)
 			} else if presentationIndex != i {
