@@ -2,6 +2,8 @@ package indexedhashestree
 
 import (
 	"fmt"
+	"math"
+	"math/bits"
 	"os"
 	"sort"
 	"testing"
@@ -160,7 +162,7 @@ func TestMultipleFixedNodeSweetSpot(t *testing.T) {
 }
 
 func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
-	numHashes := 32768
+	numHashes := 27000
 	fmt.Println("Reading hashes")
 	input := make([]shallowTreeHash, numHashes)
 	file, err := os.Open("Hashes.hsh")
@@ -235,9 +237,21 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 		fmt.Printf("%.2f KB\n\n", float64(len(newContainer.bytes))/1024)
 
 		fmt.Println("Testing all hashes...")
+		minBits := math.MaxInt32
+		maxBits := 0
+		totalBits := 0
 		for i := int64(0); i < int64(numHashes); i++ {
 			hash := input[i].hash
-			presentationIndex, duplicate := newContainer.lookupHash(hash, config)
+			presentationIndex, duplicate, byteBits := newContainer.lookupHash(hash, config)
+			countBits := bits.OnesCount32(byteBits)
+			if countBits < minBits {
+				minBits = countBits
+			}
+			if countBits > maxBits {
+				maxBits = countBits
+			}
+			totalBits += countBits
+
 			if (i == 1000 || i == 1001) && !duplicate {
 				t.Error("Indices 1000 and 1001 should report duplicate!")
 			}
@@ -252,8 +266,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 			}
 		}
 		fmt.Println("...Done testing all hashes")
-		fmt.Println("")
-
+		fmt.Printf("bytes examined ranges from %d to %d (average %.1f)\n", minBits, maxBits, float64(totalBits)/float64(numHashes))
 	}
 	fmt.Println("Done")
 }

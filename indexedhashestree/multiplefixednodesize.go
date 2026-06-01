@@ -409,22 +409,22 @@ func (nc *nodeContainer) nodeIdToByteIndex(nodeId uint16, params *containerParam
 	return bytesOffset, nodeSpecDetailsPrev
 }
 
-// The bool return is true for "duplicated in this store"
-// -1 is returned for "hash not present in this store"
-// -2 is returned for "hash is present but insufficient levels are loaded"
-// if -2 is returned, the bool will NOT tell you if the hash is duplicated
-func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int64, bool) {
+// "index>=0, false, byteBits" is returned for a hash which is unique within this batch. byteBits has 1 for each byte examined.
+// "index>=0, true, byteBits" is returned for a hash which is duplicated within this batch. byteBits has 1 for each byte examined.
+// "-1, false, byteBits" is returned for a hash that is not present in this batch. byteBits has 1 for each byte examined.
+// "-2, false, byteBits" is returned for "hash is present but insufficient levels are loaded". byteBits has 1 for each byte examined.
+func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int64, bool, uint32) {
+	byteBits := uint32(0) // A "1" bit for every byte that is examined
 	numHashes := nc.presentationsCount
 	if numHashes == 0 {
-		return -1, false
+		return -1, false, byteBits
 	}
 
 	nextNodeId := nc.rootNodeId
-	bytesLeft := 32
 	for {
 		nodeByteOffset, nodeSpecParams := nc.nodeIdToByteIndex(nextNodeId, params)
 		if nodeByteOffset == -1 {
-			return -2, false
+			return -2, false, byteBits
 		}
 		// The hashByteIndex is present for all of formatTiny, formatMedium, formatFull
 		hashByteIndex := byte(0)
@@ -479,27 +479,29 @@ func (nc *nodeContainer) lookupHash(hash [32]byte, params *containerParams) (int
 			lookup0 := nc.bytes[nodeByteOffset+0]
 			lookup1 := nc.bytes[nodeByteOffset+1]
 			encodedLookup := uint16(lookup0) + uint16(lookup1)<<8
-			return nc.firstPresentationIndex + int64(encodedLookup-1), true // -1 because 1 means the first presentation (0 is reserved)
+			// Subtract 1 because internally, 1 means the first presentation (0 is reserved meaning something else)
+			return nc.firstPresentationIndex + int64(encodedLookup-1), true, byteBits
 		} else {
 			panic("Unrecognized node format")
 		}
 
 		var encodedLookup uint16
 		hashByte := hash[hashByteIndex]
+		byteBits |= 1 << hashByteIndex
 		encodedLookup = lookups[hashByte]
 		if encodedLookup == 0 {
 			// Hash not found
-			return -1, false
+			return -1, false, byteBits
 		} else if encodedLookup <= nc.presentationsCount {
 			// Presentation index found
-			return nc.firstPresentationIndex + int64(encodedLookup-1), false // -1 because 1 means the first presentation (0 is reserved)
+			// Subtract 1 because internally, 1 means the first presentation (0 is reserved meaning something else)
+			return nc.firstPresentationIndex + int64(encodedLookup-1), false, byteBits
 		}
 		// Must be a link to a node
 		linkIndex := uint16(65536 - uint32(encodedLookup))
 		nextNodeId = linkIndex
-		bytesLeft -= 1
-		if bytesLeft == 0 {
-			return -1, true // I think this is a duplicate?
+		if byteBits == 0xFFFFFFFF {
+			return -1, true, byteBits // ToDo: What does this mean? Should we panic?
 		} // A link too far
 	}
 }
