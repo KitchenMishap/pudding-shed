@@ -113,7 +113,7 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 		// If there's only 1 hash total in the entire container and we are at the root,
 		// we must build a minimalist root node that points directly to this single leaf.
 		if len(inputCopy) == 1 && level == 0 {
-			stc.nodesPool[nodeIndex].hashByteIndex = 0 // Default to first byte
+			stc.nodesPool[nodeIndex].hashByteIndex = 0
 			stc.nodesPool[nodeIndex].lookups[inputCopy[0].hash[0]] = uint16(inputCopy[0].presentationIndex - stc.firstPresentationIndex + 1)
 			return nodeIndex, false
 		}
@@ -125,8 +125,16 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 		// We flag this as "need to compare byte 32" as an indicator for our duplicate handling
 		stc.nodesPool[nodeIndex].hashByteIndex = 32 // Sentinel for duplicate marker (normally this would be 0..31!)
 
-		// Point the very first slot (byteVal 0) to our first presentation index
-		stc.nodesPool[nodeIndex].lookups[0] = uint16(inputCopy[0].presentationIndex - stc.firstPresentationIndex + 1)
+		// Explicitly scan the duplicate bucket to find the lowest presentation index
+		lowestIndex := inputCopy[0].presentationIndex
+		for i := 1; i < len(inputCopy); i++ {
+			if inputCopy[i].presentationIndex < lowestIndex {
+				lowestIndex = inputCopy[i].presentationIndex
+			}
+		}
+
+		// Point the lookup cell back to the guaranteed earliest occurrence
+		stc.nodesPool[nodeIndex].lookups[0] = uint16(lowestIndex - stc.firstPresentationIndex + 1)
 		return nodeIndex, false
 	}
 
@@ -135,8 +143,12 @@ func (stc *shallowTreeContainer) recurseGenerateNode(inputCopy []shallowTreeHash
 	unusedByteIndices ^= 1 << bi // Flip the bit
 	stc.nodesPool[nodeIndex].hashByteIndex = byte(bi)
 
-	// Now we'll need to sort by that byte, so we can pass subsets of the hash list to each child
-	sort.Slice(inputCopy, func(i int, j int) bool { return inputCopy[i].hash[bi] < inputCopy[j].hash[bi] })
+	// Now we'll need to sort by that byte, so we can pass subsets of the hash list to each child.
+	// Use a stable sort to prevent Go from randomly scrambling the presentation order of duplicate hashes.
+	sort.SliceStable(inputCopy, func(i int, j int) bool {
+		return inputCopy[i].hash[bi] < inputCopy[j].hash[bi]
+	})
+
 	// Find the range for each potential child
 	index := 0
 	for byteValInt := 0; byteValInt <= 255; byteValInt++ {

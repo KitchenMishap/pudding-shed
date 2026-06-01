@@ -10,7 +10,7 @@ func TestShallowTree(t *testing.T) {
 	fmt.Println("Reading hashes")
 	file, err := os.Open("Hashes.hsh")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -48,7 +48,7 @@ func TestBytesPerHash(t *testing.T) {
 	for numHashes := 10_000; numHashes <= 50_000; numHashes += 1000 {
 		file, err := os.Open("Hashes.hsh")
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		input := make([]shallowTreeHash, numHashes)
@@ -84,7 +84,7 @@ func TestAllHashesShallowTree(t *testing.T) {
 	fmt.Println("Reading hashes")
 	file, err := os.Open("Hashes.hsh")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -117,11 +117,11 @@ func TestAllHashesShallowTree(t *testing.T) {
 		fmt.Println("Testing all hashes...")
 		for i := int64(0); i < int64(numHashes); i++ {
 			hash := input[i].hash
-			presentationIndex, _ := container.lookupHash(hash)
+			presentationIndex, duplicate := container.lookupHash(hash)
 			if presentationIndex != i {
 				if presentationIndex == -1 {
 					t.Error("Couldn't find hash at index", i)
-				} else {
+				} else if !duplicate {
 					t.Error(fmt.Sprintf("Found hash at %d instead of %d", presentationIndex, i))
 				}
 			}
@@ -133,7 +133,7 @@ func TestAllHashesWithDuplicateShallowTree(t *testing.T) {
 	fmt.Println("Reading hashes")
 	file, err := os.Open("Hashes.hsh")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = file.Close() }()
 

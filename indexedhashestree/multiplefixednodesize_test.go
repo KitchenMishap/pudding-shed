@@ -12,7 +12,7 @@ import (
 func TestMultipleFixedNodeSize(t *testing.T) {
 	file, err := os.Open("Hashes.hsh")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	defer func() { _ = file.Close() }()
 
@@ -98,7 +98,7 @@ func TestMultipleFixedNodeSweetSpot(t *testing.T) {
 		input := make([]shallowTreeHash, numHashes)
 		file, err := os.Open("Hashes.hsh")
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		// Read an arbitrary number of hashes first (checking for stability)
@@ -167,7 +167,7 @@ func TestAllHashesMultipleFixedSizedNodes(t *testing.T) {
 	input := make([]shallowTreeHash, numHashes)
 	file, err := os.Open("Hashes.hsh")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Read an arbitrary number of hashes first (checking for stability)
