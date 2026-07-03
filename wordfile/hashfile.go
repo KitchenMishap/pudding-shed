@@ -20,7 +20,7 @@ func NewHashFile(file memfile.AppendableLookupFile, hashCount int64) *HashFile {
 }
 
 func (wf *HashFile) ReadHashAt(off int64) ([32]byte, error) {
-	// Using scracth avoids MASSES of tiny heap allocations (slice headers)
+	// Using scratch avoids MASSES of tiny heap allocations (slice headers)
 	_, err := wf.file.ReadAt(wf.scratch, off*32)
 	var hashBytes [32]byte
 	if err != nil {
