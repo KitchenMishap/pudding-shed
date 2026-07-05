@@ -48,34 +48,55 @@ func TestTierZero(t *testing.T) {
 		}
 	}
 
-	for i := range hashCount {
-		hash := presentationArray[i].Hash
-		hashArray := [32]byte{}
-		copy(hashArray[:], hash)
-		hash256 := Sha256(hashArray)
-		presentationIndexRecovered, err := hashReadWriter.IndexOfHash(&hash256)
+	// The next part is two-pass: First pass re-uses the already open read-writer,
+	// second pass closes it and opens it as read only
+	var hashReader LegacyHashReader
+	passReopens := [2]bool{false, true}
+	for pass := 0; pass < 2; pass++ {
+		reopen := passReopens[pass]
+
+		if reopen {
+			err = hashReadWriter.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			hashReader, err = creator.OpenHashStoreReadOnly()
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			hashReader = hashReadWriter // Re-use the hashReadWriter as a plain reader
+		}
+
+		for i := range hashCount {
+			hash := presentationArray[i].Hash
+			hashArray := [32]byte{}
+			copy(hashArray[:], hash)
+			hash256 := Sha256(hashArray)
+			presentationIndexRecovered, err := hashReader.IndexOfHash(&hash256)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if presentationIndexRecovered == int64(GlobalPiNoMatch) {
+				t.Fatal("Lookup failed, returned GlobalPiNoMatch")
+			} else if !bytes.Equal(presentationArray[presentationIndexRecovered-presentationOffset].Hash, hash) {
+				t.Fatal("Lookup failed, returned index of wrong hash")
+			} else {
+				//fmt.Println("A success")
+			}
+		}
+		randomHash := helperRandomHashArray32()
+		hash256 := Sha256(randomHash)
+		presentationIndexRecovered, err := hashReader.IndexOfHash(&hash256)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if presentationIndexRecovered == int64(GlobalPiNoMatch) {
-			t.Fatal("Lookup failed, returned GlobalPiNoMatch")
-		} else if !bytes.Equal(presentationArray[presentationIndexRecovered-presentationOffset].Hash, hash) {
-			t.Fatal("Lookup failed, returned index of wrong hash")
-		} else {
-			//fmt.Println("A success")
+		if presentationIndexRecovered != int64(GlobalPiNoMatch) {
+			fmt.Printf("Random hash returned a match. Surprising? Maybe? But false positives must be filtered by caller\n")
 		}
 	}
-	randomHash := helperRandomHashArray32()
-	hash256 := Sha256(randomHash)
-	presentationIndexRecovered, err := hashReadWriter.IndexOfHash(&hash256)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if presentationIndexRecovered != int64(GlobalPiNoMatch) {
-		fmt.Printf("Random hash returned a match. Surprising? Maybe? But false positives must be filtered by caller\n")
-	}
 
-	err = hashReadWriter.Close()
+	err = hashReader.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

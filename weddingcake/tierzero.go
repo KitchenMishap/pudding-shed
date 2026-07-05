@@ -27,7 +27,7 @@ func NewTierZero(filepath string, readOnly bool) (*TierZero, error) {
 	if readOnly {
 		file, err = os.Open(filepath)
 	} else {
-		file, err = os.OpenFile(result.filepath, os.O_APPEND, 0)
+		file, err = os.OpenFile(result.filepath, os.O_RDWR|os.O_APPEND, 0)
 	}
 	if err != nil {
 		return nil, err
