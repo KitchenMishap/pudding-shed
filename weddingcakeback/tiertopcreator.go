@@ -5,17 +5,17 @@ import (
 	"path/filepath"
 )
 
-type TierZeroCreator struct {
+type TierTopCreator struct {
 	folder string
 }
 
-func NewTierZeroCreator(folder string) *TierZeroCreator {
-	result := TierZeroCreator{}
+func NewTierTopCreator(folder string) *TierTopCreator {
+	result := TierTopCreator{}
 	result.folder = folder
 	return &result
 }
 
-func (tzc *TierZeroCreator) Exists() bool {
+func (tzc *TierTopCreator) Exists() bool {
 	// Based on existence of <folder>/Tier0/Hashes.hsh
 	filePath := filepath.Join(tzc.folder, "Tier0", "Hashes.hsh")
 	file, err := os.Open(filePath)
@@ -26,7 +26,7 @@ func (tzc *TierZeroCreator) Exists() bool {
 	return false
 }
 
-func (tzc *TierZeroCreator) Create() error {
+func (tzc *TierTopCreator) Create() error {
 	// Create an empty <folder>/Tier0/Hashes.hsh
 	folderPath := filepath.Join(tzc.folder, "Tier0")
 	err := os.MkdirAll(folderPath, 0777)
@@ -42,20 +42,20 @@ func (tzc *TierZeroCreator) Create() error {
 	return nil
 }
 
-func (tzc *TierZeroCreator) Open() (*TierZero, error) {
+func (tzc *TierTopCreator) Open() (*TierTop, error) {
 	filePath := filepath.Join(tzc.folder, "Tier0")
-	tierZero, err := NewTierZero(filePath, false)
+	tierTop, err := NewTierTop(filePath, false)
 	if err != nil {
 		return nil, err
 	}
-	return tierZero, nil
+	return tierTop, nil
 }
 
-func (tzc *TierZeroCreator) OpenReadOnly() (*TierZero, error) {
+func (tzc *TierTopCreator) OpenReadOnly() (*TierTop, error) {
 	filePath := filepath.Join(tzc.folder, "Tier0")
-	tierZero, err := NewTierZero(filePath, true)
+	tierTop, err := NewTierTop(filePath, true)
 	if err != nil {
 		return nil, err
 	}
-	return tierZero, nil
+	return tierTop, nil
 }

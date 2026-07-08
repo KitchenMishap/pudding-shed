@@ -9,7 +9,9 @@ import (
 	"github.com/KitchenMishap/pudding-shed/wordfile"
 )
 
-type TierZero struct {
+// TierTop is the type of the top tier. It is different from the tiers below it, so has its own class
+// Note that the next tier below this is indexed as ZERO (TierTop has no tier index!)
+type TierTop struct {
 	folder                       string
 	readonly                     bool
 	underlyingFile               *os.File
@@ -19,8 +21,8 @@ type TierZero struct {
 	firstGlobalPresentationIndex GlobalPiType
 }
 
-func NewTierZero(folderPath string, readOnly bool) (*TierZero, error) {
-	result := TierZero{}
+func NewTierTop(folderPath string, readOnly bool) (*TierTop, error) {
+	result := TierTop{}
 	result.firstGlobalPresentationIndex = 0
 	result.folder = folderPath
 	filePath := filepath.Join(folderPath, "Hashes.hsh")
@@ -50,7 +52,7 @@ func NewTierZero(folderPath string, readOnly bool) (*TierZero, error) {
 	result.theMap = make(map[Sha256]GlobalPiType, 65535)
 	result.theSlice = make([]Sha256, hashesCount, 65535)
 
-	for i := GlobalPiType(0); i < GlobalPiType(hashesCount); i++ {
+	for i := GlobalPiType(0); i < hashesCount; i++ {
 		hash, err := result.hashesFile.ReadHashAt(int64(i))
 		if err != nil {
 			return nil, err
@@ -61,7 +63,7 @@ func NewTierZero(folderPath string, readOnly bool) (*TierZero, error) {
 	return &result, nil
 }
 
-func (tz *TierZero) IndexOfHash(hash *Sha256) (GlobalPiType, error) {
+func (tz *TierTop) IndexOfHash(hash *Sha256) (GlobalPiType, error) {
 	index, ok := tz.theMap[*hash]
 	if !ok {
 		return -1, nil
@@ -69,7 +71,7 @@ func (tz *TierZero) IndexOfHash(hash *Sha256) (GlobalPiType, error) {
 	return index, nil
 }
 
-func (tz *TierZero) GetHashAtIndex(index int64, hash *Sha256) error {
+func (tz *TierTop) GetHashAtIndex(index int64, hash *Sha256) error {
 	if index < int64(len(tz.theSlice)) {
 		*hash = tz.theSlice[index]
 		return nil
@@ -77,15 +79,15 @@ func (tz *TierZero) GetHashAtIndex(index int64, hash *Sha256) error {
 	return errors.New("index out of range")
 }
 
-func (tz *TierZero) CountHashes() (GlobalPiType, error) {
+func (tz *TierTop) CountHashes() (GlobalPiType, error) {
 	return GlobalPiType(len(tz.theSlice)), nil
 }
 
-func (tz *TierZero) Close() error {
+func (tz *TierTop) Close() error {
 	return tz.hashesFile.Close()
 }
 
-func (tz *TierZero) AppendHash(hash *Sha256) (GlobalPiType, error) {
+func (tz *TierTop) AppendHash(hash *Sha256) (GlobalPiType, error) {
 	index, err := tz.CountHashes()
 	if err != nil {
 		return -1, err
@@ -99,6 +101,36 @@ func (tz *TierZero) AppendHash(hash *Sha256) (GlobalPiType, error) {
 	return result, nil
 }
 
-func (tz *TierZero) Sync() error {
+func (tz *TierTop) Sync() error {
 	return tz.hashesFile.Sync()
+}
+
+// Functions to implement as interface BakingSourceTier
+// Check that implements
+var _ BakingSourceTier = (*TierTop)(nil)
+
+func (tz *TierTop) GetNextTierPrefixBytesCount() byte {
+	// Next tier is TierBelow[0]
+	// A DonutForest in TierBelow[0] has no prefix bytes (so it has 256^0 = 1 tree in the forest)
+	return 0
+}
+func (tz *TierTop) GetNextTierIndex() byte {
+	// The index of the next tier after TierTop is (surprisingly) 0
+	return 0
+}
+func (tz *TierTop) GetIndicesCount() uint64 {
+	// This tier (zero) has no prefix bytes, so it has 256^0 = 1 indices
+	return 1
+}
+func (tz *TierTop) GetHashesAtIndex(index uint64, config *CakeConfig) []SingleTreeHash {
+	if index != 0 {
+		panic("TierZero.GetHashesForIndex() should only be called with index=0")
+	}
+	result := make([]SingleTreeHash, len(tz.theSlice))
+	for i := range tz.theSlice {
+		result[i].PresentationIndex = tz.firstGlobalPresentationIndex + GlobalPiType(i)
+		result[i].Hash = make([]byte, config.HashLength) // Todo Yuk!
+		copy(result[i].Hash, tz.theSlice[i][:])
+	}
+	return result
 }

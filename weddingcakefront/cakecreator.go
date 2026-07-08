@@ -5,8 +5,8 @@ import (
 )
 
 type CakeCreator struct {
-	folder          string
-	tierZeroCreator *weddingcakeback.TierZeroCreator
+	folder         string
+	tierTopCreator *weddingcakeback.TierTopCreator
 }
 
 // Check that implements
@@ -15,36 +15,36 @@ var _ LegacyHashStoreCreator = (*CakeCreator)(nil)
 func NewCakeCreator(folder string) *CakeCreator {
 	result := CakeCreator{}
 	result.folder = folder
-	result.tierZeroCreator = weddingcakeback.NewTierZeroCreator(folder)
+	result.tierTopCreator = weddingcakeback.NewTierTopCreator(folder)
 	return &result
 }
 
 func (cc *CakeCreator) HashStoreExists() bool {
 	// Exists if tier zero exists
-	return cc.tierZeroCreator.Exists()
+	return cc.tierTopCreator.Exists()
 }
 
 func (cc *CakeCreator) CreateHashStore() error {
 	// Create an empty tier zero
-	return cc.tierZeroCreator.Create()
+	return cc.tierTopCreator.Create()
 }
 
 func (cc *CakeCreator) OpenHashStore() (HashReadWriter[*Sha256], error) {
 	// Open tier zero
-	tierZero, err := cc.tierZeroCreator.Open()
+	tierTop, err := cc.tierTopCreator.Open()
 	if err != nil {
 		return nil, err
 	}
 	// Make a cake out of tier zero
-	return newCake(tierZero), nil
+	return newCake(tierTop), nil
 }
 
 func (cc *CakeCreator) OpenHashStoreReadOnly() (HashReader[*Sha256], error) {
 	// Open tier zero read only
-	tierZero, err := cc.tierZeroCreator.OpenReadOnly()
+	tierTop, err := cc.tierTopCreator.OpenReadOnly()
 	if err != nil {
 		return nil, err
 	}
 	// Make a cake out of tier zero
-	return newCake(tierZero), nil
+	return newCake(tierTop), nil
 }
