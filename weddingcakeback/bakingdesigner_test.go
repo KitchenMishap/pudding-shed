@@ -46,8 +46,9 @@ func TestBakingDesigner(t *testing.T) {
 	// Now start designing the first DonutForest in tier 1, from the entirity of tier zero
 
 	config := NewCakeConfig(32)
-	designer := NewBakingDesigner()
-	designer.GatherMetricsFromSourceTier(tierTop, config)
-	designer.DesignTheDesign(config, 0)
-	// ToDo Serialize
+	writer := NewDonutForestWrite(tierTop, config)
+	err = writer.Write()
+	if err != nil {
+		t.Fatal(err)
+	}
 }
