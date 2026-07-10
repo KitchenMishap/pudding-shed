@@ -3,6 +3,7 @@ package weddingcakeback
 import (
 	"encoding/binary"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -176,4 +177,23 @@ func (tt *TierTop) GetHashesAtIndex(index uint64, config *CakeConfig) []SingleTr
 		copy(result[i].Hash, tt.theSlice[i][:])
 	}
 	return result
+}
+func (tt *TierTop) AppendHashesFile(hashesFile *os.File) error {
+	srcFilename := filepath.Join(tt.folder, "TierTop", "Hashes.hsh")
+	srcFile, err := os.Open(srcFilename)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = srcFile.Close() }()
+
+	defer func() { _ = hashesFile.Close() }()
+
+	// 3. Efficiently stream/copy the data from source to destination
+	// io.Copy uses a small internal buffer, preventing high memory usage for large files
+	_, err = io.Copy(hashesFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

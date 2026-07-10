@@ -1,5 +1,7 @@
 package weddingcakeback
 
+import "os"
+
 // BakingSourceTier is the interface that a tier must expose before being baked into a DonutForest in the
 // next tier down
 type BakingSourceTier interface {
@@ -12,4 +14,6 @@ type BakingSourceTier interface {
 	GetNextTierPrefixBytesCount() byte
 	// GetNextTierIndex returns the index of the next tier (the destination tier). We think it is identical to "n".
 	GetNextTierIndex() byte
+	// AppendHashesFile appends the hashes file from the Source Tier to the specified file
+	AppendHashesFile(*os.File) error
 }

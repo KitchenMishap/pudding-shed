@@ -27,6 +27,7 @@ func NewDonutForestWrite(sourceTier BakingSourceTier, config *CakeConfig) *Donut
 func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	destTierIndex := dfw.SourceTier.GetNextTierIndex()
 
+	// Make the tier folder if it doesn't exist
 	tierFolder := fmt.Sprintf("Tier%d", destTierIndex)
 	tierFolderPath := filepath.Join(cakeFolder, tierFolder)
 	err := os.MkdirAll(tierFolderPath, 0755)
@@ -34,6 +35,15 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		return err
 	}
 
+	// Open or create the Hashes file
+	hashesFilePath := filepath.Join(tierFolderPath, "Hashes.hsh")
+	hashesFile, err := os.OpenFile(hashesFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = hashesFile.Close() }()
+
+	// Open or create the jumps file
 	jumpsFilePath := filepath.Join(tierFolderPath, "DonutForestsJumpTables.bin")
 	jumpsFile, err := os.OpenFile(jumpsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -113,6 +123,13 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 			}
 		}
 	}
+
+	// Append the hashes file from the tier above
+	err = dfw.SourceTier.AppendHashesFile(hashesFile)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
