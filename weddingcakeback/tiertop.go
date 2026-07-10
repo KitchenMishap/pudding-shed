@@ -54,7 +54,7 @@ func NewTierTop(folderPath string, readOnly bool) (*TierTop, error) {
 	result := TierTop{}
 	result.firstGlobalPresentationIndex = 0
 	result.folder = folderPath
-	filePath := filepath.Join(folderPath, "Tier0", "Hashes.hsh")
+	filePath := filepath.Join(folderPath, "TierTop", "Hashes.hsh")
 	result.readonly = readOnly
 	var err error
 	if readOnly {
@@ -72,7 +72,7 @@ func NewTierTop(folderPath string, readOnly bool) (*TierTop, error) {
 	}
 	hashesCount := stat.Size() / 32
 
-	firstPiFile, err := os.Open(filepath.Join(folderPath, "Tier0", "FirstPresentationIndex.bin"))
+	firstPiFile, err := os.Open(filepath.Join(folderPath, "TierTop", "FirstPresentationIndex.bin"))
 	if err != nil {
 		return nil, err
 	}
