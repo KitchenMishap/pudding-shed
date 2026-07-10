@@ -1,6 +1,7 @@
 package weddingcakeback
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,6 +51,14 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		return err
 	}
 	defer func() { _ = jumpsFile.Close() }()
+
+	// Open or create the DonutForestsInfo.bin file
+	infoFilePath := filepath.Join(tierFolderPath, "DonutForestsInfo.bin")
+	infoFile, err := os.OpenFile(infoFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = infoFile.Close() }()
 
 	dfw.Designer.GatherMetricsFromSourceTier(dfw.SourceTier, dfw.Config)
 	bakingDesign := dfw.Designer.DesignTheDesign(dfw.Config, destTierIndex)
@@ -128,6 +137,39 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	err = dfw.SourceTier.AppendHashesFile(hashesFile)
 	if err != nil {
 		return err
+	}
+
+	// Append various info to the DonutForestsInfo.bin file
+	// Field A) (per DonutForest) 8 bytes firstPresentationIndex
+	firstPresentationIndex := dfw.SourceTier.GetFirstPresentationIndex()
+	err = binary.Write(infoFile, binary.LittleEndian, firstPresentationIndex)
+	if err != nil {
+		return err
+	}
+	// Field B) (per DonutForest) 1 byte levels count
+	// Note that some of the first levels may have no associated nodes (ie, skipped by multiBytePprefix in jumpTable)
+	numLevelsByteArray := [1]byte{}
+	numLevelsByteArray[0] = byte(len(bakingDesign.LevelSpecs))
+	_, err = infoFile.Write(numLevelsByteArray[:])
+	if err != nil {
+		return err
+	}
+	for levelNum := range numLevelsByteArray[0] {
+		nodeIdConfig := &dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig
+		indexBytesCount, nodeBytesCount := bakingDesign.countChunkLevelBytes(levelNum, nodeIdConfig)
+		// Field C) (per DonutForest per Level) 8 bytes length of indexBytes
+		// (though we probably don't need all 8 bytes)
+		err = binary.Write(infoFile, binary.LittleEndian, indexBytesCount)
+		if err != nil {
+			return err
+		}
+		// Field D) (per DonutForest per Level) 8 bytes length of nodeBytes
+		// (Note that 4 bytes would not be enough to support a TierBelow[2] being baked into a DonutForest in TierBelow[3])
+		// (Only supporting up to TierBelow[2] would "only" allow us to support a trillion hashes, so we use 8 bytes)
+		err = binary.Write(infoFile, binary.LittleEndian, nodeBytesCount)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

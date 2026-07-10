@@ -67,3 +67,26 @@ func (bd *BakingDesign) AllocateIdAndSpecForNode(level byte, activeSlotsCount in
 	nodeSpec := bd.LevelSpecs[level].Groups[group].Spec
 	return nodeID, nodeSpec
 }
+
+func (bd *BakingDesign) countChunkLevelBytes(levelNum byte,
+	nodeIdConfig *NByteIdConfig[NodeIdType]) (uint64, uint64) {
+
+	levelData := &bd.LevelSpecs[levelNum]
+
+	indexBytesCount := uint64(0)
+	nodesBytesCount := uint64(0)
+
+	// For each level, in indexBytes, the first 2 bytes represent a count of NodeSpecs ("groups") that follow
+	indexBytesCount += 2
+
+	nodeCountSize := (*nodeIdConfig).StorageBytes()
+	for groupIndex := range levelData.Groups {
+		group := &(levelData.Groups[groupIndex])
+		// In the indexBytes, for this group (nodespec), N bytes specify the number of nodes,
+		// and four bytes describe the formatSpec
+		indexBytesCount += uint64(nodeCountSize + 4)
+		// In the nodesBytes, for this group (nodespec), the number of bytes has already been determined
+		nodesBytesCount += uint64(group.Bytes)
+	}
+	return indexBytesCount, nodesBytesCount
+}

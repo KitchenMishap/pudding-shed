@@ -16,4 +16,6 @@ type BakingSourceTier interface {
 	GetNextTierIndex() byte
 	// AppendHashesFile appends the hashes file from the Source Tier to the specified file
 	AppendHashesFile(*os.File) error
+	// GetFirstPresentationIndex returns the first presentation index of the source tier
+	GetFirstPresentationIndex() GlobalPiType
 }
