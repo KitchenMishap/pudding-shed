@@ -39,12 +39,24 @@ func (tzc *TierTopCreator) Create() error {
 		return err
 	}
 	defer func() { _ = file.Close() }()
+	// Also create a file <folder>/Tier0/FirstPresentationIndex.bin containing a uint64 of 0
+	filePath2 := filepath.Join(tzc.folder, "Tier0", "FirstPresentationIndex.bin")
+	file2, err := os.Create(filePath2)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = file2.Close() }()
+	zeroes := [8]byte{}
+	_, err = file2.Write(zeroes[:])
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (tzc *TierTopCreator) Open() (*TierTop, error) {
-	filePath := filepath.Join(tzc.folder, "Tier0")
-	tierTop, err := NewTierTop(filePath, false)
+	tierTop, err := NewTierTop(tzc.folder, false)
 	if err != nil {
 		return nil, err
 	}

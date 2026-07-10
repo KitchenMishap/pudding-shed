@@ -1,9 +1,16 @@
 package weddingcakeback
 
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
 type DonutForestWrite struct {
 	Config     *CakeConfig
 	SourceTier BakingSourceTier
 	Designer   *BakingDesigner
+	LevelFiles [65]*os.File
 }
 
 func NewDonutForestWrite(sourceTier BakingSourceTier, config *CakeConfig) *DonutForestWrite {
@@ -11,13 +18,31 @@ func NewDonutForestWrite(sourceTier BakingSourceTier, config *CakeConfig) *Donut
 	result.Config = config
 	result.SourceTier = sourceTier
 	result.Designer = NewBakingDesigner()
+	for i := range 65 {
+		result.LevelFiles[i] = nil // Nil until opened
+	}
 	return &result
 }
 
-func (dfw *DonutForestWrite) Write() error {
+func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	destTierIndex := dfw.SourceTier.GetNextTierIndex()
+
+	tierFolder := fmt.Sprintf("Tier%d", destTierIndex)
+	tierFolderPath := filepath.Join(cakeFolder, tierFolder)
+	err := os.MkdirAll(tierFolderPath, 0755)
+	if err != nil {
+		return err
+	}
+
+	jumpsFilePath := filepath.Join(tierFolderPath, "DonutForestsJumpTables.bin")
+	jumpsFile, err := os.OpenFile(jumpsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = jumpsFile.Close() }()
+
 	dfw.Designer.GatherMetricsFromSourceTier(dfw.SourceTier, dfw.Config)
-	_ = dfw.Designer.DesignTheDesign(dfw.Config, destTierIndex)
+	bakingDesign := dfw.Designer.DesignTheDesign(dfw.Config, destTierIndex)
 
 	destPrefixBytesCount := dfw.SourceTier.GetNextTierPrefixBytesCount()
 	if destPrefixBytesCount != destTierIndex {
@@ -62,9 +87,135 @@ func (dfw *DonutForestWrite) Write() error {
 		}
 		for t := range treeCount {
 			bucket := buckets[t]
-			_ = GenerateSingleTree(bucket, destPrefixBytesCount, dfw.Config.HashLength,
+			tree := GenerateSingleTree(bucket, destPrefixBytesCount, dfw.Config.HashLength,
 				dfw.Config.TierBelowConfigs[destTierIndex].ReassuranceBytesCount)
-			// ToDo Serialize
+			levelsNodesBytes, rootNodeId := dfw.serializeSingleTreeNodeBytes(tree, bakingDesign)
+			err = dfw.appendToLevelsFiles(levelsNodesBytes, tierFolderPath)
+			if err != nil {
+				return err
+			}
+
+			// Append rootNodeId to jumps file
+			nodeIdSize := dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig.StorageBytes()
+			nodeIdBytes := make([]byte, nodeIdSize)
+			dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig.WriteID(nodeIdBytes, rootNodeId)
+			_, err = jumpsFile.Write(nodeIdBytes)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, file := range dfw.LevelFiles {
+		if file != nil {
+			err := file.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// The first result is a slice of byte slices, one for each level of the tree.
+// The second result is a node id for the root node of the tree (to go into the jump table)
+func (dfw *DonutForestWrite) serializeSingleTreeNodeBytes(singleTree *SingleTree,
+	bakingDesign *BakingDesign) ([][]byte, NodeIdType) {
+
+	levels := len(bakingDesign.LevelSpecs)
+
+	// 1. Group nodes by level just like before
+	nodesByLevel := make([][]*SingleTreeNode, levels)
+	singleTree.VisitAllNodes(func(node *SingleTreeNode) {
+		nodesByLevel[node.Level] = append(nodesByLevel[node.Level], node)
+	})
+
+	// 2. We only need ONE map for the "level below us" at any given time
+	var nextLevelIdMap map[*SingleTreeNode]NodeIdType
+
+	// Prepare space for results: For each level, a byte slice
+	levelsNodesBytes := make([][]byte, levels)
+	for i := 0; i < levels; i++ {
+		levelsNodesBytes[i] = make([]byte, 0, 10_000)
+	}
+	// Also as a result, the root node id for the tree
+	rootNodeId := NodeIdType(0) // Starts out as zero
+
+	// 3. Process bottom-up
+	for levelNum := levels - 1; levelNum >= 0; levelNum-- {
+		// fmt.Printf("Processing level %d\n", levelNum)
+		currentLevelNodes := nodesByLevel[levelNum]
+		levelNodesBytes := &levelsNodesBytes[levelNum]
+		// Create a fresh map for the current level allocations
+		currentLevelIdMap := make(map[*SingleTreeNode]NodeIdType, len(currentLevelNodes))
+
+		// Pass A: Allocate IDs and populate our current level map
+		for _, node := range currentLevelNodes {
+			activeSlots := node.activeSlotsCount() // assuming helper attached
+			nodeID, _ := bakingDesign.AllocateIdAndSpecForNode(node.Level, activeSlots)
+			currentLevelIdMap[node] = nodeID
+			// If it's the root of the SingleTree, make a note of the ID
+			if node == singleTree.RootSlot.NextNode {
+				if rootNodeId != 0 {
+					panic("rootNodeId already set")
+				}
+				rootNodeId = nodeID
+			}
+		}
+
+		// Pass B: Serialize this level's nodes.
+		// When a node looks up a child, it queries nextLevelIdMap in O(1) time!
+		for groupIdx, group := range bakingDesign.LevelSpecs[levelNum].Groups {
+			spec := &group.Spec
+
+			// Only serialize nodes at this level that belong to the current format group
+			for _, node := range currentLevelNodes {
+				nodeGroup := bakingDesign.LevelSpecs[levelNum].SlotCountToGroup[node.activeSlotsCount()]
+				if int(nodeGroup) != groupIdx {
+					continue // Skip until we hit this group's turn
+				}
+
+				// Pass the map belonging to levelNum + 1 down to the serializer
+				switch spec.Format {
+				case NodeFormatLeaf:
+					// fmt.Println("Serializing FormatLeaf node")
+					dfw.serializeLeafNode(node.LeafNode, levelNodesBytes)
+				case NodeFormatFull:
+					// fmt.Println("Serializing FormatFull node")
+					dfw.serializeFullNode(node.SlotsNode, nextLevelIdMap, levelNodesBytes)
+				case NodeFormatMedium:
+					// fmt.Println("Serializing FormatMedium node")
+					dfw.serializeMediumNode(node.SlotsNode, spec, nextLevelIdMap, levelNodesBytes)
+				case NodeFormatTiny:
+					// fmt.Println("Serializing FormatTiny node")
+					dfw.serializeTinyNode(node.SlotsNode, spec, nextLevelIdMap, levelNodesBytes)
+				}
+			}
+		}
+
+		// Promote the current map to be the "nextLevel" map for the tier above us,
+		// allowing the old nextLevelIdMap to be immediately garbage collected!
+		nextLevelIdMap = currentLevelIdMap
+	}
+	return levelsNodesBytes, rootNodeId
+}
+
+func (dfw *DonutForestWrite) appendToLevelsFiles(levelsNodesBytes [][]byte, tierFolderPath string) error {
+	for levelNum, levelNodesBytes := range levelsNodesBytes {
+		if len(levelNodesBytes) != 0 {
+			if dfw.LevelFiles[levelNum] == nil {
+				// Open for append or create if not yet opened
+				filename := fmt.Sprintf("Level%02dNodes.bin", levelNum)
+				filePath := filepath.Join(tierFolderPath, filename)
+				var err error
+				dfw.LevelFiles[levelNum], err = os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					return err
+				}
+			}
+			_, err := dfw.LevelFiles[levelNum].Write(levelNodesBytes)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

@@ -6,6 +6,8 @@ type Sha256 = [32]byte
 
 type GlobalPiType = int64
 
+const GlobalPiNoMatch = GlobalPiType(-1)
+
 // Bounded semantic types
 // The following two types are often the same (since the number of nodes is "similiar" to the number of hashes in a chunk)
 // NodeId's are used to identify nodes within a level within a chunk

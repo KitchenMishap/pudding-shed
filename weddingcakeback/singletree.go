@@ -24,9 +24,9 @@ import (
 
 // Single does not support forward lookup (index to hash.)
 
-const SingleTreeNoMatch = -1
+const SingleTreeNoMatch = 0
 
-type SingleTreePiType = int64
+type SingleTreePiType = HashIndexIdType
 
 type SingleTree struct {
 	HashLength            byte // eg 32 for SHA-256 hashes, 20 for RIPEMD-160
@@ -144,7 +144,7 @@ func GenerateSingleTree(input []SingleTreeHash, PrefixBytesN byte, hashLength by
 
 // LookupHash uses SingleTree to lookup one presentationIndex if it exists.
 // If the tree contains no matches for the hash, SingleTreeNoMatch is returned.
-func (st *SingleTree) LookupHash(hash []byte) int64 {
+func (st *SingleTree) LookupHash(hash []byte) SingleTreePiType {
 	if len(hash) != int(st.HashLength) {
 		panic("Wrong hash length")
 	}

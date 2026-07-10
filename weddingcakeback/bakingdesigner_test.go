@@ -47,7 +47,7 @@ func TestBakingDesigner(t *testing.T) {
 
 	config := NewCakeConfig(32)
 	writer := NewDonutForestWrite(tierTop, config)
-	err = writer.Write()
+	err = writer.Write(testDir)
 	if err != nil {
 		t.Fatal(err)
 	}
