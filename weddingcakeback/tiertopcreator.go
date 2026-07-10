@@ -15,9 +15,9 @@ func NewTierTopCreator(folder string) *TierTopCreator {
 	return &result
 }
 
-func (tzc *TierTopCreator) Exists() bool {
+func (ttc *TierTopCreator) Exists() bool {
 	// Based on existence of <folder>/Tier0/Hashes.hsh
-	filePath := filepath.Join(tzc.folder, "Tier0", "Hashes.hsh")
+	filePath := filepath.Join(ttc.folder, "TierTop", "Hashes.hsh")
 	file, err := os.Open(filePath)
 	if err == nil {
 		_ = file.Close()
@@ -26,21 +26,21 @@ func (tzc *TierTopCreator) Exists() bool {
 	return false
 }
 
-func (tzc *TierTopCreator) Create() error {
+func (ttc *TierTopCreator) Create() error {
 	// Create an empty <folder>/Tier0/Hashes.hsh
-	folderPath := filepath.Join(tzc.folder, "Tier0")
+	folderPath := filepath.Join(ttc.folder, "TierTop")
 	err := os.MkdirAll(folderPath, 0777)
 	if err != nil {
 		return err
 	}
-	filePath := filepath.Join(tzc.folder, "Tier0", "Hashes.hsh")
+	filePath := filepath.Join(ttc.folder, "TierTop", "Hashes.hsh")
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = file.Close() }()
 	// Also create a file <folder>/Tier0/FirstPresentationIndex.bin containing a uint64 of 0
-	filePath2 := filepath.Join(tzc.folder, "Tier0", "FirstPresentationIndex.bin")
+	filePath2 := filepath.Join(ttc.folder, "TierTop", "FirstPresentationIndex.bin")
 	file2, err := os.Create(filePath2)
 	if err != nil {
 		return err
@@ -55,17 +55,16 @@ func (tzc *TierTopCreator) Create() error {
 	return nil
 }
 
-func (tzc *TierTopCreator) Open() (*TierTop, error) {
-	tierTop, err := NewTierTop(tzc.folder, false)
+func (ttc *TierTopCreator) Open() (*TierTop, error) {
+	tierTop, err := NewTierTop(ttc.folder, false)
 	if err != nil {
 		return nil, err
 	}
 	return tierTop, nil
 }
 
-func (tzc *TierTopCreator) OpenReadOnly() (*TierTop, error) {
-	filePath := filepath.Join(tzc.folder, "Tier0")
-	tierTop, err := NewTierTop(filePath, true)
+func (ttc *TierTopCreator) OpenReadOnly() (*TierTop, error) {
+	tierTop, err := NewTierTop(ttc.folder, true)
 	if err != nil {
 		return nil, err
 	}
