@@ -51,4 +51,14 @@ func TestBakingDesigner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	tb := NewTierBelow(testDir, 0)
+	err = tb.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = tb.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

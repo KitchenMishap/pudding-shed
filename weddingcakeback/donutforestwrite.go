@@ -63,6 +63,18 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	dfw.Designer.GatherMetricsFromSourceTier(dfw.SourceTier, dfw.Config)
 	bakingDesign := dfw.Designer.DesignTheDesign(dfw.Config, destTierIndex)
 
+	// Serialize the indexBytes to each LevelXXNodes.bin file
+	err = dfw.serializeIndexBytes(bakingDesign, tierFolderPath)
+	if err != nil {
+		// Close any level files for a clean failure
+		for _, levelFile := range dfw.LevelFiles {
+			if levelFile != nil {
+				_ = levelFile.Close()
+			}
+		}
+		return err
+	}
+
 	destPrefixBytesCount := dfw.SourceTier.GetNextTierPrefixBytesCount()
 	if destPrefixBytesCount != destTierIndex {
 		panic("Expect the prefix bytes count to be equal to the tier index")
@@ -111,6 +123,12 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 			levelsNodesBytes, rootNodeId := dfw.serializeSingleTreeNodeBytes(tree, bakingDesign)
 			err = dfw.appendToLevelsFiles(levelsNodesBytes, tierFolderPath)
 			if err != nil {
+				// Close any level files for a clean failure
+				for _, levelFile := range dfw.LevelFiles {
+					if levelFile != nil {
+						_ = levelFile.Close()
+					}
+				}
 				return err
 			}
 
@@ -120,6 +138,12 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 			dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig.WriteID(nodeIdBytes, rootNodeId)
 			_, err = jumpsFile.Write(nodeIdBytes)
 			if err != nil {
+				// Close any level files for a clean failure
+				for _, levelFile := range dfw.LevelFiles {
+					if levelFile != nil {
+						_ = levelFile.Close()
+					}
+				}
 				return err
 			}
 		}
@@ -172,6 +196,82 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		}
 	}
 
+	return nil
+}
+
+func (dfw *DonutForestWrite) serializeIndexBytes(bakingDesign *BakingDesign, tierFolder string) error {
+	destTierIndex := dfw.SourceTier.GetNextTierIndex()
+	levels := len(bakingDesign.LevelSpecs)
+	nodeIdConfig := &dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig
+	nodeIdSize := dfw.Config.TierBelowConfigs[destTierIndex].NodeIdConfig.StorageBytes()
+	nodesCountSize := nodeIdSize
+	reassuranceBytesCount := dfw.Config.TierBelowConfigs[destTierIndex].ReassuranceBytesCount
+	hashIndexIdSize := dfw.Config.TierBelowConfigs[destTierIndex].HashIndexIdConfig.StorageBytes()
+
+	for levelNum := 0; levelNum < levels; levelNum++ {
+		formatSpecGroups := &bakingDesign.LevelSpecs[levelNum].Groups
+		levelIndexSize := 2 + len(*formatSpecGroups)*(nodesCountSize+4)
+		levelIndexBytes := make([]byte, 0, levelIndexSize)
+
+		// In each level, we start with two bytes representing the count of NodeSpec's ("group"s) that follow
+		var serializedGroupsCountBytes [2]byte
+		binary.LittleEndian.PutUint16(serializedGroupsCountBytes[:], uint16(len(*formatSpecGroups)))
+		levelIndexBytes = append(levelIndexBytes, serializedGroupsCountBytes[:]...)
+
+		for groupIndex := range *formatSpecGroups {
+			group := (*formatSpecGroups)[groupIndex]
+			// Whilst we call this a "group", this has only come about by merging of individual
+			// formatSpecs in StoreConfig.DesignTreeFormat(). The "group" is in fact governed
+			// by a single FormatSpec, which we serialize here.
+			const spareRoom = 8 // The most space we will ever need
+			if nodesCountSize > spareRoom {
+				panic("Not enough bytes")
+			}
+			serializedNodesCountBytes := [spareRoom]byte{} // The count of nodes expressed as "some" bytes
+			(*nodeIdConfig).WriteID(serializedNodesCountBytes[:nodesCountSize], NodeIdType(group.NodesCount))
+			levelIndexBytes = append(levelIndexBytes, serializedNodesCountBytes[:nodesCountSize]...)
+			serializedNodeSpecBytes := [4]byte{} // The details of the FormatSpecs for these nodes
+			switch group.Spec.Format {
+			case NodeFormatFull:
+				// Most significant bytes pair = zero, LS byte pair = number of bytes per node
+				// Number of bytes per node is (1) pad + (1) hashByteIndex + (256 * N) node ids
+				bytesPerNodeFull := 1 + 1 + 256*nodeIdSize
+				binary.LittleEndian.PutUint32(serializedNodeSpecBytes[:], uint32(bytesPerNodeFull))
+			case NodeFormatLeaf:
+				// Most significant bytes pair = zero, LS byte pair = number of bytes per node
+				// Number of bytes per node is (Reassurance bytes count) + (size of a hash index id)
+				bytesPerNodeLeaf := uint32(reassuranceBytesCount) + uint32(hashIndexIdSize)
+				binary.LittleEndian.PutUint32(serializedNodeSpecBytes[:], bytesPerNodeLeaf)
+			case NodeFormatMedium:
+				// MS byte = zero, then slots byte, LS byte pair = number of bytes per node
+				slotsFields := uint32(group.Spec.SlotsCapacity) << 16
+				// Bytes per node = 1 (pad) + 1 (hash byte index) + 32 (slot flags) + N (node id) * slotsCapacity
+				bytesPerNodeField := uint32(1 + 1 + 32 + nodeIdSize*int(group.Spec.SlotsCapacity))
+				binary.LittleEndian.PutUint32(serializedNodeSpecBytes[:], slotsFields|bytesPerNodeField)
+			case NodeFormatTiny:
+				// MS byte slots capacity byte, then zero, LS byte pair = number of bytes per node
+				slotsFields := uint32(group.Spec.SlotsCapacity) << 24
+				// Bytes per node = 1 (hash byte index) + slots capacity * (1 (hash byte value) + N (node id))
+				bytesPerNodeField := uint32(1 + int(group.Spec.SlotsCapacity)*(1+nodeIdSize))
+				binary.LittleEndian.PutUint32(serializedNodeSpecBytes[:], slotsFields|bytesPerNodeField)
+			}
+			levelIndexBytes = append(levelIndexBytes, serializedNodeSpecBytes[:]...)
+		}
+		if dfw.LevelFiles[levelNum] == nil {
+			// Open for append or create if not yet opened
+			filename := fmt.Sprintf("Level%02dNodes.bin", levelNum)
+			filePath := filepath.Join(tierFolder, filename)
+			var err error
+			dfw.LevelFiles[levelNum], err = os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				return err
+			}
+		}
+		_, err := dfw.LevelFiles[levelNum].Write(levelIndexBytes)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

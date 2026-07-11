@@ -14,7 +14,7 @@ func TestEmptyTree(t *testing.T) {
 		for hashLength := byte(8); hashLength <= 64; hashLength += 4 {
 			st := GenerateSingleTree(make([]SingleTreeHash, 0), prefixBytesN, hashLength, reassuranceBytesCount)
 			if st.LookupHash(helperRandomHash(hashLength)) != SingleTreeNoMatch {
-				t.Error("LookupHash should return ShallowTreeNoMatch, when looking up in an empty tree")
+				t.Error("LookupHash should return SingleTreeNoMatch, when looking up in an empty tree")
 			}
 		}
 	}
@@ -26,11 +26,11 @@ func TestSingleHashPresent(t *testing.T) {
 			presentationArray := make([]SingleTreeHash, 1)
 			hash := helperRandomHash(hashLength)
 			presentationArray[0].Hash = hash
-			presentationArray[0].PresentationIndex = 0
+			presentationArray[0].PresentationIndex = 1
 			st := GenerateSingleTree(presentationArray, prefixBytesN, hashLength, reassuranceBytesCount)
 			presentationIndex := st.LookupHash(hash)
-			if presentationIndex != 0 {
-				t.Error("Expected presentationIndex 0")
+			if presentationIndex != 1 {
+				t.Error("Expected presentationIndex 1")
 			}
 		}
 	}
@@ -42,7 +42,7 @@ func TestSingleHashAbsent(t *testing.T) {
 			presentationArray := make([]SingleTreeHash, 1)
 			hash := helperRandomHash(hashLength)
 			presentationArray[0].Hash = hash
-			presentationArray[0].PresentationIndex = 0
+			presentationArray[0].PresentationIndex = 1
 			st := GenerateSingleTree(presentationArray, prefixBytesN, hashLength, reassuranceBytesCount)
 			hash = helperRandomHash(hashLength)
 			presentationIndex := st.LookupHash(hash)
@@ -64,7 +64,7 @@ func Test65535Hashes(t *testing.T) {
 		for i := range count {
 			hash := helperRandomHash(hashLength)
 			presentationArray[i].Hash = hash
-			presentationArray[i].PresentationIndex = SingleTreePiType(i)
+			presentationArray[i].PresentationIndex = SingleTreePiType(i + 1) // 0 is now reserved as SingleTreeNoMatch
 		}
 		st := GenerateSingleTree(presentationArray, prefixHashBytesCount, hashLength, reassuranceBytesCount)
 		for i := range count {
@@ -73,7 +73,7 @@ func Test65535Hashes(t *testing.T) {
 			if presentationIndex == SingleTreeNoMatch {
 				t.Error("Lookup failed, returned SingleTreeNoMatch")
 			}
-			if !bytes.Equal(presentationArray[presentationIndex].Hash, hash) {
+			if !bytes.Equal(presentationArray[presentationIndex-1].Hash, hash) {
 				t.Error("Lookup failed, returned index of wrong hash")
 			}
 		}
