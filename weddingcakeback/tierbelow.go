@@ -15,24 +15,27 @@ import (
 // The tier known as TierBelow[0] is "under" TierTop, and TierBelow[1] is under that.
 // Each TierBelow is comprised of up to 255 DonutForests.
 
-// A TierBelow object is primarily concerned with reading from te tier.
+// A TierBelow object is primarily concerned with reading from the tier.
 // (For writing, a TierBelow is instead constructed on disk one DonutForest at a time by DonutForestWite)
 type TierBelow struct {
 	Folder                 string
 	TierFolder             string
 	TierIndex              byte
+	Config                 *CakeConfig
 	LevelXXNodesMemoryMaps []mmap.MMap // These can be treated very much like byte slices
 	JumpTableMemoryMap     mmap.MMap
 	DonutForestsInfo       []DonutForestInfo
 }
 
-func NewTierBelow(folder string, tierIndex byte) *TierBelow {
+func NewTierBelow(folder string, tierIndex byte, config *CakeConfig) *TierBelow {
 	result := TierBelow{}
 	result.Folder = folder
 
 	result.TierIndex = tierIndex
 	tierFolderName := fmt.Sprintf("Tier%d", tierIndex)
 	result.TierFolder = filepath.Join(folder, tierFolderName)
+
+	result.Config = config
 
 	return &result
 }
@@ -81,6 +84,122 @@ func (tb *TierBelow) Close() error {
 	}
 
 	return nil
+}
+
+func (tb *TierBelow) LookupHash(hash []byte) GlobalPiType {
+	var flagsHashByteIndicesUnexamined uint64
+	if tb.Config.HashLength == 64 {
+		flagsHashByteIndicesUnexamined = 0xFFFFFFFFFFFFFFFF
+	} else {
+		flagsHashByteIndicesUnexamined = 1<<(tb.Config.HashLength) - 1
+	}
+
+	// First find an index into the jump table
+	prefix := hash[:8]
+	prefixBytesCount := tb.TierIndex
+	multiplier := 1
+	prefixIndex := 0
+	flagBit := uint64(1)
+	for prefixByte := byte(0); prefixByte < prefixBytesCount; prefixByte++ {
+		prefixIndex += int(prefix[prefixByte]) * multiplier
+		multiplier <<= 8
+		flagsHashByteIndicesUnexamined ^= flagBit
+		flagBit <<= 1
+	}
+
+	// Work out the size of each jump table
+	nodeIdConfig := &tb.Config.TierBelowConfigs[tb.TierIndex].NodeIdConfig
+	hashIndexIdConfig := &tb.Config.TierBelowConfigs[tb.TierIndex].HashIndexIdConfig
+	reassuranceBytesCount := tb.Config.TierBelowConfigs[tb.TierIndex].ReassuranceBytesCount
+	nodeIdSize := (*nodeIdConfig).StorageBytes()
+	jumpTableEntries := 1 << (prefixBytesCount * 8) // = 256 ^ prefixBytesCount
+	jumpTableSize := jumpTableEntries * nodeIdSize
+
+	// Now iterate over all DonutForests
+	donutForestsCount := len(tb.DonutForestsInfo)
+	for donutForestIndex := range donutForestsCount {
+		donutForestInfo := &tb.DonutForestsInfo[donutForestIndex]
+
+		// Read root of SingleTree from jump table
+		jumpTableByteOffset := donutForestIndex*jumpTableSize + prefixIndex*nodeIdSize
+		singleTreeNodeId := (*nodeIdConfig).ReadID(tb.JumpTableMemoryMap[jumpTableByteOffset : jumpTableByteOffset+nodeIdSize])
+		if singleTreeNodeId != 0 {
+			level := prefixBytesCount
+			hashIndexId := tb.recurseLookupHash(hash, level, singleTreeNodeId,
+				flagsHashByteIndicesUnexamined, donutForestInfo,
+				nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount)
+
+			if hashIndexId != HashIndexIdNoMatch {
+				// Found a potential match
+				// ToDo check against hashes file
+				return GlobalPiType(hashIndexId-1) + tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex
+			}
+		}
+	}
+	return GlobalPiNoMatch
+}
+
+func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
+	nodeIdWithinLevel NodeIdType, flagsHashByteIndicesUnexamined uint64,
+	donutForestInfo *DonutForestInfo,
+	nodeIdConfig *NByteIdConfig[NodeIdType], hashIndexIdConfig *NByteIdConfig[HashIndexIdType],
+	reassuranceBytesCount byte) HashIndexIdType {
+
+	// Look at the node we were directed to
+	var node donutForestNode
+	donutForestInfo.Levels[levelNum].ExtractNode(nodeIdWithinLevel, &node, nodeIdConfig)
+
+	// Have we reached a leaf node?
+	isLeaf, reassuranceBytes, hashIndexId := node.detailsIfLeaf(reassuranceBytesCount, hashIndexIdConfig)
+	if isLeaf {
+		// Now we need to check some bytes of our hash... the "next" ones that haven't been examined yet...
+		// against the reassurance bytes specified by the leaf
+		mask := flagsHashByteIndicesUnexamined
+		byteToMaybeExamine := 0
+		reassuranceByteCounter := 0
+		for mask != 0 && reassuranceByteCounter < len(reassuranceBytes) {
+			if mask&uint64(1) == 1 {
+				// Yes we need to examine it
+				match := hash[byteToMaybeExamine] == reassuranceBytes[reassuranceByteCounter]
+				if !match {
+					// This leaf was our only shot at a match, but the reassurance bytes were not reassuring!
+					//fmt.Printf("Leaf failed reassurance bytes match at level %d\n", levelNum)
+					return 0 // Not a match
+				}
+				// A byte matched... now lets see if there are any more reassurance bytes available...
+				reassuranceByteCounter++
+			}
+			// Either we didn't need to examine byteToExamine (it had already been examined),
+			// or it matched. In either case, we may have more reassurance bytes to check...
+			// so keep looking...
+			mask >>= 1
+			byteToMaybeExamine++
+		}
+		// All the available reassurance bytes matched... It's a potential match!
+		// It is for the caller to double check the ENTIRE hash, now that we've identified a unique strong match
+		// with the data available
+		return hashIndexId
+	}
+	// Not a leaf.
+	// This node is instructing us to dig deeper, by examining another byte in the hash.
+	byteIndexToExamine, mediumSlots, tinySlots := node.hashByteIndexToExamine(nodeIdConfig)
+	// Examine the specified byte
+	byteThatWasFound := hash[byteIndexToExamine]
+	// See if that byte get's us to another node at the next level...
+	nextNodeId := node.nextLevelNodeId(byteThatWasFound, mediumSlots, tinySlots, nodeIdConfig)
+	if nextNodeId == 0 {
+		return HashIndexIdNoMatch // A dead end. No match. The hash definitely isn't in this DonutForest.
+	}
+	// Make a note that this byte index of the hash has now been examined
+	bitMask := uint64(1) << byteIndexToExamine
+	if flagsHashByteIndicesUnexamined&bitMask == 0 {
+		panic("We examined the same byte of the hash twice")
+	}
+	flagsHashByteIndicesUnexamined ^= bitMask // Clear the bit to say it is no longer unexamined
+
+	// Go deeper, with our new node id at the next level...
+	return tb.recurseLookupHash(hash, levelNum+1, nextNodeId, flagsHashByteIndicesUnexamined,
+		donutForestInfo, nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount)
 }
 
 func (tb *TierBelow) mmapLevelFiles() error {
@@ -221,14 +340,4 @@ func (tb *TierBelow) readInfoFile() error {
 		}
 	}
 	return nil
-}
-
-type DonutForestInfo struct {
-	FirstGlobalPresentationIndex GlobalPiType
-	Levels                       []DonutForestLevelSlices
-}
-type DonutForestLevelSlices struct {
-	// These are slices into the mmap'ed files
-	IndexBytes mmap.MMap
-	NodesBytes mmap.MMap
 }

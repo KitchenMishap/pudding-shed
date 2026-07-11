@@ -1,6 +1,7 @@
 package weddingcakeback
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,11 +53,23 @@ func TestBakingDesigner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tb := NewTierBelow(testDir, 0)
+	tb := NewTierBelow(testDir, 0, config)
 	err = tb.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	for i := range int64(count) {
+		hash := presentationArray[i]
+		globalPi := tb.LookupHash(hash[:])
+		if globalPi == GlobalPiNoMatch {
+			t.Fatal("Hash not found in tierBelow[0]")
+		}
+		if !bytes.Equal(hash[:], presentationArray[globalPi][:]) {
+			t.Fatal("Hash mismatch (wrong presentation index)")
+		}
+	}
+
 	err = tb.Close()
 	if err != nil {
 		t.Fatal(err)

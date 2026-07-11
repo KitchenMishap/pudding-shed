@@ -197,3 +197,6 @@ func (tt *TierTop) AppendHashesFile(hashesFile *os.File) error {
 
 	return nil
 }
+func (tt *TierTop) GetFirstPresentationIndex() GlobalPiType {
+	return tt.firstGlobalPresentationIndex
+}
