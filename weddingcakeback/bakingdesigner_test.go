@@ -17,7 +17,7 @@ func TestBakingDesigner(t *testing.T) {
 	}
 
 	creator := NewTierTopCreator(testDir)
-	err = creator.Create()
+	err = creator.Create(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestBakingDesigner(t *testing.T) {
 	}
 
 	// We have created a tier zero with 65535 hashes
-	// Now start designing the first DonutForest in tier 1, from the entirity of tier zero
+	// Now bake the first DonutForest in tier 1, from the entirity of tier zero
 
 	config := NewCakeConfig(32)
 	writer := NewDonutForestWrite(tierTop, config)

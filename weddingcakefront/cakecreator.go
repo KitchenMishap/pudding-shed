@@ -26,7 +26,7 @@ func (cc *CakeCreator) HashStoreExists() bool {
 
 func (cc *CakeCreator) CreateHashStore() error {
 	// Create an empty tier zero
-	return cc.tierTopCreator.Create()
+	return cc.tierTopCreator.Create(0)
 }
 
 func (cc *CakeCreator) OpenHashStore() (HashReadWriter[*Sha256], error) {

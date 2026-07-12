@@ -196,6 +196,12 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		}
 	}
 
+	// Empty the source tier ready for new hashes
+	err = dfw.SourceTier.MakeEmptyAfterBaking()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

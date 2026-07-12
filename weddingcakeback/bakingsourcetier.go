@@ -18,4 +18,6 @@ type BakingSourceTier interface {
 	AppendHashesFile(*os.File) error
 	// GetFirstPresentationIndex returns the first presentation index of the source tier
 	GetFirstPresentationIndex() GlobalPiType
+	// MakeEmptyAfterBaking empties the source tier after baking
+	MakeEmptyAfterBaking() error
 }

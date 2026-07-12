@@ -24,7 +24,7 @@ func TestTierTopCreator(t *testing.T) {
 		t.Fatal("Creator should not have a tier zero yet")
 	}
 
-	err = creator.Create()
+	err = creator.Create(0)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -51,59 +51,66 @@ func (tt *TierTop) GlobalPresentationIndexFromHashIndexId(hashIndexId HashIndexI
 	return GlobalPiType(hashIndexId) - 1 + tt.firstGlobalPresentationIndex
 }
 
-func NewTierTop(folderPath string, readOnly bool) (*TierTop, error) {
+func NewTierTop(cakeFolder string, readOnly bool) (*TierTop, error) {
 	result := TierTop{}
-	result.firstGlobalPresentationIndex = 0
-	result.folder = folderPath
-	filePath := filepath.Join(folderPath, "TierTop", "Hashes.hsh")
-	result.readonly = readOnly
+	result.folder = cakeFolder
+	err := result.Open(readOnly)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (tt *TierTop) Open(readOnly bool) error {
+	filePath := filepath.Join(tt.folder, "TierTop", "Hashes.hsh")
+	tt.readonly = readOnly
 	var err error
 	if readOnly {
-		result.underlyingFile, err = os.Open(filePath)
+		tt.underlyingFile, err = os.Open(filePath)
 	} else {
-		result.underlyingFile, err = os.OpenFile(filePath, os.O_RDWR|os.O_APPEND, 0)
+		tt.underlyingFile, err = os.OpenFile(filePath, os.O_RDWR|os.O_APPEND, 0)
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Count the hashes
-	stat, err := result.underlyingFile.Stat()
+	stat, err := tt.underlyingFile.Stat()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	hashesCount := stat.Size() / 32
+	hashesCount := stat.Size() / 32 // ToDo support other hash sizes
 
-	firstPiFile, err := os.Open(filepath.Join(folderPath, "TierTop", "FirstPresentationIndex.bin"))
+	firstPiFile, err := os.Open(filepath.Join(tt.folder, "TierTop", "FirstPresentationIndex.bin"))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { _ = firstPiFile.Close() }()
 	var firstPi GlobalPiType
 	err = binary.Read(firstPiFile, binary.LittleEndian, &firstPi)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	result.firstGlobalPresentationIndex = firstPi
+	tt.firstGlobalPresentationIndex = firstPi
 
-	aoFile, err := memfile.NewAppendOptimizedFile(result.underlyingFile)
+	aoFile, err := memfile.NewAppendOptimizedFile(tt.underlyingFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	result.hashesFile = wordfile.NewHashFile(aoFile, hashesCount)
+	tt.hashesFile = wordfile.NewHashFile(aoFile, hashesCount)
 
-	result.theMap = make(map[Sha256]HashIndexIdType, 65535)
-	result.theSlice = make([]Sha256, hashesCount, 65535)
+	tt.theMap = make(map[Sha256]HashIndexIdType, 65535)
+	tt.theSlice = make([]Sha256, hashesCount, 65535)
 
 	// HashIndexId's start at 1
 	for i := HashIndexIdType(1); i < HashIndexIdType(hashesCount+1); i++ {
-		hash, err := result.hashesFile.ReadHashAt(int64(i - 1))
+		hash, err := tt.hashesFile.ReadHashAt(int64(i - 1))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		result.theMap[hash] = i
-		result.theSlice[i-1] = hash
+		tt.theMap[hash] = i
+		tt.theSlice[i-1] = hash
 	}
-	return &result, nil
+	return nil
 }
 
 func (tt *TierTop) IndexOfHash(hash *Sha256) (GlobalPiType, error) {
@@ -199,4 +206,50 @@ func (tt *TierTop) AppendHashesFile(hashesFile *os.File) error {
 }
 func (tt *TierTop) GetFirstPresentationIndex() GlobalPiType {
 	return tt.firstGlobalPresentationIndex
+}
+func (tt *TierTop) MakeEmptyAfterBaking() error {
+	// We add hashesCount to the FirstPresentationIndex, delete the files, then use
+	// TierTopCreator to recreate fresh files. We then call Open().
+	// This is to re-use as much code as possible.
+
+	if tt.readonly {
+		return errors.New("Cannot make empty if readonly")
+	}
+
+	// Count the hashes
+	hashesCount := tt.hashesFile.CountHashes()
+
+	// Close the hashes file
+	err := tt.hashesFile.Close()
+	if err != nil {
+		return err
+	}
+
+	// Update the FirstPresentationIndex
+	tt.firstGlobalPresentationIndex += hashesCount
+
+	// Delete the hashes file
+	err = os.Remove(filepath.Join(tt.folder, "TierTop", "Hashes.hsh"))
+	if err != nil {
+		return err
+	}
+	// Delete the FirstPresentationIndex.bin file
+	err = os.Remove(filepath.Join(tt.folder, "TierTop", "FirstPresentationIndex.bin"))
+	if err != nil {
+		return err
+	}
+
+	// Create files again
+	creator := NewTierTopCreator(tt.folder)
+	err = creator.Create(tt.firstGlobalPresentationIndex)
+	if err != nil {
+		return err
+	}
+
+	err = tt.Open(tt.readonly)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

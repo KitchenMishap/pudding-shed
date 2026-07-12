@@ -1,6 +1,7 @@
 package weddingcakeback
 
 import (
+	"encoding/binary"
 	"os"
 	"path/filepath"
 )
@@ -26,7 +27,7 @@ func (ttc *TierTopCreator) Exists() bool {
 	return false
 }
 
-func (ttc *TierTopCreator) Create() error {
+func (ttc *TierTopCreator) Create(firstGlobalPresentationIndex GlobalPiType) error {
 	// Create an empty <folder>/Tier0/Hashes.hsh
 	folderPath := filepath.Join(ttc.folder, "TierTop")
 	err := os.MkdirAll(folderPath, 0777)
@@ -46,8 +47,7 @@ func (ttc *TierTopCreator) Create() error {
 		return err
 	}
 	defer func() { _ = file2.Close() }()
-	zeroes := [8]byte{}
-	_, err = file2.Write(zeroes[:])
+	err = binary.Write(file2, binary.LittleEndian, firstGlobalPresentationIndex)
 	if err != nil {
 		return err
 	}
