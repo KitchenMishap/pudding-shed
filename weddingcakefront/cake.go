@@ -1,10 +1,15 @@
 package weddingcakefront
 
-import "github.com/KitchenMishap/pudding-shed/weddingcakeback"
+import (
+	"errors"
+
+	"github.com/KitchenMishap/pudding-shed/weddingcakeback"
+)
 
 type Cake struct {
 	// A tierZero on its own (as things stand) supports the interfaces required of a Cake
-	tierTop *weddingcakeback.TierTop
+	tierTop    *weddingcakeback.TierTop
+	tierReader weddingcakeback.TierReadable
 }
 
 // Check that implements
@@ -14,28 +19,66 @@ var _ LegacyHashReadWriter = (*Cake)(nil)
 func newCake(tierTop *weddingcakeback.TierTop) *Cake {
 	result := Cake{}
 	result.tierTop = tierTop
+	result.tierReader = tierTop
 	return &result
 }
 
 func (c *Cake) IndexOfHash(hash *Sha256) (int64, error) {
-	result, err := c.tierTop.IndexOfHash(hash)
-	return int64(result), err
+	found := false
+	reader := c.tierReader
+	var result GlobalPiType
+	var err error
+	for !found && reader != nil {
+		result, found, err = reader.TryIndexOfHash((*hash)[:])
+		if err != nil {
+			return -1, err
+		}
+		if !found {
+			reader = reader.GetNextTier()
+		}
+	}
+	if !found {
+		return -1, nil
+	}
+	return result, nil
 }
 
 func (c *Cake) GetHashAtIndex(index int64, hash *Sha256) error {
-	return c.tierTop.GetHashAtIndex(index, hash)
+	found := false
+	reader := c.tierReader
+	var err error
+	for !found && reader != nil {
+		found, err = reader.TryGetHashAtIndex(index, (*hash)[:])
+		if err != nil {
+			return err
+		}
+		if !found {
+			reader = reader.GetNextTier()
+		}
+	}
+	if !found {
+		return errors.New("Hash not found for index")
+	}
+	return nil
 }
 
 func (c *Cake) CountHashes() (int64, error) {
+	panic("Not implemented")
 	return c.tierTop.CountHashes()
 }
 
 func (c *Cake) Close() error {
-	return c.tierTop.Close()
+	err := c.tierTop.Close()
+	if err != nil {
+		return err
+	}
+	c.tierTop = nil
+	c.tierReader = nil
+	return nil
 }
 
 func (c *Cake) AppendHash(hash *Sha256) (int64, error) {
-	result, err := c.tierTop.AppendHash(hash)
+	result, err := c.tierTop.AppendHash((*hash)[:])
 	if err != nil {
 		return -1, err
 	}

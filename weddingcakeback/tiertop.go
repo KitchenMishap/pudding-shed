@@ -19,15 +19,20 @@ import (
 // Note that the next tier below this is indexed as ZERO (TierTop has no tier index!)
 type TierTop struct {
 	folder         string
+	config         *CakeConfig
 	readonly       bool
 	underlyingFile *os.File
 	hashesFile     *wordfile.HashFile
 	// As with other tiers, theMap deals with HashIndexIdType which is not the same as GlobalPiType
-	theMap map[Sha256]HashIndexIdType
+	theMap map[[32]byte]HashIndexIdType // ToDo support hash sizes other than 32
 	// Because HashIndexType's reserve zero to mean "no match", subtract 1 from a HashIndexId to index theSlice
-	theSlice                     []Sha256
+	theSlice                     [][]byte
 	firstGlobalPresentationIndex GlobalPiType
+	nextTier                     TierReadable
 }
+
+// Check that implements
+var _ TierReadable = (*TierTop)(nil)
 
 func (tt *TierTop) HashIndexIdFromGlobalPresentationIndex(global GlobalPiType) HashIndexIdType {
 	// The value reserved for "no match"
@@ -51,9 +56,11 @@ func (tt *TierTop) GlobalPresentationIndexFromHashIndexId(hashIndexId HashIndexI
 	return GlobalPiType(hashIndexId) - 1 + tt.firstGlobalPresentationIndex
 }
 
-func NewTierTop(cakeFolder string, readOnly bool) (*TierTop, error) {
+func NewTierTop(cakeFolder string, config *CakeConfig, readOnly bool) (*TierTop, error) {
 	result := TierTop{}
 	result.folder = cakeFolder
+	result.config = config
+	result.nextTier = nil
 	err := result.Open(readOnly)
 	if err != nil {
 		return nil, err
@@ -80,6 +87,10 @@ func (tt *TierTop) Open(readOnly bool) error {
 	}
 	hashesCount := stat.Size() / 32 // ToDo support other hash sizes
 
+	if hashesCount > 65535 {
+		panic("TierTop only supports 65535 hashes (more found in file)")
+	}
+
 	firstPiFile, err := os.Open(filepath.Join(tt.folder, "TierTop", "FirstPresentationIndex.bin"))
 	if err != nil {
 		return err
@@ -99,7 +110,7 @@ func (tt *TierTop) Open(readOnly bool) error {
 	tt.hashesFile = wordfile.NewHashFile(aoFile, hashesCount)
 
 	tt.theMap = make(map[Sha256]HashIndexIdType, 65535)
-	tt.theSlice = make([]Sha256, hashesCount, 65535)
+	tt.theSlice = make([][]byte, hashesCount, 65535)
 
 	// HashIndexId's start at 1
 	for i := HashIndexIdType(1); i < HashIndexIdType(hashesCount+1); i++ {
@@ -108,25 +119,39 @@ func (tt *TierTop) Open(readOnly bool) error {
 			return err
 		}
 		tt.theMap[hash] = i
-		tt.theSlice[i-1] = hash
+		tt.theSlice[i-1] = hash[:]
 	}
 	return nil
 }
 
-func (tt *TierTop) IndexOfHash(hash *Sha256) (GlobalPiType, error) {
-	hashIndexId, ok := tt.theMap[*hash]
-	if !ok {
-		return GlobalPiNoMatch, nil
+// TryIndexOfHash for TierReadable interface
+func (tt *TierTop) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
+	// ToDo support hash sizes other than 32
+	if len(hash) != 32 {
+		panic("hash size not supported")
 	}
-	return tt.GlobalPresentationIndexFromHashIndexId(hashIndexId), nil
+	h := [32]byte{}
+	copy(h[:], hash)
+	hashIndexId, ok := tt.theMap[h]
+	if !ok {
+		return GlobalPiNoMatch, false, nil
+	}
+	return tt.GlobalPresentationIndexFromHashIndexId(hashIndexId), true, nil
 }
 
-func (tt *TierTop) GetHashAtIndex(index int64, hash *Sha256) error {
-	if index < int64(len(tt.theSlice)) {
-		*hash = tt.theSlice[tt.HashIndexIdFromGlobalPresentationIndex(index)-1]
-		return nil
+// TryGetHashAtIndex for TierReadable interface
+func (tt *TierTop) TryGetHashAtIndex(index GlobalPiType, hash []byte) (bool, error) {
+	localIndex := tt.HashIndexIdFromGlobalPresentationIndex(index) - 1
+	if localIndex < 0 || localIndex >= HashIndexIdType(len(tt.theSlice)) {
+		return false, nil
 	}
-	return errors.New("index out of range")
+	copy(hash, tt.theSlice[localIndex])
+	return true, nil
+}
+
+// GetNextTier for TierReadable interface
+func (tt *TierTop) GetNextTier() TierReadable {
+	return tt.nextTier
 }
 
 func (tt *TierTop) CountHashes() (GlobalPiType, error) {
@@ -134,21 +159,54 @@ func (tt *TierTop) CountHashes() (GlobalPiType, error) {
 }
 
 func (tt *TierTop) Close() error {
-	return tt.hashesFile.Close()
+	if tt.nextTier != nil {
+		err := tt.nextTier.Close()
+		if err != nil {
+			return err
+		}
+	}
+	if tt.hashesFile != nil {
+		return tt.hashesFile.Close()
+	}
+	return nil
 }
 
-func (tt *TierTop) AppendHash(hash *Sha256) (GlobalPiType, error) {
+func (tt *TierTop) AppendHash(hash []byte) (GlobalPiType, error) {
 	index, err := tt.CountHashes()
+	if index >= 65535 {
+		panic("TierTop only supports 65535 hashes (append would overflow)")
+	}
 	if err != nil {
 		return -1, err
 	}
-	tt.theMap[*hash] = HashIndexIdType(index + 1)
-	tt.theSlice = append(tt.theSlice, *hash)
-	_, err = tt.hashesFile.AppendHash(*hash)
+	// We calculate the following BEFORE any writer.Write() below changes things
+	resultIndex := tt.GlobalPresentationIndexFromHashIndexId(HashIndexIdType(index + 1))
+
+	// Todo support hash sizes other than 32
+	if len(hash) != 32 {
+		panic("Currently only 32 byte hashes supported")
+	}
+	h := [32]byte{}
+	copy(h[:], hash)
+
+	tt.theMap[h] = HashIndexIdType(index + 1)
+	tt.theSlice = append(tt.theSlice, hash)
+	_, err = tt.hashesFile.AppendHash(h)
 	if err != nil {
 		return -1, err
 	}
-	return tt.GlobalPresentationIndexFromHashIndexId(HashIndexIdType(index + 1)), nil
+
+	// Index was the count of  hashes before the append. If it was 65534, we now have 65535
+	// If reached capacity, trigger a baking
+	if index == 65534 {
+		writer := NewDonutForestWrite(tt, tt.config)
+		err = writer.Write(tt.folder)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	return resultIndex, nil
 }
 
 func (tt *TierTop) Sync() error {
@@ -240,7 +298,7 @@ func (tt *TierTop) MakeEmptyAfterBaking() error {
 	}
 
 	// Create files again
-	creator := NewTierTopCreator(tt.folder)
+	creator := NewTierTopCreator(tt.folder, tt.config)
 	err = creator.Create(tt.firstGlobalPresentationIndex)
 	if err != nil {
 		return err
@@ -251,5 +309,17 @@ func (tt *TierTop) MakeEmptyAfterBaking() error {
 		return err
 	}
 
+	// We were emptying this tier after it was baked into a DonutForest of a subsequent tier.
+	// Therefore we need to close the subsequent tier, ready to be opened in its new configuration.
+	if tt.nextTier == nil {
+		// The new DonutForest was just created in a brand new tier; there is no previously opened tier to close
+	} else {
+		tt.nextTier.Close()
+		tt.nextTier = nil
+	}
+
 	return nil
+}
+func (tt *TierTop) SetNextTier(tierReadable TierReadable) {
+	tt.nextTier = tierReadable
 }

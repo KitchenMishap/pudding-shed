@@ -15,7 +15,8 @@ var _ LegacyHashStoreCreator = (*CakeCreator)(nil)
 func NewCakeCreator(folder string) *CakeCreator {
 	result := CakeCreator{}
 	result.folder = folder
-	result.tierTopCreator = weddingcakeback.NewTierTopCreator(folder)
+	config := weddingcakeback.NewCakeConfig(32)
+	result.tierTopCreator = weddingcakeback.NewTierTopCreator(folder, config)
 	return &result
 }
 

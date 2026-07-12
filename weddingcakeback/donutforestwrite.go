@@ -202,6 +202,14 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		return err
 	}
 
+	newTierBelow := NewTierBelow(cakeFolder, destTierIndex, dfw.Config)
+	err = newTierBelow.Open()
+	if err != nil {
+		return err
+	}
+
+	dfw.SourceTier.SetNextTier(newTierBelow)
+
 	return nil
 }
 

@@ -20,4 +20,6 @@ type BakingSourceTier interface {
 	GetFirstPresentationIndex() GlobalPiType
 	// MakeEmptyAfterBaking empties the source tier after baking
 	MakeEmptyAfterBaking() error
+	// SetNextTier lets a source tier know about a new next tier that can be read from
+	SetNextTier(TierReadable)
 }

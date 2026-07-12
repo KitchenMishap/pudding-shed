@@ -8,11 +8,13 @@ import (
 
 type TierTopCreator struct {
 	folder string
+	config *CakeConfig
 }
 
-func NewTierTopCreator(folder string) *TierTopCreator {
+func NewTierTopCreator(folder string, config *CakeConfig) *TierTopCreator {
 	result := TierTopCreator{}
 	result.folder = folder
+	result.config = config
 	return &result
 }
 
@@ -56,7 +58,7 @@ func (ttc *TierTopCreator) Create(firstGlobalPresentationIndex GlobalPiType) err
 }
 
 func (ttc *TierTopCreator) Open() (*TierTop, error) {
-	tierTop, err := NewTierTop(ttc.folder, false)
+	tierTop, err := NewTierTop(ttc.folder, ttc.config, false)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +66,7 @@ func (ttc *TierTopCreator) Open() (*TierTop, error) {
 }
 
 func (ttc *TierTopCreator) OpenReadOnly() (*TierTop, error) {
-	tierTop, err := NewTierTop(ttc.folder, true)
+	tierTop, err := NewTierTop(ttc.folder, ttc.config, true)
 	if err != nil {
 		return nil, err
 	}

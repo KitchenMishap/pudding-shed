@@ -19,7 +19,9 @@ func TestTierTopCreator(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	creator := NewTierTopCreator(testDir)
+	config := NewCakeConfig(32)
+
+	creator := NewTierTopCreator(testDir, config)
 	if creator.Exists() {
 		t.Fatal("Creator should not have a tier zero yet")
 	}
@@ -37,14 +39,14 @@ func TestTierTopCreator(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const count = 65535
+	const count = 65534
 	const masterSeed = 42
 
-	presentationArray := make([]Sha256, count)
+	presentationArray := make([][]byte, count)
 	for i := range int64(count) {
-		hash := helperDeterministicHashSha256(masterSeed, i)
+		hash := helperDeterministicHash(32, masterSeed, i)
 		presentationArray[i] = hash
-		index, err := tierTop.AppendHash(&hash)
+		index, err := tierTop.AppendHash(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,11 +57,13 @@ func TestTierTopCreator(t *testing.T) {
 
 	for i := range int64(count) {
 		hash := presentationArray[i]
-		presentationIndexRecovered, err := tierTop.IndexOfHash(&hash)
+		presentationIndexRecovered, found, err := tierTop.TryIndexOfHash(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if presentationIndexRecovered == -1 {
+		if !found {
+			t.Error("Lookup failed, returned found=false")
+		} else if presentationIndexRecovered == -1 {
 			t.Error("Lookup failed, returned -1")
 		} else if !bytes.Equal(presentationArray[presentationIndexRecovered][:], hash[:]) {
 			t.Error("Lookup failed, returned index of wrong hash")
@@ -67,34 +71,32 @@ func TestTierTopCreator(t *testing.T) {
 			//fmt.Println("A success")
 		}
 	}
-	randomHash := helperRandomHashSha256()
-	presentationIndex, err := tierTop.IndexOfHash(&randomHash)
+	randomHash := helperRandomHash(32)
+	_, found, err := tierTop.TryIndexOfHash(randomHash)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if presentationIndex != -1 {
+	} else if found {
 		fmt.Printf("Random hash returned a match. Surprising? Maybe? But false positives need to be filtered by caller\n")
 	}
-
 }
 
 // helperDeterministicHash generates a reproducible pseudo-random byte slice based on a seed and an index.
-func helperDeterministicHashSha256(seed int64, counter int64) Sha256 {
+func helperDeterministicHash(hashLength int, seed int64, counter int64) []byte {
 	// Create a unique source for this specific hash to ensure variety across the loop,
 	// while keeping the sequence perfectly locked to the master seed.
 	rng := rand.New(rand.NewSource(seed + counter))
 
-	result := [32]byte{}
-	for i := 0; i < 32; i++ {
+	result := [64]byte{}
+	for i := 0; i < hashLength; i++ {
 		result[i] = byte(rng.Intn(256))
 	}
-	return result
+	return result[:hashLength]
 }
 
-func helperRandomHashSha256() Sha256 {
-	result := [32]byte{}
-	for i := range 32 {
+func helperRandomHash(hashLength int) []byte {
+	result := [64]byte{}
+	for i := range hashLength {
 		result[i] = byte(rand.Intn(256))
 	}
-	return result
+	return result[:hashLength]
 }

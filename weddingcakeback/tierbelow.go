@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/KitchenMishap/pudding-shed/memfile"
+	"github.com/KitchenMishap/pudding-shed/wordfile"
 	"github.com/edsrzf/mmap-go"
 )
 
@@ -25,7 +27,13 @@ type TierBelow struct {
 	LevelXXNodesMemoryMaps []mmap.MMap // These can be treated very much like byte slices
 	JumpTableMemoryMap     mmap.MMap
 	DonutForestsInfo       []DonutForestInfo
+	underlyingFile         *os.File
+	hashesFile             *wordfile.HashFile
+	nextTier               TierReadable
 }
+
+// Check that implements
+var _ TierReadable = (*TierBelow)(nil)
 
 func NewTierBelow(folder string, tierIndex byte, config *CakeConfig) *TierBelow {
 	result := TierBelow{}
@@ -66,10 +74,53 @@ func (tb *TierBelow) Open() error {
 		_ = tb.JumpTableMemoryMap.Unmap()
 		return err
 	}
+
+	filePath := filepath.Join(tb.TierFolder, "Hashes.hsh")
+	tb.underlyingFile, err = os.Open(filePath)
+	if err != nil {
+		// Unmap the mmap'ed level files for a clean failure
+		for _, memoryMap := range tb.LevelXXNodesMemoryMaps {
+			_ = memoryMap.Unmap()
+		}
+		// Unmap the mmap'ed jump table for a clean failure
+		_ = tb.JumpTableMemoryMap.Unmap()
+		return err
+	}
+	// Count the hashes
+	stat, err := tb.underlyingFile.Stat()
+	if err != nil {
+		// Unmap the mmap'ed level files for a clean failure
+		for _, memoryMap := range tb.LevelXXNodesMemoryMaps {
+			_ = memoryMap.Unmap()
+		}
+		// Unmap the mmap'ed jump table for a clean failure
+		_ = tb.JumpTableMemoryMap.Unmap()
+		return err
+	}
+	hashesCount := stat.Size() / 32 // ToDo support other hash sizes
+
+	aoFile, err := memfile.NewAppendOptimizedFile(tb.underlyingFile)
+	if err != nil {
+		// Unmap the mmap'ed level files for a clean failure
+		for _, memoryMap := range tb.LevelXXNodesMemoryMaps {
+			_ = memoryMap.Unmap()
+		}
+		// Unmap the mmap'ed jump table for a clean failure
+		_ = tb.JumpTableMemoryMap.Unmap()
+		return err
+	}
+	tb.hashesFile = wordfile.NewHashFile(aoFile, hashesCount)
+
 	return nil
 }
 
 func (tb *TierBelow) Close() error {
+	if tb.nextTier != nil {
+		err := tb.nextTier.Close()
+		if err != nil {
+			return err
+		}
+	}
 	// Unmap the mmap'ed files
 	for _, memoryMap := range tb.LevelXXNodesMemoryMaps {
 		err := memoryMap.Unmap()
@@ -83,10 +134,15 @@ func (tb *TierBelow) Close() error {
 		return err
 	}
 
+	err = tb.hashesFile.Close()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (tb *TierBelow) LookupHash(hash []byte) GlobalPiType {
+func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 	var flagsHashByteIndicesUnexamined uint64
 	if tb.Config.HashLength == 64 {
 		flagsHashByteIndicesUnexamined = 0xFFFFFFFFFFFFFFFF
@@ -132,11 +188,32 @@ func (tb *TierBelow) LookupHash(hash []byte) GlobalPiType {
 			if hashIndexId != HashIndexIdNoMatch {
 				// Found a potential match
 				// ToDo check against hashes file
-				return GlobalPiType(hashIndexId-1) + tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex
+				return GlobalPiType(hashIndexId-1) + tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex, true, nil
 			}
 		}
 	}
-	return GlobalPiNoMatch
+	return GlobalPiNoMatch, false, nil
+}
+
+func (tb *TierBelow) TryGetHashAtIndex(index GlobalPiType, hash []byte) (bool, error) {
+	// tb.hashesFile covers all the hashes contained in multiple DonutForest's of the tier.
+	// We therefore adjust the index based on the first DonutForest
+	localHashIndexId := index - tb.DonutForestsInfo[0].FirstGlobalPresentationIndex
+	if localHashIndexId < 0 {
+		return false, nil
+	} else if localHashIndexId >= tb.hashesFile.CountHashes() {
+		return false, nil
+	}
+	h, err := tb.hashesFile.ReadHashAt(localHashIndexId)
+	if err != nil {
+		return false, err
+	}
+	copy(hash, h[:])
+	return true, nil
+}
+
+func (tb *TierBelow) GetNextTier() TierReadable {
+	return tb.nextTier
 }
 
 func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
@@ -338,6 +415,7 @@ func (tb *TierBelow) readInfoFile() error {
 			tb.DonutForestsInfo[donutForestIndex].Levels[level].IndexBytes = indexSlice
 			tb.DonutForestsInfo[donutForestIndex].Levels[level].NodesBytes = nodesSlice
 		}
+		donutForestIndex++
 	}
 	return nil
 }

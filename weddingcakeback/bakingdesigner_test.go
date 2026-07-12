@@ -16,7 +16,9 @@ func TestBakingDesigner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	creator := NewTierTopCreator(testDir)
+	config := NewCakeConfig(32)
+
+	creator := NewTierTopCreator(testDir, config)
 	err = creator.Create(0)
 	if err != nil {
 		t.Fatal(err)
@@ -30,11 +32,11 @@ func TestBakingDesigner(t *testing.T) {
 	const count = 65535
 	const masterSeed = 42
 
-	presentationArray := make([]Sha256, count)
+	presentationArray := make([][]byte, count)
 	for i := range int64(count) {
-		hash := helperDeterministicHashSha256(masterSeed, i)
+		hash := helperDeterministicHash(32, masterSeed, i)
 		presentationArray[i] = hash
-		index, err := tierTop.AppendHash(&hash)
+		index, err := tierTop.AppendHash(hash)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +48,6 @@ func TestBakingDesigner(t *testing.T) {
 	// We have created a tier zero with 65535 hashes
 	// Now bake the first DonutForest in tier 1, from the entirity of tier zero
 
-	config := NewCakeConfig(32)
 	writer := NewDonutForestWrite(tierTop, config)
 	err = writer.Write(testDir)
 	if err != nil {
@@ -61,9 +62,15 @@ func TestBakingDesigner(t *testing.T) {
 
 	for i := range int64(count) {
 		hash := presentationArray[i]
-		globalPi := tb.LookupHash(hash[:])
+		globalPi, found, err := tb.TryIndexOfHash(hash)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !found {
+			t.Fatal("Hash not found in tierBelow[0] (found=false)")
+		}
 		if globalPi == GlobalPiNoMatch {
-			t.Fatal("Hash not found in tierBelow[0]")
+			t.Fatal("Hash not found in tierBelow[0] (GlobalPiNoMatch)")
 		}
 		if !bytes.Equal(hash[:], presentationArray[globalPi][:]) {
 			t.Fatal("Hash mismatch (wrong presentation index)")
