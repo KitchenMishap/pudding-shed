@@ -1,7 +1,7 @@
 package weddingcakeback
 
 // TierTop holds no DonutForests of SingleTree's (it works differently)
-/*
+/* THIS TABLE WILL LIKELY CHANGE SOON (there will be more smaller tiers)
 Tier			Max DonutForests	SingleTree's per DF		Hashes per SingleTree	Total hashes
 ----			----------------	-------------------    	---------------------	------------
 TierTop			N/A					N/A						N/A						65535
@@ -25,12 +25,12 @@ type CakeConfig struct {
 }
 
 // Mostly hard coded for now
-func NewCakeConfig(hashLength byte) *CakeConfig {
+func NewCakeConfig(hashLength byte, reassuranceBytes byte) *CakeConfig {
 	result := CakeConfig{}
 	result.HashLength = hashLength
 	for tierBelow := 0; tierBelow < MaxTiersBelowCount; tierBelow++ {
 		result.TierBelowConfigs[tierBelow].NodeFormatSpecsPerLevel = 10
-		result.TierBelowConfigs[tierBelow].ReassuranceBytesCount = 2
+		result.TierBelowConfigs[tierBelow].ReassuranceBytesCount = reassuranceBytes
 	}
 	result.TierBelowConfigs[0].NodeIdConfig = ID16[NodeIdType]{}           // 16 bits per node id
 	result.TierBelowConfigs[0].HashIndexIdConfig = ID16[HashIndexIdType]{} // 16 bits per hash index id

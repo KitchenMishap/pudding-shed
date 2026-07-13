@@ -48,6 +48,13 @@ func NewTierBelow(folder string, tierIndex byte, config *CakeConfig) *TierBelow 
 	return &result
 }
 
+func (tb *TierBelow) ExistsOnDisk() bool {
+	// We deem a tier to exist on disk if Hashes.hsh file exists
+	hashesFilePath := filepath.Join(tb.TierFolder, "Hashes.hsh")
+	_, err := os.Stat(hashesFilePath)
+	return err == nil
+}
+
 func (tb *TierBelow) Open() error {
 	// First we find all the LevelXX.bin files we can and mmap them into memory
 	err := tb.mmapLevelFiles()

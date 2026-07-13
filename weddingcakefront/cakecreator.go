@@ -12,10 +12,10 @@ type CakeCreator struct {
 // Check that implements
 var _ LegacyHashStoreCreator = (*CakeCreator)(nil)
 
-func NewCakeCreator(folder string) *CakeCreator {
+func NewCakeCreator(folder string, reassuranceBytes byte) *CakeCreator {
 	result := CakeCreator{}
 	result.folder = folder
-	config := weddingcakeback.NewCakeConfig(32)
+	config := weddingcakeback.NewCakeConfig(32, reassuranceBytes)
 	result.tierTopCreator = weddingcakeback.NewTierTopCreator(folder, config)
 	return &result
 }

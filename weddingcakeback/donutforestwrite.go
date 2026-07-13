@@ -27,6 +27,7 @@ func NewDonutForestWrite(sourceTier BakingSourceTier, config *CakeConfig) *Donut
 
 func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	destTierIndex := dfw.SourceTier.GetNextTierIndex()
+	fmt.Printf("Baking a DonutForest into Tier %d...\n", destTierIndex)
 
 	// Make the tier folder if it doesn't exist
 	tierFolder := fmt.Sprintf("Tier%d", destTierIndex)

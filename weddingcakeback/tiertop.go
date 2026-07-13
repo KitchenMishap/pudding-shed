@@ -65,6 +65,25 @@ func NewTierTop(cakeFolder string, config *CakeConfig, readOnly bool) (*TierTop,
 	if err != nil {
 		return nil, err
 	}
+
+	tierSoFar := BakingSourceTier(&result)
+
+	// Try opening each next tier
+	for i := byte(0); i < byte(len(config.TierBelowConfigs)); i++ {
+		nextTier := NewTierBelow(cakeFolder, i, config)
+		exists := nextTier.ExistsOnDisk()
+		if exists {
+			err = nextTier.Open()
+			if err != nil {
+				return nil, err
+			}
+			tierSoFar.SetNextTier(nextTier)
+			//tierSoFar = nextTier	ToDo
+		} else {
+			break // No more tiers
+		}
+	}
+
 	return &result, nil
 }
 
@@ -314,7 +333,10 @@ func (tt *TierTop) MakeEmptyAfterBaking() error {
 	if tt.nextTier == nil {
 		// The new DonutForest was just created in a brand new tier; there is no previously opened tier to close
 	} else {
-		tt.nextTier.Close()
+		err = tt.nextTier.Close()
+		if err != nil {
+			return err
+		}
 		tt.nextTier = nil
 	}
 

@@ -16,7 +16,7 @@ func TestBakingDesigner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config := NewCakeConfig(32)
+	config := NewCakeConfig(32, 2)
 
 	creator := NewTierTopCreator(testDir, config)
 	err = creator.Create(0)
