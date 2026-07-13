@@ -15,7 +15,7 @@ import (
 
 // TierBelow represents a tier other than TierTop at a particular index.
 // The tier known as TierBelow[0] is "under" TierTop, and TierBelow[1] is under that.
-// Each TierBelow is comprised of up to 255 DonutForests.
+// Each TierBelow is comprised of up to <configurable> (16?) DonutForests.
 
 // A TierBelow object is primarily concerned with reading from the tier.
 // (For writing, a TierBelow is instead constructed on disk one DonutForest at a time by DonutForestWite)
@@ -377,11 +377,16 @@ func (tb *TierBelow) readInfoFile() error {
 		tb.DonutForestsInfo = make([]DonutForestInfo, 0)
 		return nil
 	}
-	tb.DonutForestsInfo = make([]DonutForestInfo, 0, 255)
+	maxDonutForests := tb.Config.TierBelowConfigs[tb.TierIndex].MaxDonutForests
+	tb.DonutForestsInfo = make([]DonutForestInfo, 0, maxDonutForests)
 	offset := 0
-	donutForestIndex := 0
+	donutForestIndex := byte(0)
 	for offset < len(bytes) {
 		// Because there are bytes left, we have a first (or another) DonutForest
+		if donutForestIndex >= maxDonutForests {
+			panic("Too many DonutForests in file")
+		}
+
 		tb.DonutForestsInfo = append(tb.DonutForestsInfo, DonutForestInfo{})
 		// Field A (per DonutForest): 8 bytes "FirstGlobalPresentationIndexOfChunk"
 		if len(bytes)-offset < 8 {

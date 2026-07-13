@@ -11,7 +11,7 @@ As time progresses, older data is moved to lower tiers (0+), allowing for effici
 We build the tiered cake from the top down.
 ### TierTop is different
 TierTop is different, being primarily implemented as an in-memory map. Hashes are only ever presented to TierTop.
-### Tiers 0+ comprised of up to 255 DonutForest's
+### Tiers 0+ comprised of up to `<configurable>` (16?) DonutForest's
 Under TierTop is Tier 0.
 Each tier 0+ is comprised of zero or more concentric DonutForest's (they are Donuts from the high level
 cake-tier-donut metaphor, but they are also Forests from a lower level forest-tree-leaf perspective.)
@@ -20,11 +20,11 @@ When a tier reaches a certain size, it is "baked" into a single DonutForest in t
 * TierTop is "full" when it has been presented with 65535 hashes (including those that were duplicates of prior hashes). 
     * All hashes are baked into a single DonutForest in tier 0.
     * TierTop then becomes empty, ready for more hash injections
-* Tier 0 is "full" when it contains 255 DonutForests.
-    * Hashes from ALL 255 of tier 0's DonutForests are baked into a single DonutForest in tier 1.
+* Tier 0 is "full" when it contains `<configurable>` (16?) DonutForests.
+    * Hashes from ALL of tier 0's DonutForests are baked into a single DonutForest in tier 1.
     * Consequently, DonutForest's are much bigger in tier 1 compared to tier 0.
     * Tier 0 then becomes empty.
-* Similarly, tiers 1+ are "full" when they contain 255 DonutForests.
+* Similarly, tiers 1+ are "full" when they contain `<configurable` (16?) DonutForests.
 ## Limited support for duplicate hashes
 * Duplicate hashes are "tolerated"
 * Forward lookup (index to hash) correctly returns the hash, even if the same hash was presented multiple times.
