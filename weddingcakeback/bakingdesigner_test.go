@@ -40,7 +40,7 @@ func TestBakingDesigner(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if index != i {
+		if index != GlobalPiType(i) {
 			t.Fatal("Hash index mismatch")
 		}
 	}
@@ -77,7 +77,7 @@ func TestBakingDesigner(t *testing.T) {
 		}
 	}
 
-	err = tb.Close()
+	err = tb.CloseAll()
 	if err != nil {
 		t.Fatal(err)
 	}

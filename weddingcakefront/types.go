@@ -1,3 +1,5 @@
 package weddingcakefront
 
-type GlobalPiType = int64
+import "github.com/KitchenMishap/pudding-shed/weddingcakeback"
+
+type GlobalPiType = weddingcakeback.GlobalPiType

@@ -17,6 +17,10 @@ import (
 // The tier known as TierBelow[0] is "under" TierTop, and TierBelow[1] is under that.
 // Each TierBelow is comprised of up to <configurable> (16?) DonutForests.
 
+// TierBelow can cope with being "empty" (designated by an empty []DonutForestInfo)
+// IF there are subsequent tiers that are non-empty (an empty TierBelow exists
+// to preserve the chain of tiers through TierBelow.nextTier)
+
 // A TierBelow object is primarily concerned with reading from the tier.
 // (For writing, a TierBelow is instead constructed on disk one DonutForest at a time by DonutForestWite)
 type TierBelow struct {
@@ -24,9 +28,11 @@ type TierBelow struct {
 	TierFolder             string
 	TierIndex              byte
 	Config                 *CakeConfig
-	LevelXXNodesMemoryMaps []mmap.MMap // These can be treated very much like byte slices
+	ThisTierConfig         *TierBelowConfig // (within the CakeConfig)
+	NextTierConfig         *TierBelowConfig // (within the CakeConfig)
+	LevelXXNodesMemoryMaps []mmap.MMap      // These can be treated very much like byte slices
 	JumpTableMemoryMap     mmap.MMap
-	DonutForestsInfo       []DonutForestInfo
+	DonutForestsInfo       []DonutForestInfo // An empty slice indicates an enmty tier
 	underlyingFile         *os.File
 	hashesFile             *wordfile.HashFile
 	nextTier               TierReadable
@@ -44,6 +50,12 @@ func NewTierBelow(folder string, tierIndex byte, config *CakeConfig) *TierBelow 
 	result.TierFolder = filepath.Join(folder, tierFolderName)
 
 	result.Config = config
+	result.ThisTierConfig = &config.TierBelowConfigs[tierIndex]
+	if int(tierIndex+1) < len(config.TierBelowConfigs) {
+		result.NextTierConfig = &config.TierBelowConfigs[tierIndex+1]
+	} else {
+		result.NextTierConfig = nil
+	}
 
 	return &result
 }
@@ -53,6 +65,17 @@ func (tb *TierBelow) ExistsOnDisk() bool {
 	hashesFilePath := filepath.Join(tb.TierFolder, "Hashes.hsh")
 	_, err := os.Stat(hashesFilePath)
 	return err == nil
+}
+
+// OpenAsEmptyTier performs no disk access, and is for use when ExistsOnDisk() returns false.
+// If it doesn't exist on disk, it may just be empty and further tiers MAY be non-empty.
+// An empty TierBelow is primarily used for its TierBelow.nextTier pointer
+func (tb *TierBelow) OpenAsEmptyTier() {
+	tb.LevelXXNodesMemoryMaps = make([]mmap.MMap, 0)
+	tb.JumpTableMemoryMap = nil
+	tb.DonutForestsInfo = make([]DonutForestInfo, 0) // This empty map designates an empty tier
+	tb.underlyingFile = nil
+	tb.hashesFile = nil
 }
 
 func (tb *TierBelow) Open() error {
@@ -121,13 +144,16 @@ func (tb *TierBelow) Open() error {
 	return nil
 }
 
-func (tb *TierBelow) Close() error {
+func (tb *TierBelow) CloseAll() error {
 	if tb.nextTier != nil {
-		err := tb.nextTier.Close()
+		err := tb.nextTier.CloseAll()
 		if err != nil {
 			return err
 		}
 	}
+	return tb.CloseThis()
+}
+func (tb *TierBelow) CloseThis() error {
 	// Unmap the mmap'ed files
 	for _, memoryMap := range tb.LevelXXNodesMemoryMaps {
 		err := memoryMap.Unmap()
@@ -136,14 +162,28 @@ func (tb *TierBelow) Close() error {
 		}
 	}
 	tb.LevelXXNodesMemoryMaps = tb.LevelXXNodesMemoryMaps[:0]
-	err := tb.JumpTableMemoryMap.Unmap()
-	if err != nil {
-		return err
+
+	if tb.JumpTableMemoryMap != nil {
+		err := tb.JumpTableMemoryMap.Unmap()
+		if err != nil {
+			return err
+		}
+		tb.JumpTableMemoryMap = nil
 	}
 
-	err = tb.hashesFile.Close()
-	if err != nil {
-		return err
+	if tb.hashesFile != nil {
+		err := tb.hashesFile.Close()
+		if err != nil {
+			return err
+		}
+		tb.hashesFile = nil
+	}
+	if tb.underlyingFile != nil {
+		err := tb.underlyingFile.Close()
+		if err != nil && !errors.Is(err, os.ErrClosed) {
+			return err
+		}
+		tb.underlyingFile = nil
 	}
 
 	return nil
@@ -159,7 +199,7 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 
 	// First find an index into the jump table
 	prefix := hash[:8]
-	prefixBytesCount := tb.TierIndex
+	prefixBytesCount := tb.ThisTierConfig.PrefixBytesCount
 	multiplier := 1
 	prefixIndex := 0
 	flagBit := uint64(1)
@@ -171,9 +211,9 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 	}
 
 	// Work out the size of each jump table
-	nodeIdConfig := &tb.Config.TierBelowConfigs[tb.TierIndex].NodeIdConfig
-	hashIndexIdConfig := &tb.Config.TierBelowConfigs[tb.TierIndex].HashIndexIdConfig
-	reassuranceBytesCount := tb.Config.TierBelowConfigs[tb.TierIndex].ReassuranceBytesCount
+	nodeIdConfig := &tb.ThisTierConfig.NodeIdConfig
+	hashIndexIdConfig := &tb.ThisTierConfig.HashIndexIdConfig
+	reassuranceBytesCount := tb.ThisTierConfig.ReassuranceBytesCount
 	nodeIdSize := (*nodeIdConfig).StorageBytes()
 	jumpTableEntries := 1 << (prefixBytesCount * 8) // = 256 ^ prefixBytesCount
 	jumpTableSize := jumpTableEntries * nodeIdSize
@@ -195,7 +235,7 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 			if hashIndexId != HashIndexIdNoMatch {
 				// Found a potential match
 				// ToDo check against hashes file
-				return GlobalPiType(hashIndexId-1) + tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex, true, nil
+				return GlobalPiFromHashIndexId(hashIndexId, tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex), true, nil
 			}
 		}
 	}
@@ -203,15 +243,18 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 }
 
 func (tb *TierBelow) TryGetHashAtIndex(index GlobalPiType, hash []byte) (bool, error) {
-	// tb.hashesFile covers all the hashes contained in multiple DonutForest's of the tier.
-	// We therefore adjust the index based on the first DonutForest
-	localHashIndexId := index - tb.DonutForestsInfo[0].FirstGlobalPresentationIndex
-	if localHashIndexId < 0 {
-		return false, nil
-	} else if localHashIndexId >= tb.hashesFile.CountHashes() {
+	// tb.DonutForestsInfo can be empty designating an empty tier
+	if len(tb.DonutForestsInfo) == 0 {
 		return false, nil
 	}
-	h, err := tb.hashesFile.ReadHashAt(localHashIndexId)
+	// tb.hashesFile covers all the hashes contained in multiple DonutForest's of the tier.
+	// We therefore adjust the index (into the file) based on the first DonutForest
+	if !GlobalPiWithinRange(index, tb.DonutForestsInfo[0].FirstGlobalPresentationIndex, int(tb.hashesFile.CountHashes())) {
+		return false, nil
+	}
+	// fileIndex is NEITHER a Global Presentation Index NOR a HashIndexIdType
+	fileIndex := int64(index - tb.DonutForestsInfo[0].FirstGlobalPresentationIndex)
+	h, err := tb.hashesFile.ReadHashAt(fileIndex)
 	if err != nil {
 		return false, err
 	}
@@ -267,6 +310,10 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 	// Not a leaf.
 	// This node is instructing us to dig deeper, by examining another byte in the hash.
 	byteIndexToExamine, mediumSlots, tinySlots := node.hashByteIndexToExamine(nodeIdConfig)
+	if int(byteIndexToExamine) >= len(hash) {
+		panic(fmt.Sprintf("byte index out of range: level=%d byteIndex=%d format=%08x mediumSlots=%d tinySlots=%d hashLen=%d",
+			levelNum, byteIndexToExamine, node.formatSpecBytes, mediumSlots, tinySlots, len(hash)))
+	}
 	// Examine the specified byte
 	byteThatWasFound := hash[byteIndexToExamine]
 	// See if that byte get's us to another node at the next level...
@@ -394,7 +441,7 @@ func (tb *TierBelow) readInfoFile() error {
 			return errors.New("DonutForestsInfo.bin file format error : Missing FirstPI")
 		}
 		tb.DonutForestsInfo[donutForestIndex].FirstGlobalPresentationIndex =
-			GlobalPiType(binary.LittleEndian.Uint64(bytes[offset : offset+8]))
+			GlobalPiFromUint64(binary.LittleEndian.Uint64(bytes[offset : offset+8]))
 		offset += 8
 		// Field B (per DonutForest): 1 byte levels count
 		if len(bytes)-offset < 1 {

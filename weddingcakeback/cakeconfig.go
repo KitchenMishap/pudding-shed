@@ -32,15 +32,19 @@ func NewCakeConfig(hashLength byte, reassuranceBytes byte) *CakeConfig {
 		result.TierBelowConfigs[tierBelow].NodeFormatSpecsPerLevel = 10
 		result.TierBelowConfigs[tierBelow].ReassuranceBytesCount = reassuranceBytes
 	}
-	result.TierBelowConfigs[0].MaxDonutForests = 255
+	result.TierBelowConfigs[0].PrefixBytesCount = 0
+	result.TierBelowConfigs[0].MaxDonutForests = 5                         // ToDo 5 for debugging
 	result.TierBelowConfigs[0].NodeIdConfig = ID16[NodeIdType]{}           // 16 bits per node id
 	result.TierBelowConfigs[0].HashIndexIdConfig = ID16[HashIndexIdType]{} // 16 bits per hash index id
+	result.TierBelowConfigs[1].PrefixBytesCount = 1
 	result.TierBelowConfigs[1].MaxDonutForests = 255
 	result.TierBelowConfigs[1].NodeIdConfig = ID24[NodeIdType]{}           // 24 bits per node id
 	result.TierBelowConfigs[1].HashIndexIdConfig = ID24[HashIndexIdType]{} // 24 bits per hash index id
+	result.TierBelowConfigs[2].PrefixBytesCount = 2
 	result.TierBelowConfigs[2].MaxDonutForests = 255
 	result.TierBelowConfigs[2].NodeIdConfig = ID32[NodeIdType]{}           // 32 bits per node id
 	result.TierBelowConfigs[2].HashIndexIdConfig = ID32[HashIndexIdType]{} // 32 bits per hash index id
+	result.TierBelowConfigs[3].PrefixBytesCount = 3
 	result.TierBelowConfigs[3].MaxDonutForests = 255
 	result.TierBelowConfigs[3].NodeIdConfig = ID40[NodeIdType]{}           // 40 bits per node id
 	result.TierBelowConfigs[3].HashIndexIdConfig = ID40[HashIndexIdType]{} // 40 bits per hash index id
@@ -52,6 +56,7 @@ type TierBelowConfig struct {
 	NodeFormatSpecsPerLevel byte
 	ReassuranceBytesCount   byte
 	MaxDonutForests         byte
+	PrefixBytesCount        byte
 	NodeIdConfig            NByteIdConfig[NodeIdType]
 	HashIndexIdConfig       NByteIdConfig[HashIndexIdType]
 }

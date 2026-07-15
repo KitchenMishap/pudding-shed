@@ -207,3 +207,64 @@ func (dfn *donutForestNode) nextLevelNodeId(examinedByte byte, mediumSlots byte,
 	}
 	panic("Unrecognized format")
 }
+
+// getAllNextLevelNodeIds should only be called if detailsIfLeaf() returned false and you are in the process
+// of recursing to all leaves.
+func (dfn *donutForestNode) getAllNextLevelNodeIds(mediumSlots byte, tinySlots byte,
+	nodeIdConfig *NByteIdConfig[NodeIdType]) []NodeIdType {
+
+	result := make([]NodeIdType, 0, 256)
+
+	// Is it a FormatFull?
+	nodeIdSize := (*nodeIdConfig).StorageBytes()
+	if dfn.formatSpecBytes == uint32(1+1+256*nodeIdSize) {
+		//fmt.Println("Visiting a FormatFull node")
+		// We "imagine" what would happen if the "next examined byte" was each of its 256 possible values,
+		// and return all the non-zero resulting node ids
+		for imaginedExaminedByteInt := range 256 {
+			byteIndex := 1 + 1 + imaginedExaminedByteInt*nodeIdSize
+			nextLevelNodeId := (*nodeIdConfig).ReadID(dfn.nodeBytes[byteIndex : byteIndex+nodeIdSize])
+			if nextLevelNodeId != 0 {
+				result = append(result, nextLevelNodeId)
+			}
+		}
+	} else if mediumSlots > 0 {
+		// Is it a FormatMedium?
+		//fmt.Println("Visiting a FormatMedium node")
+		// There are 256 bits within cn.nodeBytes which tell us (if each is a '1') which slots are represented
+		// in the NodeIdType's which follow.
+		// HOWEVER, since we are visiting all nodes (on our way to all leaves), the "mediumSlots" value
+		// already directly tells us a maximum number of slots to examine.
+
+		// The 32-byte bitmask flags slice starts at offset 2 of cn.nodeBytes
+		flagsOffset := 2
+
+		// Compute physical NodeIdType payload layout offset
+		// The NodeIdType data payloads start directly after our 32-byte bitmask (offset 34).
+		uint16PayloadStart := flagsOffset + 32
+		for onesBefore := range int(mediumSlots) {
+			nodeIdByteOffset := uint16PayloadStart + (onesBefore * nodeIdSize)
+			singleNodeId := (*nodeIdConfig).ReadID(dfn.nodeBytes[nodeIdByteOffset : nodeIdByteOffset+nodeIdSize])
+			if singleNodeId != 0 {
+				result = append(result, singleNodeId)
+			}
+		}
+	} else if tinySlots > 0 {
+		// Is it a FormatTiny?
+		//fmt.Println("Visiting a FormatTiny node")
+		// FormatTiny is a hashByteIndex (byte) followed by
+		// a series of {byteValue (byte), (NodeIdType)} pairs
+		offset := 1
+		for slot := 0; slot < int(tinySlots); slot++ {
+			offset++ // Skip the byte value field
+			singleNodeId := (*nodeIdConfig).ReadID(dfn.nodeBytes[offset : offset+nodeIdSize])
+			offset += nodeIdSize
+			if singleNodeId != 0 {
+				result = append(result, singleNodeId)
+			}
+		}
+	} else {
+		panic("Unrecognized format")
+	}
+	return result
+}

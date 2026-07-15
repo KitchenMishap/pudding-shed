@@ -14,15 +14,15 @@ import (
 func TestCakeCreatorTierTop(t *testing.T) {
 	CakeCreatorHelper(t, 65534, 0) // Because 65535 would trigger a rebaking
 }
-func TestCakeCreatorTierTopEmpty(t *testing.T) {
-	CakeCreatorHelper(t, 65535, 0) // 65535 in TierBelow[0], none in TierTop
-}
-func TestCakeCreatorTierBelow0(t *testing.T) {
-	CakeCreatorHelper(t, 65536, 0) // 65535 in TierBelow[0], one in TierTop
-}
 
 // With more hashes, two reassurance bytes are needed. It still only "probably" passes because
 // we don't yet check the whole hash when a leaf is encountered.
+func TestCakeCreatorTierTopEmpty(t *testing.T) {
+	CakeCreatorHelper(t, 65535, 1) // 65535 in TierBelow[0], none in TierTop
+}
+func TestCakeCreatorTierBelow0(t *testing.T) {
+	CakeCreatorHelper(t, 65536, 1) // 65535 in TierBelow[0], one in TierTop
+}
 func TestCakeCreator131070(t *testing.T) {
 	CakeCreatorHelper(t, 65535*2, 2) // 65535 in TierBelow[0], 65535 in a second DonutForest
 }
@@ -54,6 +54,11 @@ func TestCakeCreatorTierBelow0ThreeDonutForests(t *testing.T) {
 func TestCakeCreatorTierBelow0Full(t *testing.T) {
 	fmt.Printf("This will take more than an hour...\n")
 	CakeCreatorHelper(t, 65535*254, 4) // 254 DonutForests in TierBelow[0]
+}
+
+func TestCakeCreatorThreeTier(t *testing.T) {
+	fmt.Printf("This will take more than an hour...\n")
+	CakeCreatorHelper(t, 65535*6, 4) // Only need 5+ due to reduced CakeConfig setting
 }
 
 func CakeCreatorHelper(t *testing.T, count int, reassuranceBytes byte) {
@@ -97,6 +102,12 @@ func CakeCreatorHelper(t *testing.T, count int, reassuranceBytes byte) {
 	fmt.Printf("Writing the hashes\n")
 	presentationArray := make([]Sha256, count)
 	for i := range int64(count) {
+		if i&0xFFFF == 0 {
+			fmt.Printf("Writing hash batch %d\n", i/65535)
+		}
+		if i == 720884 {
+			fmt.Printf("Breakpoint here\n")
+		}
 		hash := helperDeterministicHashSha256(masterSeed, i)
 		presentationArray[i] = hash
 		index, err := store.AppendHash(&hash)

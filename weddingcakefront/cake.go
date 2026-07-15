@@ -2,6 +2,7 @@ package weddingcakefront
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/KitchenMishap/pudding-shed/weddingcakeback"
 )
@@ -28,7 +29,9 @@ func (c *Cake) IndexOfHash(hash *Sha256) (int64, error) {
 	reader := c.tierReader
 	var result GlobalPiType
 	var err error
+	tierCount := 0
 	for !found && reader != nil {
+		tierCount++
 		result, found, err = reader.TryIndexOfHash((*hash)[:])
 		if err != nil {
 			return -1, err
@@ -38,9 +41,13 @@ func (c *Cake) IndexOfHash(hash *Sha256) (int64, error) {
 		}
 	}
 	if !found {
+		//fmt.Printf("Hash not found after %d tiers\n", tierCount)
 		return -1, nil
 	}
-	return result, nil
+	if tierCount == 1 {
+		fmt.Printf("Found in tier %d\n", tierCount)
+	}
+	return int64(result), nil
 }
 
 func (c *Cake) GetHashAtIndex(index int64, hash *Sha256) error {
@@ -48,7 +55,7 @@ func (c *Cake) GetHashAtIndex(index int64, hash *Sha256) error {
 	reader := c.tierReader
 	var err error
 	for !found && reader != nil {
-		found, err = reader.TryGetHashAtIndex(index, (*hash)[:])
+		found, err = reader.TryGetHashAtIndex(GlobalPiType(index), (*hash)[:])
 		if err != nil {
 			return err
 		}
@@ -64,11 +71,10 @@ func (c *Cake) GetHashAtIndex(index int64, hash *Sha256) error {
 
 func (c *Cake) CountHashes() (int64, error) {
 	panic("Not implemented")
-	return c.tierTop.CountHashes()
 }
 
 func (c *Cake) Close() error {
-	err := c.tierTop.Close()
+	err := c.tierTop.CloseAll()
 	if err != nil {
 		return err
 	}
@@ -82,7 +88,7 @@ func (c *Cake) AppendHash(hash *Sha256) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
-	return result, nil
+	return int64(result), nil
 }
 
 func (c *Cake) Sync() error {

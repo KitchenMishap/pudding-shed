@@ -4,7 +4,8 @@ import "encoding/binary"
 
 type Sha256 = [32]byte
 
-type GlobalPiType = int64
+// GlobalPiType's are used "externally" whenever we are referencing hashes across the entire cake
+type GlobalPiType int64
 
 const GlobalPiNoMatch = GlobalPiType(-1)
 
@@ -16,7 +17,8 @@ type NodeCountType uint64
 
 const MaxNodesCount = ^NodeCountType(0)
 
-// HashIndexId's are used to identify Hash Presentation Indices within a chunk
+// HashIndexIdType's are used to identify Hash Presentation Indices "within some context" where the number of bytes
+// used to represent them are limited. You must use a firstGlobalPi offset to convert between GlobalPiType and HashIndexIdType
 type HashIndexIdType uint64
 
 const MaxHashIndexId = ^HashIndexIdType(0)

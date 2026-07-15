@@ -1,6 +1,10 @@
 package weddingcakeback
 
-import "sort"
+import (
+	"bytes"
+	"fmt"
+	"sort"
+)
 
 // BakingDesigner is introduced in the effort to bake a (smaller/newer) tier n-1 of the "cake" into a
 // new DonutForest in the (larger/older) tier n underneath it. Tier n-1 will become empty ready for injection of
@@ -25,14 +29,69 @@ func NewBakingDesigner() *BakingDesigner {
 	return &result
 }
 
-func (bd *BakingDesigner) GatherMetricsFromSourceTier(tierInfo BakingSourceTier,
+func (bd *BakingDesigner) GatherMetricsFromSourceTier(sourceTierInfo BakingSourceTier,
 	config *CakeConfig) {
 
-	tierIndex := tierInfo.GetNextTierIndex()
-	indexRange := tierInfo.GetIndicesCount()
+	offsetToUse := sourceTierInfo.GetFirstPresentationIndex()
+
+	destTierIndex := sourceTierInfo.GetNextTierIndex()
+	destPrefixBytesCount := sourceTierInfo.GetNextTierPrefixBytesCount()
+	indexRange := sourceTierInfo.GetIndicesCount()
 	for index := uint64(0); index < indexRange; index++ {
-		hashes := tierInfo.GetHashesAtIndex(index, config)
-		bd.RecordSubtreeDistribution(hashes, config, tierIndex, tierInfo.GetNextTierPrefixBytesCount())
+		hashInfos := sourceTierInfo.GetHashesAtIndex(index, offsetToUse)
+		// (there should typically be about 65,536 hashes)
+
+		// Because they were obtained by index (which chooses a tree in each source DonutForest),
+		// these hashes will all have the same hash prefix.
+		// In the destination tier, we are subdividing these hashes on an ADDITIONAL byte (the prefix gets longer.)
+		// We need to put the hashes into buckets based on this "newly examined" byte of the hash.
+		buckets := [256][]SingleTreeHash{}
+		for i := range 256 {
+			buckets[i] = make([]SingleTreeHash, 0, 300)
+		}
+
+		// EXCEPTION: If the destination tier index is 0 (source tier was TierTop), the "new longer prefix" is
+		// still 0 bytes, so we just use bucket[0] for all
+		if destTierIndex == 0 {
+			buckets[0] = hashInfos
+		} else {
+			byteIndex := destPrefixBytesCount - 1
+			for _, hashInfo := range hashInfos {
+				examinedByte := hashInfo.Hash[byteIndex]
+				buckets[examinedByte] = append(buckets[examinedByte], hashInfo)
+			}
+		}
+		// Now we either have one or 256 buckets of hashes.
+		// These buckets correspond to either one or 256 of the 256^n trees in the DonutForest we are writing to.
+		// One by one, turn them into SingleTree's and measure them.
+		// We throw each tree away before starting on the next one, to conserve memory.
+		var treeCount int
+		if destTierIndex == 0 {
+			treeCount = 1
+		} else {
+			treeCount = 256
+		}
+		for t := range treeCount {
+			bucket := buckets[t]
+			bd.RecordSubtreeDistribution(bucket, config, destTierIndex, destPrefixBytesCount)
+		}
+	}
+}
+
+func PanicIfDuplicates(hashes []SingleTreeHash) {
+	count := len(hashes)
+	if count < 2 {
+		return
+	}
+	for A := 1; A < count; A++ {
+		for B := 0; B < A; B++ {
+			if bytes.Equal(hashes[A].Hash, hashes[B].Hash) {
+				fmt.Printf("Duplicate hash found: indices A,B = %d, %d\n", A, B)
+				fmt.Printf("Duplicate hash found: Presentation indices = %d, %d\n", hashes[A].PresentationIndex, hashes[B].PresentationIndex)
+				fmt.Printf("Duplicate hash found: Hash value = %x\n", hashes[A].Hash)
+				panic("Duplicate hash found")
+			}
+		}
 	}
 }
 
@@ -41,6 +100,10 @@ func (bd *BakingDesigner) GatherMetricsFromSourceTier(tierInfo BakingSourceTier,
 // This will be called several times over for a given tier that we are rebaking into a DonutForest.
 func (bd *BakingDesigner) RecordSubtreeDistribution(hashes []SingleTreeHash,
 	config *CakeConfig, tierIndex byte, prefixBytesCount byte) {
+
+	if tierIndex == 1 {
+		PanicIfDuplicates(hashes)
+	}
 
 	if len(hashes) == 0 {
 		return
@@ -274,10 +337,10 @@ func (bd *BakingDesigner) ProposeMergeGroups(left *NodeFormatGroup, right *NodeF
 	result.NodesCount = left.NodesCount + right.NodesCount
 	result.Spec.Format = left.Spec.Format
 	result.Spec.SlotsCapacity = right.Spec.SlotsCapacity
-	bytes := result.groupByteSize(config, tierIndex)
-	if bytes > uint64(MaxBytesCount) {
+	byts := result.groupByteSize(config, tierIndex)
+	if byts > uint64(MaxBytesCount) {
 		panic("Too many bytes for BytesCountType")
 	}
-	result.Bytes = BytesCountType(bytes)
+	result.Bytes = BytesCountType(byts)
 	return result
 }

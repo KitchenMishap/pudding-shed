@@ -9,6 +9,8 @@ type TierReadable interface {
 	TryGetHashAtIndex(index GlobalPiType, hash []byte) (bool, error)
 	// GetNextTier returns nil to indicate no more tiers
 	GetNextTier() TierReadable
-	// Close closes the readable tier
-	Close() error
+	// CloseThis closes the readable tier
+	CloseThis() error
+	// CloseAll closes the subsequent tiers and then this tier
+	CloseAll() error
 }

@@ -50,7 +50,7 @@ func TestTierTopCreator(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if index != i {
+		if index != GlobalPiType(i) {
 			t.Fatal("Hash index mismatch")
 		}
 	}
