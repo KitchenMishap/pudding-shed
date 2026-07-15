@@ -314,6 +314,10 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 		panic(fmt.Sprintf("byte index out of range: level=%d byteIndex=%d format=%08x mediumSlots=%d tinySlots=%d hashLen=%d",
 			levelNum, byteIndexToExamine, node.formatSpecBytes, mediumSlots, tinySlots, len(hash)))
 	}
+	bitMask := uint64(1) << byteIndexToExamine
+	if flagsHashByteIndicesUnexamined&bitMask == 0 {
+		panic("We are being asked to examine a byte of the hash that is already examined")
+	}
 	// Examine the specified byte
 	byteThatWasFound := hash[byteIndexToExamine]
 	// See if that byte get's us to another node at the next level...
@@ -322,10 +326,6 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 		return HashIndexIdNoMatch // A dead end. No match. The hash definitely isn't in this DonutForest.
 	}
 	// Make a note that this byte index of the hash has now been examined
-	bitMask := uint64(1) << byteIndexToExamine
-	if flagsHashByteIndicesUnexamined&bitMask == 0 {
-		panic("We examined the same byte of the hash twice")
-	}
 	flagsHashByteIndicesUnexamined ^= bitMask // Clear the bit to say it is no longer unexamined
 
 	// Go deeper, with our new node id at the next level...

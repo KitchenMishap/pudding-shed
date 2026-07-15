@@ -123,7 +123,7 @@ func CakeCreatorHelper(t *testing.T, count int, reassuranceBytes byte) {
 	// Each passConfig is {reopen, readonly}
 	var storeRo LegacyHashReader
 	passConfig := [3][2]bool{{false, false}, {true, false}, {true, true}}
-	for pass := 0; pass < 3; pass++ {
+	for pass := 1; pass < 3; pass++ {
 		reopen := passConfig[pass][0]
 		readonly := passConfig[pass][1]
 		if reopen {

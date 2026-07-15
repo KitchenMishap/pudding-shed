@@ -196,6 +196,10 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 
 	// Empty the source tier ready for new hashes
 	// NOTE: If the source tier is a previous TierBelow, its entire"Tier<n>" folder will be deleted
+	var preservedNextTier TierReadable
+	if sourceReadable, ok := dfw.SourceTier.(TierReadable); ok {
+		preservedNextTier = sourceReadable.GetNextTier()
+	}
 	err = dfw.SourceTier.MakeEmptyAfterBaking()
 	if err != nil {
 		return err
@@ -207,6 +211,9 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 		return err
 	}
 
+	if preservedNextTier != nil {
+		newTierBelow.SetNextTier(preservedNextTier)
+	}
 	dfw.SourceTier.SetNextTier(newTierBelow)
 
 	// We have just baked an entire tier into a new DonutForest in the subsequent tier.
@@ -458,11 +465,11 @@ func (dfw *DonutForestWrite) serializeLeafNode(leafNode *SingleTreeLeafNode, byt
 		panic("Presentation index too big for HashIndexIdType")
 	}
 	// The leaf carries the offset it was captured against.
-	singleTreeOffset := leafNode.SourceOffset
-	globalPi := GlobalPiFromSingleTreePi(singleTreePi, singleTreeOffset)
+	//singleTreeOffset := leafNode.SourceOffset
+	globalPi := GlobalPiFromSingleTreePi(singleTreePi)
 	// Whilst we are baking, the firstGlobalPi of the new DonutForest is equal to the source offset of the leaf.
-	firstGlobalPi := singleTreeOffset
-	hashIndexId := HashIndexIdFromGlobalPi(globalPi, firstGlobalPi)
+	//firstGlobalPi := singleTreeOffset
+	hashIndexId := HashIndexIdFromGlobalPi(globalPi, sourceOffset)
 	hashIndexIdSize := dfw.Config.TierBelowConfigs[destTierIndex].HashIndexIdConfig.StorageBytes()
 	const spareRoom = 8
 	var hashIndexIdBytes [spareRoom]byte
@@ -484,7 +491,7 @@ func (dfw *DonutForestWrite) serializeFullNode(slotsNode *SingleTreeSlotsNode,
 	fullNodeSize := 1 + 1 + 256*nodeIdSize
 	const spareRoom = 1 + 1 + 256*8
 	var nodeBytes [spareRoom]byte
-	nodeBytes[0] = 0 // Padding
+	nodeBytes[0] = 0xAA // Padding
 	nodeBytes[1] = slotsNode.HashByteIndex
 	p := 2
 	for s := 0; s < 256; s++ {
@@ -522,7 +529,7 @@ func (dfw *DonutForestWrite) serializeMediumNode(slotsNode *SingleTreeSlotsNode,
 	totalBytesCount := 1 + 1 + 32 + (nodeIdSize * int(spec.SlotsCapacity))
 	nodeBytes := make([]byte, totalBytesCount)
 
-	nodeBytes[0] = 0                       // 1 byte padding
+	nodeBytes[0] = 0x55                    // 1 byte padding
 	nodeBytes[1] = slotsNode.HashByteIndex // 1 byte index
 
 	flagsOffset := 2
@@ -571,6 +578,9 @@ func (dfw *DonutForestWrite) serializeTinyNode(slotsNode *SingleTreeSlotsNode, s
 	// by a sequence of {one byte hash byte value, and N-bytes nodeId} with empty slots allowed (nodeId=0).
 	// Crucially, the length of the sequence is NOT NECESSARILY equal to the number of non-empty slots.
 	destTierIndex := dfw.SourceTier.GetNextTierIndex()
+	if slotsNode.HashByteIndex == 0 && destTierIndex > 0 {
+		fmt.Printf("Breakpoint here\n")
+	}
 	if slotsNode.HashByteIndex >= dfw.Config.HashLength {
 		panic(fmt.Sprintf("serializeTinyNode: invalid hash byte index %d for hash length %d", slotsNode.HashByteIndex, dfw.Config.HashLength))
 	}

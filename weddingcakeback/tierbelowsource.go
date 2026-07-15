@@ -76,9 +76,9 @@ func (tb *TierBelow) GetHashesAtIndex(index uint64, offsetToUse GlobalPiType) []
 					// singleTreeOffset is used to convert globalPi to singleTreePi.
 					// It needs to be the same in all cases for this bake, as these pairs will be sent to construct a SingleTree.
 					// It is therefore the firstPresentationIndex from the source tier (ie, this TierBelow)
-					singleTreePiOffset := donutForestInfo.FirstGlobalPresentationIndex
-					singleTreePi := SingleTreePiFromGlobalPi(globalPi, singleTreePiOffset)
-					pair := SingleTreeHash{PresentationIndex: singleTreePi, SourceOffset: singleTreePiOffset, Hash: hash[:]}
+					//singleTreePiOffset := donutForestInfo.FirstGlobalPresentationIndex
+					singleTreePi := SingleTreePiFromGlobalPi(globalPi)
+					pair := SingleTreeHash{PresentationIndex: singleTreePi, Hash: hash[:]}
 					result = append(result, pair)
 				})
 		}

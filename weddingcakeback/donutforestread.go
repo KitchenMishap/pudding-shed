@@ -102,16 +102,16 @@ func (dfn *donutForestNode) hashByteIndexToExamine(nodeIdConfig *NByteIdConfig[N
 	// Is it a FormatFull?
 	nodeIdSize := (*nodeIdConfig).StorageBytes()
 	if dfn.formatSpecBytes == uint32(1+1+256*nodeIdSize) {
-		if dfn.nodeBytes[0] != 0 {
-			panic("Expected a zero byte for padding")
+		if dfn.nodeBytes[0] != 0xAA {
+			panic("Expected an 0xAA byte for FormatFull padding")
 		}
 		return dfn.nodeBytes[1], 0, 0
 	}
 	// Is it a FormatMedium?
 	mediumSlots := byte((dfn.formatSpecBytes & 0x00FF0000) >> 16)
 	if mediumSlots > 0 {
-		if dfn.nodeBytes[0] != 0 {
-			panic("Expected a zero byte for padding")
+		if dfn.nodeBytes[0] != 0x55 {
+			panic("Expected an 0x55 byte for FormatMedium padding")
 		}
 		return dfn.nodeBytes[1], mediumSlots, 0
 	}

@@ -53,7 +53,7 @@ type SingleTreeLeafNode struct {
 	ReassuranceHashBytes []byte           // Additional bytes from the hash to give statistical reassurance
 	PresentationIndex    SingleTreePiType // The index that was initially presented with the hash corresponding to this leaf
 	Hash                 []byte           // The entire hash for this leaf
-	SourceOffset         GlobalPiType     // The offset used when this leaf was captured
+	//SourceOffset         GlobalPiType     // The offset used when this leaf was captured
 }
 
 type SingleTreeSlotsNode struct {
@@ -76,7 +76,7 @@ func (sts SingleTreeSlot) IsEmpty() bool {
 type SingleTreeHash struct {
 	Hash              []byte // len(Hash) must equal ShallowTree.HashLength
 	PresentationIndex SingleTreePiType
-	SourceOffset      GlobalPiType
+	//SourceOffset      GlobalPiType
 }
 
 // GenerateShallowTree generates a tree from the supplied hashes and presentationIndices
@@ -114,7 +114,7 @@ func GenerateSingleTree(input []SingleTreeHash, PrefixBytesN byte, hashLength by
 		// We need to point it to single leaf node
 		leafNode := SingleTreeLeafNode{}
 		leafNode.PresentationIndex = input[0].PresentationIndex
-		leafNode.SourceOffset = input[0].SourceOffset
+		//leafNode.SourceOffset = input[0].SourceOffset
 		leafNode.ReassuranceHashBytes = make([]byte, reassuranceBytes)
 		copy(leafNode.ReassuranceHashBytes, input[0].Hash[:reassuranceBytes])
 		leafNode.Hash = make([]byte, hashLength)
@@ -374,7 +374,7 @@ func (st *SingleTree) recurseGenerateNode(inputCopy []SingleTreeHash,
 			// Found exactly one hash at startIndex, so we need a leaf node, and don't recurse
 			leafNode := SingleTreeLeafNode{}
 			leafNode.PresentationIndex = inputCopy[startIndex].PresentationIndex
-			leafNode.SourceOffset = inputCopy[startIndex].SourceOffset
+			//leafNode.SourceOffset = inputCopy[startIndex].SourceOffset
 			leafNode.Hash = make([]byte, st.HashLength)
 			copy(leafNode.Hash, inputCopy[startIndex].Hash)
 

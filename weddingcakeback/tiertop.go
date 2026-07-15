@@ -50,13 +50,11 @@ func NewTierTop(cakeFolder string, config *CakeConfig, readOnly bool) (*TierTop,
 
 	// Try opening each next tier
 	// An empty tier does NOT indicate no subsequent non-empty tiers
-	var lastNonEmptyTier *TierBelow = nil
 	// Check as many as are described in the config
 	for i := byte(0); i < byte(len(config.TierBelowConfigs)); i++ {
 		nextTier := NewTierBelow(cakeFolder, i, config)
 		exists := nextTier.ExistsOnDisk()
 		if exists {
-			lastNonEmptyTier = nextTier
 			err = nextTier.Open()
 			if err != nil {
 				return nil, err
@@ -70,14 +68,6 @@ func NewTierTop(cakeFolder string, config *CakeConfig, readOnly bool) (*TierTop,
 			tierSoFar = nextTier
 		}
 	}
-	// Now break the chain of pointers, getting rid of the trailing empty tiers
-	if lastNonEmptyTier == nil {
-		// TierTop (and it may itself be empty) is the last non-empty tier
-		result.nextTier = nil
-	} else {
-		lastNonEmptyTier.SetNextTier(nil)
-	}
-
 	return &result, nil
 }
 
@@ -251,9 +241,9 @@ func (tt *TierTop) GetHashesAtIndex(index uint64, offsetToUse GlobalPiType) []Si
 	result := make([]SingleTreeHash, len(tt.theSlice))
 	for i := range tt.theSlice {
 		globalPi := GlobalPiFromTierTopIndex(TierTopIndex(i), offsetToUse)
-		singleTreePi := SingleTreePiFromGlobalPi(globalPi, offsetToUse)
+		singleTreePi := SingleTreePiFromGlobalPi(globalPi)
 		result[i].PresentationIndex = singleTreePi
-		result[i].SourceOffset = offsetToUse
+		//result[i].SourceOffset = offsetToUse
 		result[i].Hash = make([]byte, tt.config.HashLength) // Todo Yuk!
 		copy(result[i].Hash, tt.theSlice[i][:])
 	}

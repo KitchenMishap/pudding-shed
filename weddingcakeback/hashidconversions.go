@@ -8,9 +8,13 @@ package weddingcakeback
 // SingleTreePi uses 0 to mean "no match". One corresponds to the supplied offset
 // HashIndexId uses 0 to mean "no match". One corresponds to the supplied offset.
 
-func GlobalPiFromSingleTreePi(singleTreePi SingleTreePiType, offset GlobalPiType) GlobalPiType {
-	return GlobalPiType(singleTreePi) - 1 + offset
+func GlobalPiFromSingleTreePi(singleTreePi SingleTreePiType) GlobalPiType {
+	return GlobalPiType(singleTreePi) - 1
 }
+
+//	func GlobalPiFromSingleTreePi(singleTreePi SingleTreePiType, offset GlobalPiType) GlobalPiType {
+//		return GlobalPiType(singleTreePi) - 1 + offset
+//	}
 func GlobalPiWithinRange(globalPi GlobalPiType, offset GlobalPiType, count int) bool {
 	return globalPi >= offset && globalPi < offset+GlobalPiType(count)
 }
@@ -23,9 +27,13 @@ func GlobalPiFromTierTopIndex(ttIndex TierTopIndex, offset GlobalPiType) GlobalP
 func TierTopIndexFromGlobalPi(globalPi GlobalPiType, offset GlobalPiType) TierTopIndex {
 	return TierTopIndex(globalPi - offset)
 }
-func SingleTreePiFromGlobalPi(globalPi GlobalPiType, offset GlobalPiType) SingleTreePiType {
-	return SingleTreePiType(globalPi - offset + 1)
+func SingleTreePiFromGlobalPi(globalPi GlobalPiType) SingleTreePiType {
+	return SingleTreePiType(globalPi + 1)
 }
+
+//	func SingleTreePiFromGlobalPi(globalPi GlobalPiType, offset GlobalPiType) SingleTreePiType {
+//		return SingleTreePiType(globalPi - offset + 1)
+//	}
 func HashIndexIdFromGlobalPi(global GlobalPiType, offset GlobalPiType) HashIndexIdType {
 	// The value reserved for "no match"
 	if global == GlobalPiNoMatch {
