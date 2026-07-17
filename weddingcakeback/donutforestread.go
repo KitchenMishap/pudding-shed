@@ -9,7 +9,7 @@ import (
 
 type DonutForestInfo struct {
 	FirstGlobalPresentationIndex GlobalPiType
-	Levels                       []DonutForestLevelSlices
+	Levels                       []DonutForestLevelSlices // These are intended to be indexed by hashByteIndex
 }
 type DonutForestLevelSlices struct {
 	// These are slices into the mmap'ed files
@@ -228,22 +228,44 @@ func (dfn *donutForestNode) getAllNextLevelNodeIds(mediumSlots byte, tinySlots b
 				result = append(result, nextLevelNodeId)
 			}
 		}
+		/*	} else if mediumSlots > 0 {
+			// Is it a FormatMedium?
+			//fmt.Println("Visiting a FormatMedium node")
+			// There are 256 bits within cn.nodeBytes which tell us (if each is a '1') which slots are represented
+			// in the NodeIdType's which follow.
+			// HOWEVER, since we are visiting all nodes (on our way to all leaves), the "mediumSlots" value
+			// already directly tells us a maximum number of slots to examine.
+
+			// The 32-byte bitmask flags slice starts at offset 2 of cn.nodeBytes
+			flagsOffset := 2
+
+			// Compute physical NodeIdType payload layout offset
+			// The NodeIdType data payloads start directly after our 32-byte bitmask (offset 34).
+			uint16PayloadStart := flagsOffset + 32
+			for onesBefore := range int(mediumSlots) {
+				nodeIdByteOffset := uint16PayloadStart + (onesBefore * nodeIdSize)
+				singleNodeId := (*nodeIdConfig).ReadID(dfn.nodeBytes[nodeIdByteOffset : nodeIdByteOffset+nodeIdSize])
+				if singleNodeId != 0 {
+					result = append(result, singleNodeId)
+				}
+			} */
 	} else if mediumSlots > 0 {
-		// Is it a FormatMedium?
-		//fmt.Println("Visiting a FormatMedium node")
-		// There are 256 bits within cn.nodeBytes which tell us (if each is a '1') which slots are represented
-		// in the NodeIdType's which follow.
-		// HOWEVER, since we are visiting all nodes (on our way to all leaves), the "mediumSlots" value
-		// already directly tells us a maximum number of slots to examine.
-
-		// The 32-byte bitmask flags slice starts at offset 2 of cn.nodeBytes
+		// Gemini's edit
+		// 1. Read the four 64-bit blocks of our 256-bit bitmask
 		flagsOffset := 2
+		u0 := binary.LittleEndian.Uint64(dfn.nodeBytes[flagsOffset+0 : flagsOffset+8])
+		u1 := binary.LittleEndian.Uint64(dfn.nodeBytes[flagsOffset+8 : flagsOffset+16])
+		u2 := binary.LittleEndian.Uint64(dfn.nodeBytes[flagsOffset+16 : flagsOffset+24])
+		u3 := binary.LittleEndian.Uint64(dfn.nodeBytes[flagsOffset+24 : flagsOffset+32])
 
-		// Compute physical NodeIdType payload layout offset
-		// The NodeIdType data payloads start directly after our 32-byte bitmask (offset 34).
+		// 2. Count exactly how many bits are set to '1' across the entire mask
+		activeCount := bits.OnesCount64(u0) + bits.OnesCount64(u1) +
+			bits.OnesCount64(u2) + bits.OnesCount64(u3)
+
+		// 3. Only read the node IDs that are physically marked as active
 		uint16PayloadStart := flagsOffset + 32
-		for onesBefore := range int(mediumSlots) {
-			nodeIdByteOffset := uint16PayloadStart + (onesBefore * nodeIdSize)
+		for i := 0; i < activeCount; i++ {
+			nodeIdByteOffset := uint16PayloadStart + (i * nodeIdSize)
 			singleNodeId := (*nodeIdConfig).ReadID(dfn.nodeBytes[nodeIdByteOffset : nodeIdByteOffset+nodeIdSize])
 			if singleNodeId != 0 {
 				result = append(result, singleNodeId)

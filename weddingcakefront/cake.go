@@ -29,23 +29,23 @@ func (c *Cake) IndexOfHash(hash *Sha256) (int64, error) {
 	reader := c.tierReader
 	var result GlobalPiType
 	var err error
-	tierCount := 0
+	tierCount := -1 // To represent TierTop
 	for !found && reader != nil {
-		tierCount++
+		if tierCount == 1 {
+			fmt.Printf("Breakpoint here: tier %d\n", tierCount)
+		}
 		result, found, err = reader.TryIndexOfHash((*hash)[:])
 		if err != nil {
 			return -1, err
 		}
 		if !found {
+			fmt.Printf("Hash not found in tier %d\n", tierCount)
 			reader = reader.GetNextTier()
 		}
+		tierCount++
 	}
 	if !found {
-		//fmt.Printf("Hash not found after %d tiers\n", tierCount)
 		return -1, nil
-	}
-	if tierCount == 1 {
-		fmt.Printf("Found in tier %d\n", tierCount)
 	}
 	return int64(result), nil
 }

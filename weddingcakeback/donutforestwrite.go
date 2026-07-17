@@ -170,6 +170,9 @@ func (dfw *DonutForestWrite) Write(cakeFolder string) error {
 	}
 	// Field B) (per DonutForest) 1 byte levels count
 	// Note that some of the first levels may have no associated nodes (ie, skipped by multiBytePprefix in jumpTable)
+	if destTierIndex == 1 {
+		fmt.Printf("destTierIndex == 1, breakpoint here\n")
+	}
 	numLevelsByteArray := [1]byte{}
 	numLevelsByteArray[0] = byte(len(bakingDesign.LevelSpecs))
 	_, err = infoFile.Write(numLevelsByteArray[:])

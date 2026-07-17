@@ -200,6 +200,7 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 	// First find an index into the jump table
 	prefix := hash[:8] // ToDo Why 8?
 	prefixBytesCount := tb.ThisTierConfig.PrefixBytesCount
+	fmt.Printf("PrefixBytesCount: %d\n", prefixBytesCount)
 	multiplier := 1
 	prefixIndex := 0
 	flagBit := uint64(1)
@@ -220,14 +221,17 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 
 	// Now iterate over all DonutForests
 	donutForestsCount := len(tb.DonutForestsInfo)
+	fmt.Printf("%d donutForests\n", donutForestsCount)
 	for donutForestIndex := range donutForestsCount {
 		donutForestInfo := &tb.DonutForestsInfo[donutForestIndex]
 
 		// Read root of SingleTree from jump table
 		jumpTableByteOffset := donutForestIndex*jumpTableSize + prefixIndex*nodeIdSize
+		fmt.Printf("jumpTableByteOffset %d\n", jumpTableByteOffset)
 		singleTreeNodeId := (*nodeIdConfig).ReadID(tb.JumpTableMemoryMap[jumpTableByteOffset : jumpTableByteOffset+nodeIdSize])
 		if singleTreeNodeId != 0 {
 			level := prefixBytesCount
+			fmt.Printf("level = prefixBytesCount = %d\n", level)
 			hashIndexId := tb.recurseLookupHash(hash, level, singleTreeNodeId,
 				flagsHashByteIndicesUnexamined, donutForestInfo,
 				nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount,
@@ -273,9 +277,15 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 	nodeIdConfig *NByteIdConfig[NodeIdType], hashIndexIdConfig *NByteIdConfig[HashIndexIdType],
 	reassuranceBytesCount byte, prefixBytesCount byte) HashIndexIdType {
 
+	fmt.Printf("TierBelow.recurseLookupHash levelNum = %d\n", levelNum)
+
 	// Look at the node we were directed to
+	if levelNum == 2 {
+		fmt.Printf("LevelNum 2, breakpoint here\n")
+	}
 	var node donutForestNode
 	donutForestInfo.Levels[levelNum].ExtractNode(nodeIdWithinLevel, &node, nodeIdConfig)
+	//donutForestInfo.Levels[levelNum-prefixBytesCount].ExtractNode(nodeIdWithinLevel, &node, nodeIdConfig)
 
 	// Have we reached a leaf node?
 	isLeaf, reassuranceBytes, hashIndexId := node.detailsIfLeaf(reassuranceBytesCount, hashIndexIdConfig)
@@ -308,12 +318,14 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 		// with the data available
 		return hashIndexId
 	}
+	fmt.Printf("TierBelow.recurseLookupHash Not a leaf.\n")
 	// Not a leaf.
 	// This node is instructing us to dig deeper, by examining another byte in the hash.
 	byteIndexToExamine, mediumSlots, tinySlots := node.hashByteIndexToExamine(nodeIdConfig)
+	fmt.Printf("TierBelow.recurseLookupHash ByteIndexToExamine %d.\n", int(byteIndexToExamine))
 	if byteIndexToExamine == 0 && prefixBytesCount > 0 {
 		// We seem to hit this breakpoint for nodeIdWithinLevel = 31220
-		fmt.Printf("Breakpoint here\n")
+		fmt.Printf("Breakpoint here: byteIndexToExamine=0 but prefixBytesCount=%d\n", prefixBytesCount)
 	}
 	if int(byteIndexToExamine) >= len(hash) {
 		panic(fmt.Sprintf("byte index out of range: level=%d byteIndex=%d format=%08x mediumSlots=%d tinySlots=%d hashLen=%d",
@@ -455,6 +467,9 @@ func (tb *TierBelow) readInfoFile() error {
 		}
 		levelsCount := bytes[offset]
 		offset += 1
+		if tb.TierIndex == 1 {
+			fmt.Printf("tb.TierIndex == 1, breakpoint here\n")
+		}
 		if len(tb.LevelXXNodesMemoryMaps) < int(levelsCount) {
 			panic("Fewer LevelXX files than specified in DonutForestsInfo.bin")
 		}
@@ -468,7 +483,7 @@ func (tb *TierBelow) readInfoFile() error {
 			}
 			indexBytesLength := binary.LittleEndian.Uint64(bytes[offset : offset+8])
 			offset += 8
-			// Field D (per level per chunk): Four bytes length of nodesBytes
+			// Field D (per level per chunk): 8 bytes length of nodesBytes
 			nodesBytesLength := binary.LittleEndian.Uint64(bytes[offset : offset+8])
 			offset += 8
 			// We combine these with levelAccountedBytes[] to determine slices into the mmap'd LevelXX.bin files
