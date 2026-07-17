@@ -198,7 +198,7 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 	}
 
 	// First find an index into the jump table
-	prefix := hash[:8]
+	prefix := hash[:8] // ToDo Why 8?
 	prefixBytesCount := tb.ThisTierConfig.PrefixBytesCount
 	multiplier := 1
 	prefixIndex := 0
@@ -230,7 +230,8 @@ func (tb *TierBelow) TryIndexOfHash(hash []byte) (GlobalPiType, bool, error) {
 			level := prefixBytesCount
 			hashIndexId := tb.recurseLookupHash(hash, level, singleTreeNodeId,
 				flagsHashByteIndicesUnexamined, donutForestInfo,
-				nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount)
+				nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount,
+				prefixBytesCount)
 
 			if hashIndexId != HashIndexIdNoMatch {
 				// Found a potential match
@@ -270,7 +271,7 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 	nodeIdWithinLevel NodeIdType, flagsHashByteIndicesUnexamined uint64,
 	donutForestInfo *DonutForestInfo,
 	nodeIdConfig *NByteIdConfig[NodeIdType], hashIndexIdConfig *NByteIdConfig[HashIndexIdType],
-	reassuranceBytesCount byte) HashIndexIdType {
+	reassuranceBytesCount byte, prefixBytesCount byte) HashIndexIdType {
 
 	// Look at the node we were directed to
 	var node donutForestNode
@@ -310,6 +311,10 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 	// Not a leaf.
 	// This node is instructing us to dig deeper, by examining another byte in the hash.
 	byteIndexToExamine, mediumSlots, tinySlots := node.hashByteIndexToExamine(nodeIdConfig)
+	if byteIndexToExamine == 0 && prefixBytesCount > 0 {
+		// We seem to hit this breakpoint for nodeIdWithinLevel = 31220
+		fmt.Printf("Breakpoint here\n")
+	}
 	if int(byteIndexToExamine) >= len(hash) {
 		panic(fmt.Sprintf("byte index out of range: level=%d byteIndex=%d format=%08x mediumSlots=%d tinySlots=%d hashLen=%d",
 			levelNum, byteIndexToExamine, node.formatSpecBytes, mediumSlots, tinySlots, len(hash)))
@@ -330,7 +335,7 @@ func (tb *TierBelow) recurseLookupHash(hash []byte, levelNum byte,
 
 	// Go deeper, with our new node id at the next level...
 	return tb.recurseLookupHash(hash, levelNum+1, nextNodeId, flagsHashByteIndicesUnexamined,
-		donutForestInfo, nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount)
+		donutForestInfo, nodeIdConfig, hashIndexIdConfig, reassuranceBytesCount, prefixBytesCount)
 }
 
 func (tb *TierBelow) mmapLevelFiles() error {

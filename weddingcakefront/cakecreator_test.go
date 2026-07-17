@@ -58,7 +58,7 @@ func TestCakeCreatorTierBelow0Full(t *testing.T) {
 
 func TestCakeCreatorThreeTier(t *testing.T) {
 	fmt.Printf("This will take more than an hour...\n")
-	CakeCreatorHelper(t, 65535*6, 4) // Only need 5+ due to reduced CakeConfig setting
+	CakeCreatorHelper(t, 65535*6+10, 4) // Only need 5+ due to reduced CakeConfig setting
 }
 
 func CakeCreatorHelper(t *testing.T, count int, reassuranceBytes byte) {

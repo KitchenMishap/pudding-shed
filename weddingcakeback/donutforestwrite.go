@@ -408,6 +408,10 @@ func (dfw *DonutForestWrite) serializeSingleTreeNodeBytes(singleTree *SingleTree
 					dfw.serializeMediumNode(node.SlotsNode, spec, nextLevelIdMap, levelNodesBytes)
 				case NodeFormatTiny:
 					// fmt.Println("Serializing FormatTiny node")
+					nodeId := currentLevelIdMap[node]
+					if nodeId == 31220 {
+						fmt.Printf("Breakpoint here\n")
+					}
 					dfw.serializeTinyNode(node.SlotsNode, spec, nextLevelIdMap, levelNodesBytes)
 				}
 			}
@@ -423,6 +427,9 @@ func (dfw *DonutForestWrite) serializeSingleTreeNodeBytes(singleTree *SingleTree
 func (dfw *DonutForestWrite) appendToLevelsFiles(levelsNodesBytes [][]byte, tierFolderPath string) error {
 	for levelNum, levelNodesBytes := range levelsNodesBytes {
 		if len(levelNodesBytes) != 0 {
+			if levelNum == 0 {
+				fmt.Println("Breakpoint here")
+			}
 			if dfw.LevelFiles[levelNum] == nil {
 				// Open for append or create if not yet opened
 				filename := fmt.Sprintf("Level%02dNodes.bin", levelNum)

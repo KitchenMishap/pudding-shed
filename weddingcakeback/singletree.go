@@ -138,7 +138,7 @@ func GenerateSingleTree(input []SingleTreeHash, PrefixBytesN byte, hashLength by
 		unusedBytesFlags = (uint64(1) << hashLength) - 1 // eg 0xFFFFFFFF for hashLength = 32
 	}
 	// Shift left to mark the first PrefixBytesN bytes as "examined"
-	unusedBytesFlags <<= PrefixBytesN
+	unusedBytesFlags = (unusedBytesFlags << PrefixBytesN) & unusedBytesFlags
 	// We start recursing at hash byte index PrefixBytesN
 	rootNode := result.recurseGenerateNode(inputCopy, unusedBytesFlags, PrefixBytesN)
 	result.RootSlot.NextNode = rootNode
@@ -165,7 +165,7 @@ func (st *SingleTree) LookupHash(hash []byte) SingleTreePiType {
 		unusedBytesFlags = (uint64(1) << st.HashLength) - 1 // eg 0xFFFFFFFF for hashLength = 32
 	}
 	// Shift left to mark the first PrefixBytesN bytes as "examined"
-	unusedBytesFlags <<= st.PrefixBytesN
+	unusedBytesFlags = (unusedBytesFlags << st.PrefixBytesN) & unusedBytesFlags
 
 	for {
 		leafNode := node.LeafNode
@@ -204,9 +204,16 @@ func (st *SingleTree) LookupHash(hash []byte) SingleTreePiType {
 		}
 		// Not a leaf node. It's a slots node. Examine the slots...
 		byteIndexToExamine := node.SlotsNode.HashByteIndex
+		// Let's check we're not being to examine one of the prefix bytes
+		if byteIndexToExamine < st.PrefixBytesN {
+			panic("Byte index is part of the prefix")
+		}
 		// Mark byte index as examined
 		mask := uint64(1) << byteIndexToExamine
-		unusedBytesFlags ^= mask
+		if unusedBytesFlags&mask == 0 {
+			panic("Byte index already examined")
+		}
+		unusedBytesFlags ^= mask // Flip bit (clear flag)
 		examinedByteValue := hash[byteIndexToExamine]
 		if node.SlotsNode.Slots[examinedByteValue].IsEmpty() {
 			return SingleTreeNoMatch
@@ -348,7 +355,14 @@ func (st *SingleTree) recurseGenerateNode(inputCopy []SingleTreeHash,
 
 	// Use the best one
 	bi := maxEntropyIndex
-	unusedByteIndices ^= 1 << bi // Flip the bit
+	if bi < int(st.PrefixBytesN) {
+		panic("Byte index is part of the prefix")
+	}
+	mask := uint64(1) << bi
+	if unusedByteIndices&mask == 0 {
+		panic("We chose to use a byte index that is already used")
+	}
+	unusedByteIndices ^= 1 << bi // Flip (clear) the bit
 	node.SlotsNode.HashByteIndex = byte(bi)
 
 	// Now we'll need to sort by that byte, so we can pass subsets of the hash list to each child.

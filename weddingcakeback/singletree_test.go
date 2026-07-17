@@ -54,7 +54,7 @@ func TestSingleHashAbsent(t *testing.T) {
 
 func Test65535Hashes(t *testing.T) {
 	const count = 65535
-	const prefixHashBytesCount = byte(2)
+	const prefixHashBytesCount = byte(1)
 
 	firstHashLength := byte(8) // So that we're "very unlikely" to get a duplicate
 	for hashLength := firstHashLength; hashLength <= 64; hashLength += 4 {
